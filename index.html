@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sala Nera — A Curated Collection</title>
-<meta name="description" content="Sala Nera is the cinematic real estate media collection from Blackhall Media Group. Not every listing earns this.">
+<meta name="description" content="Sala Nera is a limited collection of cinematic property films and imagery by Blackhall Media Group.">
 
 <!-- TODO: replace https://salanera.com with your real domain everywhere below -->
 <link rel="canonical" href="https://salanera.com/">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sala Nera">
 <meta property="og:title" content="Sala Nera — A Curated Collection">
-<meta property="og:description" content="Cinematic real estate media from Blackhall Media Group. Not every listing earns this.">
+<meta property="og:description" content="A limited collection of cinematic property films and imagery by Blackhall Media Group.">
 <meta property="og:url" content="https://salanera.com/">
 <meta property="og:image" content="https://salanera.com/og-sala-nera.jpg">
 <meta property="og:image:width" content="1200">
@@ -22,7 +22,7 @@
 <meta property="og:image:alt" content="Sala Nera — cinematic real estate media">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Sala Nera — A Curated Collection">
-<meta name="twitter:description" content="Cinematic real estate media from Blackhall Media Group. Not every listing earns this.">
+<meta name="twitter:description" content="A limited collection of cinematic property films and imagery by Blackhall Media Group.">
 <meta name="twitter:image" content="https://salanera.com/og-sala-nera.jpg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -147,21 +147,22 @@ section{position:relative;border-top:1px solid var(--line)}
 .work-row h3{font-size:1.4rem;margin-bottom:10px}
 .work-row p{color:var(--muted);font-size:.98rem;max-width:48ch}
 
-/* SELECTED PROPERTIES — populated from COLLECTION_ITEMS in the script and hidden until launch */
-.collection[hidden]{display:none}
-.collection-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(24px,4vw,48px)}
-.property-card--featured{grid-column:1/-1}
-.property-link{display:block}
-.property-media{position:relative;aspect-ratio:4/3;overflow:hidden;background:linear-gradient(145deg,#25221D,#151412);border:1px solid var(--line)}
-.property-card--featured .property-media{aspect-ratio:16/9}
-.property-media img,.property-media video{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
-.property-link:hover .property-media img,.property-link:hover .property-media video{transform:scale(1.025)}
-.property-scrim{position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(15,14,13,.86) 100%);pointer-events:none}
-.property-badge{position:absolute;top:18px;right:18px;padding:8px 10px;background:rgba(15,14,13,.78);border:1px solid rgba(244,239,230,.3);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
-.property-copy{position:absolute;left:clamp(20px,3vw,34px);right:clamp(20px,3vw,34px);bottom:clamp(20px,3vw,32px)}
-.property-location{display:block;color:#C9C4BA;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin-bottom:7px}
-.property-copy h3{font-size:clamp(1.35rem,2.8vw,2rem);margin-bottom:6px}
-.property-client{color:#C9C4BA;font-size:13px}
+/* SELECTED WORK — replace the placeholder panels with real media when ready */
+.work-showcase{background:var(--paper);color:var(--ink)}
+.work-showcase-head{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;margin-bottom:clamp(42px,6vw,70px)}
+.work-showcase-head .kicker{color:var(--oxblood);display:block;margin-bottom:14px}
+.work-showcase-head h2{font-size:clamp(2rem,4vw,3.25rem);font-weight:600;max-width:12ch}
+.work-showcase-link{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid #B7AFA2;padding-bottom:6px;white-space:nowrap}
+.work-showcase-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(10px,1.4vw,18px)}
+.work-card{display:block;position:relative;aspect-ratio:3/4;overflow:hidden;background:#171614;color:var(--paper);border:1px solid #2D2A26}
+.work-card-media{position:absolute;inset:0;background:radial-gradient(80% 55% at 50% 35%,#292621 0%,#171614 70%);transition:transform .7s cubic-bezier(.2,.7,.2,1)}
+.work-card:hover .work-card-media{transform:scale(1.02)}
+.work-card-mark{position:absolute;width:clamp(58px,6vw,86px);height:auto;left:50%;top:42%;transform:translate(-50%,-50%);opacity:.16}
+.work-card-shade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 38%,rgba(15,14,13,.9) 100%)}
+.work-card-copy{position:absolute;left:clamp(16px,1.6vw,24px);right:clamp(16px,1.6vw,24px);bottom:clamp(16px,1.6vw,24px)}
+.work-card-copy h3{font-size:clamp(1rem,1.4vw,1.25rem);font-weight:600;margin-bottom:6px}
+.work-card-copy p{font-size:12px;line-height:1.45;color:#BDB7AD}
+.work-card-type{display:block;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ember);margin-bottom:9px}
 
 /* APPROACH */
 .approach{background:var(--ink-soft)}
@@ -243,11 +244,11 @@ section{position:relative;border-top:1px solid var(--line)}
   .nav-links.open{transform:translateX(0);visibility:visible}
   .nav-toggle{display:flex;z-index:110}
   .frow{grid-template-columns:1fr}
-  .collection-grid{grid-template-columns:1fr}
-  .property-card--featured{grid-column:auto}
-  .property-card--featured .property-media{aspect-ratio:4/3}
+  .work-showcase-head{align-items:flex-start;flex-direction:column}
+  .work-showcase-grid{grid-template-columns:1fr 1fr}
   .foot-top{grid-template-columns:1fr}
 }
+@media(max-width:420px){.work-showcase-grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
@@ -267,7 +268,7 @@ section{position:relative;border-top:1px solid var(--line)}
       <img class="brand-logo brand-logo--nav" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070">
     </a>
     <div class="nav-links" id="navLinks">
-      <a href="#collection" data-collection-link hidden>Properties</a>
+      <a href="/work.html">Work</a>
       <a href="/films">Films</a>
       <a href="#process">Process</a>
       <a href="#access" class="btn btn-outline btn-sm">Request Availability</a>
@@ -298,7 +299,7 @@ section{position:relative;border-top:1px solid var(--line)}
     <p class="lede">A limited collection of cinematic property films and imagery by Blackhall Media Group.</p>
     <div class="hero-ctas">
       <a href="#access" class="btn btn-primary">Request Availability</a>
-      <a href="/films" class="btn btn-outline">See the Work</a>
+      <a href="/work.html" class="btn btn-outline">See the Work</a>
     </div>
   </div>
 </header>
@@ -311,19 +312,37 @@ section{position:relative;border-top:1px solid var(--line)}
   </div>
 </section>
 
-<!--
-  SELECTED PROPERTIES
-  This section remains absent from the rendered page until COLLECTION_LIVE is true
-  and COLLECTION_ITEMS contains at least one property. See the script below.
--->
-<section class="pad collection" id="collection" aria-labelledby="collection-h" hidden>
+<section class="pad work-showcase" id="work" aria-labelledby="work-h">
   <div class="wrap">
-    <div class="section-head">
-      <span class="kicker kicker--accent">Selected Properties</span>
-      <h2 id="collection-h">A small body of work, considered one property at a time.</h2>
-      <p>Feature films and editorial stills from properties accepted into the Sala Nera collection.</p>
+    <div class="work-showcase-head">
+      <div>
+        <span class="kicker">Selected Work</span>
+        <h2 id="work-h">Crafted around the property.</h2>
+      </div>
+      <a class="work-showcase-link" href="/work.html">Explore the work &rarr;</a>
     </div>
-    <div class="collection-grid" id="collectionGrid"></div>
+    <div class="work-showcase-grid">
+      <a class="work-card" href="/work.html#films">
+        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span>
+        <span class="work-card-shade"></span>
+        <span class="work-card-copy"><span class="work-card-type">Motion</span><h3>Feature Films</h3><p>Cinematic property stories, scored and cut with restraint.</p></span>
+      </a>
+      <a class="work-card" href="/work.html#stills">
+        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span>
+        <span class="work-card-shade"></span>
+        <span class="work-card-copy"><span class="work-card-type">Photography</span><h3>Editorial Stills</h3><p>Architecture, atmosphere, and detail held true.</p></span>
+      </a>
+      <a class="work-card" href="/work.html#aerial">
+        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span>
+        <span class="work-card-shade"></span>
+        <span class="work-card-copy"><span class="work-card-type">Perspective</span><h3>Aerial</h3><p>The property and its setting, considered as one frame.</p></span>
+      </a>
+      <a class="work-card" href="/work.html#social">
+        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span>
+        <span class="work-card-shade"></span>
+        <span class="work-card-copy"><span class="work-card-type">Short Form</span><h3>Social Cuts</h3><p>Focused edits made for the pace of the feed.</p></span>
+      </a>
+    </div>
   </div>
 </section>
 
@@ -448,7 +467,7 @@ section{position:relative;border-top:1px solid var(--line)}
       </div>
       <div>
         <h2>Collection</h2>
-        <ul><li data-collection-link hidden><a href="#collection">Selected Properties</a></li><li><a href="#process">The Work</a></li><li><a href="#access">Request Availability</a></li></ul>
+        <ul><li><a href="/work.html">Selected Work</a></li><li><a href="#process">The Process</a></li><li><a href="#access">Request Availability</a></li></ul>
       </div>
       <div>
         <h2>Connect</h2>
@@ -467,108 +486,7 @@ section{position:relative;border-top:1px solid var(--line)}
   'use strict';
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ---- Selected properties ----
-     Keep false until the collection is ready to publish. Add one object per property.
-     Use either image or video; video cards should also include a poster image.
-
-     Example:
-     {
-       title: 'Property Name',
-       location: 'Dallas, TX',
-       client: 'Agent or brokerage',
-       type: 'Film + Stills',
-       href: '/films#property-name',
-       image: '/media/collection/property-name.jpg'
-     }
-  */
-  var COLLECTION_LIVE = false;
-  var COLLECTION_ITEMS = [];
-
   document.getElementById('year').textContent = new Date().getFullYear();
-
-  var collectionSection = document.getElementById('collection');
-  var collectionGrid = document.getElementById('collectionGrid');
-  if (COLLECTION_LIVE && COLLECTION_ITEMS.length && collectionSection && collectionGrid) {
-    COLLECTION_ITEMS.forEach(function(item, index){
-      if (!item || (!item.image && !item.video)) return;
-
-      var article = document.createElement('article');
-      article.className = 'property-card' + (index === 0 ? ' property-card--featured' : '');
-
-      var link = document.createElement('a');
-      link.className = 'property-link';
-      link.href = item.href || '/films';
-      link.setAttribute('aria-label', 'View ' + (item.title || 'selected property'));
-
-      var media = document.createElement('div');
-      media.className = 'property-media';
-
-      if (item.video) {
-        var cardVideo = document.createElement('video');
-        cardVideo.muted = true;
-        cardVideo.loop = true;
-        cardVideo.playsInline = true;
-        cardVideo.preload = 'metadata';
-        cardVideo.setAttribute('aria-hidden', 'true');
-        if (item.poster) cardVideo.poster = item.poster;
-        var cardSource = document.createElement('source');
-        cardSource.src = item.video;
-        cardSource.type = item.videoType || 'video/mp4';
-        cardVideo.appendChild(cardSource);
-        media.appendChild(cardVideo);
-        if (!reduceMotion) {
-          link.addEventListener('mouseenter', function(){
-            var playPromise = cardVideo.play();
-            if (playPromise && playPromise.catch) playPromise.catch(function(){});
-          });
-          link.addEventListener('mouseleave', function(){ cardVideo.pause(); });
-        }
-      } else {
-        var cardImage = document.createElement('img');
-        cardImage.src = item.image;
-        cardImage.alt = item.alt || item.title || 'Selected Sala Nera property';
-        cardImage.loading = 'lazy';
-        cardImage.decoding = 'async';
-        media.appendChild(cardImage);
-      }
-
-      var scrim = document.createElement('span');
-      scrim.className = 'property-scrim';
-      scrim.setAttribute('aria-hidden', 'true');
-      media.appendChild(scrim);
-
-      if (item.type) {
-        var badge = document.createElement('span');
-        badge.className = 'property-badge';
-        badge.textContent = item.type;
-        media.appendChild(badge);
-      }
-
-      var copy = document.createElement('span');
-      copy.className = 'property-copy';
-      var location = document.createElement('span');
-      location.className = 'property-location';
-      location.textContent = item.location || '';
-      var title = document.createElement('h3');
-      title.textContent = item.title || 'Selected Property';
-      var client = document.createElement('span');
-      client.className = 'property-client';
-      client.textContent = item.client || '';
-      copy.appendChild(location);
-      copy.appendChild(title);
-      copy.appendChild(client);
-      media.appendChild(copy);
-
-      link.appendChild(media);
-      article.appendChild(link);
-      collectionGrid.appendChild(article);
-    });
-
-    if (collectionGrid.children.length) {
-      collectionSection.hidden = false;
-      document.querySelectorAll('[data-collection-link]').forEach(function(el){ el.hidden = false; });
-    }
-  }
 
   /* ---- Hero video: only loaded on larger screens, never under reduced motion ---- */
   var video = document.getElementById('heroVideoEl');

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Work — Sala Nera</title>
+<meta name="description" content="Selected cinematic property films, editorial stills, aerial work, and social cuts from Sala Nera by Blackhall Media Group.">
+<link rel="canonical" href="https://salanera.com/work">
+<meta name="theme-color" content="#0F0E0D">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Work — Sala Nera">
+<meta property="og:description" content="Selected cinematic property work from Sala Nera.">
+<meta property="og:url" content="https://salanera.com/work">
+<meta property="og:image" content="https://salanera.com/og-sala-nera.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0F0E0D;--ink-soft:#1A1917;--paper:#F4EFE6;--oxblood:#770606;--ember:#D4552F;--line:#332F29;--muted:#9C978C;--font-display:'Instrument Sans',sans-serif;--font-body:'Inter',sans-serif;--wrap:1180px}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--ink);color:var(--paper);line-height:1.6;-webkit-font-smoothing:antialiased}
+img,video{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ember);outline-offset:3px}
+[id]{scroll-margin-top:86px}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 clamp(20px,5vw,56px)}
+.skip{position:absolute;left:16px;top:-100px;z-index:200;background:var(--paper);color:var(--ink);padding:12px 20px;font-weight:600;font-size:14px}.skip:focus{top:16px}
+.topstrip{height:5px;display:flex}.topstrip>span{flex:1;background:var(--ink)}.topstrip>span.lit{background:var(--oxblood)}
+.nav{padding:18px 0 14px;border-bottom:1px solid var(--line)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.nav-mark{display:inline-flex;align-items:center}.brand-logo{display:block;width:74px;height:auto}
+.nav-links{display:flex;align-items:center;gap:34px}.nav-links a{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(244,239,230,.85)}.nav-links a:hover,.nav-links a[aria-current="page"]{color:var(--paper)}
+.btn{font-family:var(--font-body);font-weight:600;font-size:11px;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--line);padding:12px 24px;display:inline-block;text-align:center}.btn:hover{border-color:var(--paper)}
+.work-hero{min-height:54vh;display:flex;align-items:center;padding:clamp(90px,13vw,160px) 0}
+.kicker{display:block;font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ember);margin-bottom:18px}
+.work-hero h1{font-family:var(--font-display);font-size:clamp(2.4rem,5.4vw,4.5rem);font-weight:600;letter-spacing:-.03em;line-height:1.04;max-width:10ch}
+.work-hero p{color:#BDB7AD;font-size:clamp(.95rem,1.4vw,1.08rem);max-width:50ch;margin-top:24px}
+.work-main{background:var(--paper);color:var(--ink);padding:0 0 clamp(90px,12vw,150px)}
+.subnav{position:sticky;top:0;z-index:50;background:rgba(244,239,230,.94);backdrop-filter:blur(10px);border-bottom:1px solid #D8D0C4}
+.subnav-inner{display:flex;gap:clamp(20px,4vw,48px);overflow-x:auto;padding-top:20px;padding-bottom:18px;scrollbar-width:none}.subnav-inner::-webkit-scrollbar{display:none}
+.subnav a{font-size:10px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;white-space:nowrap;color:#615C54}.subnav a:hover{color:var(--oxblood)}
+.work-intro{display:flex;justify-content:space-between;align-items:end;gap:32px;padding:clamp(72px,10vw,120px) 0 clamp(42px,6vw,70px)}
+.work-intro h2{font-family:var(--font-display);font-size:clamp(2rem,4vw,3.25rem);font-weight:600;letter-spacing:-.02em;max-width:13ch;line-height:1.08}
+.work-intro p{color:#6D675F;max-width:42ch;font-size:.98rem}
+.work-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(20px,3vw,38px)}
+.work-card{position:relative;display:block;aspect-ratio:16/10;overflow:hidden;background:#171614;color:var(--paper);border:1px solid #2D2A26}
+.work-card-media{position:absolute;inset:0;background:radial-gradient(80% 55% at 50% 35%,#292621 0%,#171614 70%);transition:transform .7s cubic-bezier(.2,.7,.2,1)}
+.work-card:hover .work-card-media{transform:scale(1.02)}
+.work-card-mark{position:absolute;width:clamp(70px,8vw,110px);height:auto;left:50%;top:43%;transform:translate(-50%,-50%);opacity:.16}
+.work-card-shade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 34%,rgba(15,14,13,.92) 100%)}
+.work-card-copy{position:absolute;left:clamp(20px,3vw,34px);right:clamp(20px,3vw,34px);bottom:clamp(20px,3vw,32px)}
+.work-card-type{display:block;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ember);margin-bottom:9px}
+.work-card h3{font-family:var(--font-display);font-size:clamp(1.25rem,2.3vw,1.8rem);font-weight:600;line-height:1.1;margin-bottom:7px}.work-card p{color:#BDB7AD;font-size:13px}
+.availability{border-top:1px solid var(--line);padding:clamp(80px,10vw,120px) 0;text-align:center}.availability h2{font-family:var(--font-display);font-size:clamp(2rem,4vw,3.2rem);font-weight:600;letter-spacing:-.02em;margin-bottom:18px}.availability p{color:var(--muted);max-width:46ch;margin:0 auto 30px}
+.foot{border-top:1px solid var(--line);padding:26px 0;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.foot-inner{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media(max-width:760px){.nav-links{gap:18px}.nav-links a:not(.btn){display:none}.work-intro{align-items:flex-start;flex-direction:column}.work-grid{grid-template-columns:1fr}.work-card{aspect-ratio:4/3}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="topstrip" aria-hidden="true"><span></span><span class="lit"></span><span></span><span></span><span></span><span></span></div>
+
+<nav class="nav" aria-label="Primary">
+  <div class="wrap nav-inner">
+    <a href="/" class="nav-mark" aria-label="Sala Nera — home"><img class="brand-logo" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070"></a>
+    <div class="nav-links">
+      <a href="/work.html" aria-current="page">Work</a>
+      <a href="/films">Films</a>
+      <a href="/#process">Process</a>
+      <a href="/#access" class="btn">Request Availability</a>
+    </div>
+  </div>
+</nav>
+
+<main id="main">
+  <header class="work-hero">
+    <div class="wrap">
+      <span class="kicker">The Collection</span>
+      <h1>Work that holds the room.</h1>
+      <p>Feature films and editorial imagery shaped around a property's architecture, atmosphere, and point of view.</p>
+    </div>
+  </header>
+
+  <div class="work-main">
+    <nav class="subnav" aria-label="Work categories">
+      <div class="wrap subnav-inner">
+        <a href="#all">All Work</a><a href="#films">Films</a><a href="#stills">Editorial Stills</a><a href="#aerial">Aerial</a><a href="#social">Social Cuts</a>
+      </div>
+    </nav>
+
+    <section class="wrap" id="all" aria-labelledby="work-index-h">
+      <div class="work-intro">
+        <h2 id="work-index-h">Four disciplines. One visual standard.</h2>
+        <p>These panels are ready for your finished work. Replace each placeholder surface with a project still, gallery, or film poster when the collection is ready.</p>
+      </div>
+      <!-- Replace .work-card-media contents with an <img> or muted <video> when media is ready. -->
+      <div class="work-grid">
+        <article class="work-card" id="films">
+          <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span><span class="work-card-shade"></span>
+          <span class="work-card-copy"><span class="work-card-type">Motion</span><h3>Feature Films</h3><p>Cinematic property stories, scored and cut with restraint.</p></span>
+        </article>
+        <article class="work-card" id="stills">
+          <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span><span class="work-card-shade"></span>
+          <span class="work-card-copy"><span class="work-card-type">Photography</span><h3>Editorial Stills</h3><p>Architecture, atmosphere, and detail held true.</p></span>
+        </article>
+        <article class="work-card" id="aerial">
+          <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span><span class="work-card-shade"></span>
+          <span class="work-card-copy"><span class="work-card-type">Perspective</span><h3>Aerial</h3><p>The property and its setting, considered as one frame.</p></span>
+        </article>
+        <article class="work-card" id="social">
+          <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span><span class="work-card-shade"></span>
+          <span class="work-card-copy"><span class="work-card-type">Short Form</span><h3>Social Cuts</h3><p>Focused edits made for the pace of the feed.</p></span>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <section class="availability">
+    <div class="wrap"><span class="kicker">Request Availability</span><h2>Tell us about the property.</h2><p>A small number of properties are accepted each month.</p><a href="/#access" class="btn">Start a Conversation</a></div>
+  </section>
+</main>
+
+<footer class="foot"><div class="wrap foot-inner"><span>&copy; <span id="year">2026</span> Sala Nera. A Blackhall Media Group collection.</span><span>Dallas–Fort Worth, TX</span></div></footer>
+<script>document.getElementById('year').textContent=new Date().getFullYear();</script>
+</body>
+</html>

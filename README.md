@@ -6,6 +6,7 @@ for the lead form.
 
 ```
 index.html          the site
+work.html           served at /work — portfolio category index and media slots
 films.html          served at /films  (PLACEHOLDER — replace with the real films page)
 brand/              official full-logo lockups plus standalone mark assets
 api/inquiry.js      lead form handler → emails via Resend
@@ -81,11 +82,10 @@ Then find-and-replace `https://salanera.com` throughout `index.html`, `films.htm
       HandBrake, "Fast 1080p30" preset.
 - [ ] **Hero poster** — a still of the first frame as `media/hero-poster.jpg` (~150 KB).
       This is what phones and reduced-motion users see; the video never loads for them.
-- [ ] **Collection grid** — REMOVED for launch (no finished property sets yet). When you
-      have finished property sets, add them to `COLLECTION_ITEMS` near the bottom of
-      `index.html`, then change `COLLECTION_LIVE` to `true`. The section and its navigation
-      links remain completely hidden until the flag is on and at least one valid item exists.
-      Cards accept either an `image`, or a `video` plus `poster` image.
+- [ ] **Work media** — the homepage and `/work` page contain branded placeholder panels
+      for Feature Films, Editorial Stills, Aerial, and Social Cuts. Replace each
+      `.work-card-media` placeholder with a real `<img>` or muted `<video>` when the
+      corresponding work is ready. Keep a poster image on every video card.
 - [ ] **OG image** — `og-sala-nera.jpg` at exactly 1200×630. This is the link preview
       when you text the site to an agent.
 - [ ] **Client list** — the `.proof-row` list, relabelled "Past clients include".
