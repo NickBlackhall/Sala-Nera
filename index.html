@@ -146,6 +146,22 @@ section{position:relative;border-top:1px solid var(--line)}
 .work-row h3{font-size:1.4rem;margin-bottom:10px}
 .work-row p{color:var(--muted);font-size:.98rem;max-width:48ch}
 
+/* SELECTED PROPERTIES — populated from COLLECTION_ITEMS in the script and hidden until launch */
+.collection[hidden]{display:none}
+.collection-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(24px,4vw,48px)}
+.property-card--featured{grid-column:1/-1}
+.property-link{display:block}
+.property-media{position:relative;aspect-ratio:4/3;overflow:hidden;background:linear-gradient(145deg,#25221D,#151412);border:1px solid var(--line)}
+.property-card--featured .property-media{aspect-ratio:16/9}
+.property-media img,.property-media video{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
+.property-link:hover .property-media img,.property-link:hover .property-media video{transform:scale(1.025)}
+.property-scrim{position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(15,14,13,.86) 100%);pointer-events:none}
+.property-badge{position:absolute;top:18px;right:18px;padding:8px 10px;background:rgba(15,14,13,.78);border:1px solid rgba(244,239,230,.3);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+.property-copy{position:absolute;left:clamp(20px,3vw,34px);right:clamp(20px,3vw,34px);bottom:clamp(20px,3vw,32px)}
+.property-location{display:block;color:#C9C4BA;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin-bottom:7px}
+.property-copy h3{font-size:clamp(1.35rem,2.8vw,2rem);margin-bottom:6px}
+.property-client{color:#C9C4BA;font-size:13px}
+
 /* APPROACH */
 .approach{background:var(--ink-soft)}
 .approach-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(40px,6vw,90px);align-items:center}
@@ -226,6 +242,9 @@ section{position:relative;border-top:1px solid var(--line)}
   .nav-links.open{transform:translateX(0);visibility:visible}
   .nav-toggle{display:flex;z-index:110}
   .frow{grid-template-columns:1fr}
+  .collection-grid{grid-template-columns:1fr}
+  .property-card--featured{grid-column:auto}
+  .property-card--featured .property-media{aspect-ratio:4/3}
   .foot-top{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){
@@ -247,6 +266,7 @@ section{position:relative;border-top:1px solid var(--line)}
       <img class="brand-logo brand-logo--nav" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070">
     </a>
     <div class="nav-links" id="navLinks">
+      <a href="#collection" data-collection-link hidden>Properties</a>
       <a href="/films">Films</a>
       <a href="#process">Process</a>
       <a href="#access" class="btn btn-outline btn-sm">Request Availability</a>
@@ -287,6 +307,22 @@ section{position:relative;border-top:1px solid var(--line)}
     <blockquote>A curated collection, built from twenty years behind a broadcast camera — not a stock drone package.</blockquote>
     <p>Sala Nera exists for the shoots where the standard listing package isn't enough. Every frame is selected, not just captured — the same discipline behind a broadcast production applied to a single home.</p>
     <p>Access is limited by design. A small number of properties are accepted each month, and each begins with a conversation about the property itself, not a package off a menu.</p>
+  </div>
+</section>
+
+<!--
+  SELECTED PROPERTIES
+  This section remains absent from the rendered page until COLLECTION_LIVE is true
+  and COLLECTION_ITEMS contains at least one property. See the script below.
+-->
+<section class="pad collection" id="collection" aria-labelledby="collection-h" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker kicker--accent">Selected Properties</span>
+      <h2 id="collection-h">A small body of work, considered one property at a time.</h2>
+      <p>Feature films and editorial stills from properties accepted into the Sala Nera collection.</p>
+    </div>
+    <div class="collection-grid" id="collectionGrid"></div>
   </div>
 </section>
 
@@ -411,7 +447,7 @@ section{position:relative;border-top:1px solid var(--line)}
       </div>
       <div>
         <h2>Collection</h2>
-        <ul><li><a href="#process">The Work</a></li><li><a href="#access">Request Availability</a></li></ul>
+        <ul><li data-collection-link hidden><a href="#collection">Selected Properties</a></li><li><a href="#process">The Work</a></li><li><a href="#access">Request Availability</a></li></ul>
       </div>
       <div>
         <h2>Connect</h2>
@@ -430,7 +466,108 @@ section{position:relative;border-top:1px solid var(--line)}
   'use strict';
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  /* ---- Selected properties ----
+     Keep false until the collection is ready to publish. Add one object per property.
+     Use either image or video; video cards should also include a poster image.
+
+     Example:
+     {
+       title: 'Property Name',
+       location: 'Dallas, TX',
+       client: 'Agent or brokerage',
+       type: 'Film + Stills',
+       href: '/films#property-name',
+       image: '/media/collection/property-name.jpg'
+     }
+  */
+  var COLLECTION_LIVE = false;
+  var COLLECTION_ITEMS = [];
+
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  var collectionSection = document.getElementById('collection');
+  var collectionGrid = document.getElementById('collectionGrid');
+  if (COLLECTION_LIVE && COLLECTION_ITEMS.length && collectionSection && collectionGrid) {
+    COLLECTION_ITEMS.forEach(function(item, index){
+      if (!item || (!item.image && !item.video)) return;
+
+      var article = document.createElement('article');
+      article.className = 'property-card' + (index === 0 ? ' property-card--featured' : '');
+
+      var link = document.createElement('a');
+      link.className = 'property-link';
+      link.href = item.href || '/films';
+      link.setAttribute('aria-label', 'View ' + (item.title || 'selected property'));
+
+      var media = document.createElement('div');
+      media.className = 'property-media';
+
+      if (item.video) {
+        var cardVideo = document.createElement('video');
+        cardVideo.muted = true;
+        cardVideo.loop = true;
+        cardVideo.playsInline = true;
+        cardVideo.preload = 'metadata';
+        cardVideo.setAttribute('aria-hidden', 'true');
+        if (item.poster) cardVideo.poster = item.poster;
+        var cardSource = document.createElement('source');
+        cardSource.src = item.video;
+        cardSource.type = item.videoType || 'video/mp4';
+        cardVideo.appendChild(cardSource);
+        media.appendChild(cardVideo);
+        if (!reduceMotion) {
+          link.addEventListener('mouseenter', function(){
+            var playPromise = cardVideo.play();
+            if (playPromise && playPromise.catch) playPromise.catch(function(){});
+          });
+          link.addEventListener('mouseleave', function(){ cardVideo.pause(); });
+        }
+      } else {
+        var cardImage = document.createElement('img');
+        cardImage.src = item.image;
+        cardImage.alt = item.alt || item.title || 'Selected Sala Nera property';
+        cardImage.loading = 'lazy';
+        cardImage.decoding = 'async';
+        media.appendChild(cardImage);
+      }
+
+      var scrim = document.createElement('span');
+      scrim.className = 'property-scrim';
+      scrim.setAttribute('aria-hidden', 'true');
+      media.appendChild(scrim);
+
+      if (item.type) {
+        var badge = document.createElement('span');
+        badge.className = 'property-badge';
+        badge.textContent = item.type;
+        media.appendChild(badge);
+      }
+
+      var copy = document.createElement('span');
+      copy.className = 'property-copy';
+      var location = document.createElement('span');
+      location.className = 'property-location';
+      location.textContent = item.location || '';
+      var title = document.createElement('h3');
+      title.textContent = item.title || 'Selected Property';
+      var client = document.createElement('span');
+      client.className = 'property-client';
+      client.textContent = item.client || '';
+      copy.appendChild(location);
+      copy.appendChild(title);
+      copy.appendChild(client);
+      media.appendChild(copy);
+
+      link.appendChild(media);
+      article.appendChild(link);
+      collectionGrid.appendChild(article);
+    });
+
+    if (collectionGrid.children.length) {
+      collectionSection.hidden = false;
+      document.querySelectorAll('[data-collection-link]').forEach(function(el){ el.hidden = false; });
+    }
+  }
 
   /* ---- Hero video: only loaded on larger screens, never under reduced motion ---- */
   var video = document.getElementById('heroVideoEl');

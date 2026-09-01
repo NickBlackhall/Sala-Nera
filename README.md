@@ -82,7 +82,10 @@ Then find-and-replace `https://salanera.com` throughout `index.html`, `films.htm
 - [ ] **Hero poster** — a still of the first frame as `media/hero-poster.jpg` (~150 KB).
       This is what phones and reduced-motion users see; the video never loads for them.
 - [ ] **Collection grid** — REMOVED for launch (no finished property sets yet). When you
-      have 2–3, it goes back as a row of larger cards. Ask and it's a ten-minute edit.
+      have finished property sets, add them to `COLLECTION_ITEMS` near the bottom of
+      `index.html`, then change `COLLECTION_LIVE` to `true`. The section and its navigation
+      links remain completely hidden until the flag is on and at least one valid item exists.
+      Cards accept either an `image`, or a `video` plus `poster` image.
 - [ ] **OG image** — `og-sala-nera.jpg` at exactly 1200×630. This is the link preview
       when you text the site to an agent.
 - [ ] **Client list** — the `.proof-row` list, relabelled "Past clients include".
