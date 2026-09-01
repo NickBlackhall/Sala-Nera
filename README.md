@@ -5,8 +5,9 @@ No framework, no build step. One HTML file per page plus one serverless function
 for the lead form.
 
 ```
-index.html          the site
-work.html           served at /work — portfolio category index and media slots
+index.html          homepage — hero, selected work, services, contact invitation
+work.html           served at /work — collection, process, and client experience
+contact.html        served at /contact — positioning and inquiry form
 films.html          served at /films  (PLACEHOLDER — replace with the real films page)
 brand/              official full-logo lockups plus standalone mark assets
 api/inquiry.js      lead form handler → emails via Resend
@@ -70,8 +71,8 @@ firewall rules can add rate limiting on top.
 Vercel → Settings → Domains → add the domain, then create the DNS record it prints
 (`A` for an apex domain, `CNAME` for a subdomain). TLS is automatic.
 
-Then find-and-replace `https://salanera.com` throughout `index.html`, `films.html`,
-`robots.txt`, and `sitemap.xml` with your real domain.
+Then find-and-replace `https://salanera.com` throughout `index.html`, `work.html`,
+`contact.html`, `films.html`, `robots.txt`, and `sitemap.xml` with your real domain.
 
 ---
 

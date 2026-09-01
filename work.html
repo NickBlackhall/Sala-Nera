@@ -53,9 +53,26 @@ a{color:inherit;text-decoration:none}
 .work-card-copy{position:absolute;left:clamp(20px,3vw,34px);right:clamp(20px,3vw,34px);bottom:clamp(20px,3vw,32px)}
 .work-card-type{display:block;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#BDB7AD;margin-bottom:9px}
 .work-card h3{font-family:var(--font-display);font-size:clamp(1.25rem,2.3vw,1.8rem);font-weight:600;line-height:1.1;margin-bottom:7px}.work-card p{color:#BDB7AD;font-size:13px}
+.detail-section{border-top:1px solid var(--line);padding:clamp(84px,11vw,140px) 0}
+.detail-head{max-width:680px;margin:0 auto clamp(54px,7vw,80px);text-align:center}
+.detail-head h2{font-family:var(--font-display);font-size:clamp(2rem,4.4vw,3.25rem);font-weight:600;letter-spacing:-.025em;line-height:1.05}
+.detail-head p{color:var(--muted);font-size:1.02rem;max-width:56ch;margin:22px auto 0}
+.process-list{border-top:1px solid var(--line)}
+.process-row{display:grid;grid-template-columns:80px .75fr 1.25fr;gap:32px;padding:34px 0;border-bottom:1px solid var(--line);align-items:start}
+.process-row .idx{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--muted);padding-top:4px}
+.process-row h3{font-family:var(--font-display);font-size:1.35rem;font-weight:600;line-height:1.1}
+.process-row p{color:var(--muted);font-size:.98rem;max-width:52ch}
+.experience-section{background:var(--ink-soft)}
+.experience-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(48px,8vw,110px);align-items:start}
+.experience-copy h2{font-family:var(--font-display);font-size:clamp(2rem,4vw,3rem);font-weight:600;letter-spacing:-.02em;line-height:1.05;max-width:12ch}
+.experience-copy p{color:var(--muted);font-size:1.02rem;max-width:46ch;margin-top:24px}
+.experience-list{border-top:1px solid var(--line)}
+.experience-item{display:grid;grid-template-columns:52px 1fr;gap:20px;padding:28px 0;border-bottom:1px solid var(--line)}
+.experience-item .idx{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--muted)}
+.experience-item h3{font-family:var(--font-display);font-size:1.15rem;font-weight:600;margin-bottom:8px}.experience-item p{color:var(--muted);font-size:.94rem}
 .availability{border-top:1px solid var(--line);padding:clamp(80px,10vw,120px) 0;text-align:center}.availability h2{font-family:var(--font-display);font-size:clamp(2rem,4vw,3.2rem);font-weight:600;letter-spacing:-.02em;margin-bottom:18px}.availability p{color:var(--muted);max-width:46ch;margin:0 auto 30px}
 .foot{border-top:1px solid var(--line);padding:26px 0;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.foot-inner{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-@media(max-width:760px){.nav-links{gap:18px}.nav-links a:not(.contact-link){display:none}.work-intro{align-items:flex-start;flex-direction:column}.work-grid{grid-template-columns:1fr}.work-card{aspect-ratio:4/3}}
+@media(max-width:760px){.nav-links{gap:18px}.nav-links a:not(.contact-link){display:none}.work-intro{align-items:flex-start;flex-direction:column}.work-grid{grid-template-columns:1fr}.work-card{aspect-ratio:4/3}.process-row{grid-template-columns:42px 1fr;grid-template-areas:"idx title" ". copy";gap:12px 20px}.process-row .idx{grid-area:idx}.process-row h3{grid-area:title}.process-row p{grid-area:copy}.experience-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -65,9 +82,8 @@ a{color:inherit;text-decoration:none}
     <a href="/" class="nav-mark" aria-label="Sala Nera — home"><img class="brand-logo" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070"></a>
     <div class="nav-links">
       <a href="/work.html" aria-current="page">Work</a>
-      <a href="/#process">Process</a>
-      <a href="/#experience">Experience</a>
-      <a href="/#access" class="contact-link">Contact</a>
+      <a href="/#services">Services</a>
+      <a href="/contact.html" class="contact-link">Contact</a>
     </div>
   </div>
 </nav>
@@ -84,7 +100,7 @@ a{color:inherit;text-decoration:none}
   <div class="work-main">
     <nav class="subnav" aria-label="Work categories">
       <div class="wrap subnav-inner">
-        <a href="#all">All Work</a><a href="#films">Films</a><a href="#stills">Editorial Stills</a><a href="#aerial">Aerial</a><a href="#social">Social Cuts</a>
+        <a href="#all">All Work</a><a href="#films">Films</a><a href="#stills">Editorial Stills</a><a href="#aerial">Aerial</a><a href="#social">Social Cuts</a><a href="#process">Process</a><a href="#experience">Experience</a>
       </div>
     </nav>
 
@@ -115,8 +131,30 @@ a{color:inherit;text-decoration:none}
     </section>
   </div>
 
+  <section class="detail-section" id="process" aria-labelledby="process-h">
+    <div class="wrap">
+      <div class="detail-head"><span class="kicker">The Process</span><h2 id="process-h">Nothing begins with a shot list.</h2><p>We begin by learning how the home is lived in, when its light is right, and what its next owner should feel.</p></div>
+      <div class="process-list">
+        <div class="process-row"><span class="idx">01</span><h3>Consider</h3><p>We walk the property, study its light, and find the details that give the story its point of view.</p></div>
+        <div class="process-row"><span class="idx">02</span><h3>Capture</h3><p>Production is paced around the home and the conditions it needs — measured, discreet, and never reduced to a standard pass.</p></div>
+        <div class="process-row"><span class="idx">03</span><h3>Finish</h3><p>Film, color, sound, stills, and campaign cuts are completed as one coherent body of work, personally reviewed before delivery.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="detail-section experience-section" id="experience" aria-labelledby="experience-h">
+    <div class="wrap experience-grid">
+      <div class="experience-copy"><span class="kicker">The Experience</span><h2 id="experience-h">Quiet on set. Exacting in the edit.</h2><p>One point of contact carries the property from preparation through delivery. The process is clear, considered, and respectful of the home.</p></div>
+      <div class="experience-list">
+        <div class="experience-item"><span class="idx">01</span><div><h3>Before</h3><p>Clear preparation guidance, thoughtful timing, and a plan shared before production begins.</p></div></div>
+        <div class="experience-item"><span class="idx">02</span><div><h3>During</h3><p>A small, respectful crew and a production day paced around the property rather than the clock.</p></div></div>
+        <div class="experience-item"><span class="idx">03</span><div><h3>After</h3><p>Personally reviewed films and imagery, delivered in the formats needed to bring the property to market.</p></div></div>
+      </div>
+    </div>
+  </section>
+
   <section class="availability">
-    <div class="wrap"><span class="kicker">Private Commissions</span><h2>Tell us about the property.</h2><p>Share the address, timing, and what makes it distinctive.</p><a href="/#access" class="btn">Begin a Conversation</a></div>
+    <div class="wrap"><span class="kicker">Private Commissions</span><h2>Tell us about the property.</h2><p>Share the address, timing, and what makes it distinctive.</p><a href="/contact.html" class="btn">Begin a Conversation</a></div>
   </section>
 </main>
 

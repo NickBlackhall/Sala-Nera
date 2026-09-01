@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact — Sala Nera</title>
+<meta name="description" content="Request availability for a Sala Nera cinematic property commission by Blackhall Media Group.">
+<link rel="canonical" href="https://salanera.com/contact">
+<meta name="theme-color" content="#0F0E0D">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Contact — Sala Nera">
+<meta property="og:description" content="Tell us about the property.">
+<meta property="og:url" content="https://salanera.com/contact">
+<meta property="og:image" content="https://salanera.com/og-sala-nera.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0F0E0D;--ink-soft:#1A1917;--paper:#F4EFE6;--oxblood:#770606;--ember:#D4552F;--line:#332F29;--muted:#9C978C;--font-display:'Instrument Sans',sans-serif;--font-body:'Inter',sans-serif;--wrap:1180px}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--ink);color:var(--paper);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}:focus-visible{outline:2px solid var(--ember);outline-offset:3px}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 clamp(20px,5vw,56px)}
+.skip{position:absolute;left:16px;top:-100px;z-index:200;background:var(--paper);color:var(--ink);padding:12px 20px;font-weight:600;font-size:14px}.skip:focus{top:16px}
+.nav{padding:18px 0 14px;border-bottom:1px solid var(--line)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;gap:24px}.nav-mark{display:inline-flex;align-items:center}.brand-logo{display:block;width:74px;height:auto}
+.nav-links{display:flex;align-items:center;gap:34px}.nav-links a{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(244,239,230,.85)}.nav-links a:hover,.nav-links a[aria-current="page"]{color:var(--paper)}
+.kicker{display:block;font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ember);margin-bottom:18px}
+.contact-hero{min-height:58vh;display:flex;align-items:center;border-bottom:1px solid var(--line);padding:clamp(90px,12vw,150px) 0}
+.positioning{max-width:760px;margin:0 auto;text-align:center}
+.positioning h1{font-family:var(--font-display);font-size:clamp(2.2rem,5vw,4rem);font-weight:600;letter-spacing:-.03em;line-height:1.06;max-width:16ch;margin:0 auto 34px}
+.positioning p{color:var(--muted);font-size:1.04rem;max-width:62ch;margin:0 auto}.positioning p+p{margin-top:16px}
+.contact{background:var(--ink-soft);padding:clamp(84px,11vw,140px) 0}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(48px,8vw,100px);align-items:start}
+.contact h2{font-family:var(--font-display);font-size:clamp(2.1rem,4.4vw,3.3rem);font-weight:600;letter-spacing:-.025em;line-height:1.05;max-width:12ch}
+.contact .sub{color:var(--muted);font-size:1.03rem;max-width:44ch;margin:22px 0 34px}.contact-info a{font-size:14px}.contact-info span{color:var(--ember);font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;margin-right:12px}
+.form{border-top:1px solid var(--line);padding-top:32px}.field{margin-bottom:20px}.field label{display:flex;flex-direction:column;gap:7px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.field input,.field textarea{font-family:var(--font-body);font-size:1rem;padding:13px 0;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--paper);width:100%}.field input::placeholder,.field textarea::placeholder{color:#7C776E}.field input:focus,.field textarea:focus{outline:2px solid var(--ember);outline-offset:3px}.field textarea{resize:vertical;min-height:100px}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}.btn{font-family:var(--font-body);font-weight:600;font-size:11px;letter-spacing:.12em;text-transform:uppercase;border:0;padding:15px 30px;cursor:pointer;display:inline-block;background:var(--paper);color:var(--ink);transition:background .2s ease}.btn:hover{background:#E7E0D5}.btn:disabled{opacity:.6;cursor:not-allowed}
+.form-note{font-size:12px;color:var(--muted);margin-top:16px}.form-error{margin-top:16px;padding:14px;border:1px solid var(--ember);font-size:13px}.form-error a{color:var(--ember);text-decoration:underline}.form-success{display:none;padding:24px 0}.form-success.show{display:block}.form-success h3{font-family:var(--font-display);font-size:1.4rem;font-weight:600;margin-bottom:8px}.form-success p{color:var(--muted)}
+.foot{border-top:1px solid var(--line);padding:26px 0;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.foot-inner{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media(max-width:760px){.nav-links{gap:18px}.nav-links a:not([aria-current="page"]){display:none}.contact-grid{grid-template-columns:1fr}.contact-hero{min-height:auto}.positioning{text-align:left}.positioning h1{margin-left:0}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<nav class="nav" aria-label="Primary">
+  <div class="wrap nav-inner">
+    <a href="/" class="nav-mark" aria-label="Sala Nera — home"><img class="brand-logo" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070"></a>
+    <div class="nav-links"><a href="/work.html">Work</a><a href="/#services">Services</a><a href="/contact.html" aria-current="page">Contact</a></div>
+  </div>
+</nav>
+
+<main id="main">
+  <header class="contact-hero">
+    <div class="wrap positioning">
+      <span class="kicker">Private Commissions</span>
+      <h1>Twenty years behind the camera. One property at a time.</h1>
+      <p>Sala Nera brings the discipline of broadcast filmmaking to properties that call for more than a standard listing package. Each commission is shaped around the home, its light, and the audience it needs to reach.</p>
+      <p>A limited number of commissions are accepted each month.</p>
+    </div>
+  </header>
+
+  <section class="contact" aria-labelledby="contact-h">
+    <div class="wrap contact-grid">
+      <div>
+        <span class="kicker">Request Availability</span>
+        <h2 id="contact-h">Tell us about the property.</h2>
+        <p class="sub">Share the address, timing, and what makes it distinctive. We'll respond personally.</p>
+        <div class="contact-info"><a href="mailto:nick@blackhallmediagroup.com"><span>Email</span>nick@blackhallmediagroup.com</a></div>
+      </div>
+      <div>
+        <form class="form" id="accessForm" method="post" action="/api/inquiry">
+          <div class="field"><label>Name<input type="text" name="name" autocomplete="name" required placeholder="Your name"></label></div>
+          <div class="field"><label>Email<input type="email" name="email" autocomplete="email" required placeholder="you@brokerage.com"></label></div>
+          <div class="field"><label>Property<input type="text" name="property" placeholder="Address or neighborhood"></label></div>
+          <div class="field"><label>Tell us about it<textarea name="details" placeholder="Timeline, what makes this property worth the collection…"></textarea></label></div>
+          <div class="hp" aria-hidden="true"><label>Company<input type="text" name="company" tabindex="-1" autocomplete="off"></label></div>
+          <button type="submit" class="btn" id="submitBtn">Send Inquiry</button>
+          <p class="form-note">We respond personally, usually within one business day.</p>
+          <p class="form-error" id="formError" hidden role="alert">Something went wrong and your request didn't send. Please email <a href="mailto:nick@blackhallmediagroup.com">nick@blackhallmediagroup.com</a> directly.</p>
+        </form>
+        <div class="form-success" id="formSuccess" tabindex="-1" role="status"><h3>Request received.</h3><p>Thank you — we'll follow up shortly to talk through the property.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot"><div class="wrap foot-inner"><span>&copy; <span id="year">2026</span> Sala Nera. A Blackhall Media Group collection.</span><span>Dallas–Fort Worth, TX</span></div></footer>
+<script>
+(function(){
+  'use strict';
+  document.getElementById('year').textContent=new Date().getFullYear();
+  var form=document.getElementById('accessForm');var success=document.getElementById('formSuccess');var errorEl=document.getElementById('formError');var btn=document.getElementById('submitBtn');
+  form.addEventListener('submit',function(e){e.preventDefault();errorEl.hidden=true;btn.disabled=true;btn.textContent='Sending…';var payload={};new FormData(form).forEach(function(v,k){payload[k]=v;});fetch(form.action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(function(res){if(!res.ok)throw new Error('HTTP '+res.status);form.hidden=true;success.classList.add('show');success.focus();}).catch(function(){btn.disabled=false;btn.textContent='Send Inquiry';errorEl.hidden=false;});});
+})();
+</script>
+</body>
+</html>

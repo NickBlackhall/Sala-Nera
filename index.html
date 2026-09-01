@@ -161,6 +161,17 @@ section{position:relative;border-top:1px solid var(--line)}
 .work-card-copy p{font-size:12px;line-height:1.45;color:#BDB7AD}
 .work-card-type{display:block;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#BDB7AD;margin-bottom:9px}
 
+/* SERVICES */
+.services{background:var(--ink)}
+.services .section-head{margin-left:0;text-align:left;max-width:720px}
+.services .section-head h2{max-width:16ch}
+
+/* CONTACT TEASE */
+.contact-tease{background:var(--ink-soft)}
+.contact-tease-inner{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:clamp(36px,8vw,120px);align-items:end}
+.contact-tease h2{font-size:clamp(2rem,4.4vw,3.25rem);max-width:12ch;margin-top:16px}
+.contact-tease p{color:var(--muted);font-size:1.05rem;max-width:46ch;margin-top:22px}
+
 /* APPROACH */
 .approach{background:var(--ink-soft)}
 .approach-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(40px,6vw,90px);align-items:center}
@@ -241,6 +252,7 @@ section{position:relative;border-top:1px solid var(--line)}
   .frow{grid-template-columns:1fr}
   .work-showcase-head{align-items:flex-start;flex-direction:column}
   .work-showcase-grid{grid-template-columns:1fr 1fr}
+  .contact-tease-inner{grid-template-columns:1fr;align-items:start}
   .foot-top{grid-template-columns:1fr}
 }
 @media(max-width:420px){.work-showcase-grid{grid-template-columns:1fr}}
@@ -262,9 +274,8 @@ section{position:relative;border-top:1px solid var(--line)}
     </a>
     <div class="nav-links" id="navLinks">
       <a href="/work.html">Work</a>
-      <a href="#process">Process</a>
-      <a href="#experience">Experience</a>
-      <a href="#access">Contact</a>
+      <a href="#services">Services</a>
+      <a href="/contact.html">Contact</a>
     </div>
     <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span></span></button>
   </div>
@@ -292,25 +303,17 @@ section{position:relative;border-top:1px solid var(--line)}
     <p class="lede">Cinematic property films and imagery, made one property at a time by Blackhall Media Group.</p>
     <div class="hero-ctas">
       <a href="/work.html" class="btn btn-primary">View the Collection</a>
-      <a href="#access" class="text-link">Begin a Conversation</a>
+      <a href="/contact.html" class="text-link">Begin a Conversation</a>
     </div>
   </div>
 </header>
-
-<section class="pad">
-  <div class="wrap positioning-inner positioning">
-    <blockquote>Twenty years behind the camera. One property at a time.</blockquote>
-    <p>Sala Nera brings the discipline of broadcast filmmaking to properties that call for more than a standard listing package. Each commission is shaped around the home, its light, and the audience it needs to reach.</p>
-    <p>A limited number of commissions are accepted each month.</p>
-  </div>
-</section>
 
 <section class="pad work-showcase" id="work" aria-labelledby="work-h">
   <div class="wrap">
     <div class="work-showcase-head">
       <div>
-        <span class="kicker">The Collection</span>
-        <h2 id="work-h">Made as one body of work.</h2>
+        <span class="kicker">Selected Work</span>
+        <h2 id="work-h">A collection, deliberately concise.</h2>
       </div>
       <a class="work-showcase-link" href="/work.html">Explore the work &rarr;</a>
     </div>
@@ -339,77 +342,46 @@ section{position:relative;border-top:1px solid var(--line)}
   </div>
 </section>
 
-<section class="pad" id="process" aria-labelledby="process-h">
+<section class="pad services" id="services" aria-labelledby="services-h">
   <div class="wrap">
     <div class="section-head">
-      <span class="kicker kicker--accent">The Process</span>
-      <h2 id="process-h">Nothing begins with a shot list.</h2>
-      <p>We begin by learning how the home is lived in, when its light is right, and what its next owner should feel.</p>
+      <span class="kicker kicker--accent">Services</span>
+      <h2 id="services-h">Everything the story needs. Nothing it doesn't.</h2>
+      <p>Each commission is shaped around the property, with the disciplines selected to serve one coherent point of view.</p>
     </div>
     <div class="work-list">
       <div class="work-row">
         <div class="idx">01</div>
-        <h3>Consider</h3>
-        <p>We walk the property, study its light, and find the details that give the story its point of view.</p>
+        <h3>Property Films</h3>
+        <p>Cinematic films with considered pacing, color, sound, and aerial perspective.</p>
       </div>
       <div class="work-row">
         <div class="idx">02</div>
-        <h3>Capture</h3>
-        <p>Production is paced around the home and the conditions it needs — measured, discreet, and never reduced to a standard pass.</p>
+        <h3>Editorial Photography</h3>
+        <p>Architecture, atmosphere, and detail photographed as a complete visual story.</p>
       </div>
       <div class="work-row">
         <div class="idx">03</div>
-        <h3>Finish</h3>
-        <p>Film, color, sound, stills, and campaign cuts are completed as one coherent body of work, personally reviewed before delivery.</p>
+        <h3>Aerial Perspective</h3>
+        <p>The property and its setting shown with scale, restraint, and a sense of place.</p>
+      </div>
+      <div class="work-row">
+        <div class="idx">04</div>
+        <h3>Launch Assets</h3>
+        <p>Focused social edits and campaign-ready formats drawn from the same body of work.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="pad approach" id="experience" aria-labelledby="approach-h">
-  <div class="wrap approach-grid">
+<section class="pad contact-tease" id="contact" aria-labelledby="contact-h">
+  <div class="wrap contact-tease-inner">
     <div>
-      <span class="kicker kicker--accent">The Experience</span>
-      <h2 id="approach-h" class="mt-16">Quiet on set. Exacting in the edit.</h2>
-      <div class="body">
-        <p>One point of contact carries the property from preparation through delivery. The process is clear, considered, and respectful of the home.</p>
-      </div>
-      <a href="#access" class="btn btn-outline mt-32">Start a Conversation</a>
+      <span class="kicker kicker--accent">Private Commissions</span>
+      <h2 id="contact-h">Tell us about the property.</h2>
+      <p>Share the address, timing, and what makes it distinctive. Every inquiry is reviewed personally.</p>
     </div>
-    <div class="experience-list">
-      <div class="experience-item"><span class="idx">01</span><div><h3>Before</h3><p>Clear preparation guidance, thoughtful timing, and a plan shared before production begins.</p></div></div>
-      <div class="experience-item"><span class="idx">02</span><div><h3>During</h3><p>A small, respectful crew and a production day paced around the property rather than the clock.</p></div></div>
-      <div class="experience-item"><span class="idx">03</span><div><h3>After</h3><p>Personally reviewed films and imagery, delivered in the formats needed to bring the property to market.</p></div></div>
-    </div>
-  </div>
-</section>
-
-<section class="pad contact" id="access" aria-labelledby="access-h">
-  <div class="wrap contact-grid">
-    <div>
-      <span class="kicker kicker--accent">Request Availability</span>
-      <h2 id="access-h" class="mt-16">Tell us about the property.</h2>
-      <p class="sub">Share the address, timing, and what makes the property distinctive. We'll respond personally.</p>
-      <div class="contact-info">
-        <a href="mailto:nick@blackhallmediagroup.com"><span class="k">Email</span> nick@blackhallmediagroup.com</a>
-      </div>
-    </div>
-    <div>
-      <form class="form" id="accessForm" method="post" action="/api/inquiry">
-        <div class="field"><label>Name<input type="text" name="name" autocomplete="name" required placeholder="Your name"></label></div>
-        <div class="field"><label>Email<input type="email" name="email" autocomplete="email" required placeholder="you@brokerage.com"></label></div>
-        <div class="field"><label>Property<input type="text" name="property" placeholder="Address or neighborhood"></label></div>
-        <div class="field"><label>Tell us about it<textarea name="details" placeholder="Timeline, what makes this property worth the collection…"></textarea></label></div>
-        <div class="hp" aria-hidden="true"><label>Company<input type="text" name="company" tabindex="-1" autocomplete="off"></label></div>
-        <button type="submit" class="btn btn-primary" id="submitBtn">Send Inquiry</button>
-        <p class="form-note">We respond personally, usually within one business day.</p>
-        <p class="form-error" id="formError" hidden role="alert">Something went wrong on our end and your request didn't send. Please email <a href="mailto:nick@blackhallmediagroup.com">nick@blackhallmediagroup.com</a> directly — we don't want to miss you.</p>
-      </form>
-      <div class="form-success" id="formSuccess" tabindex="-1" role="status">
-        <h3>Request received.</h3>
-        <p>Thank you — we'll follow up shortly to talk through the property.</p>
-      </div>
-    </div>
+    <a href="/contact.html" class="btn btn-outline">Begin a Conversation</a>
   </div>
 </section>
 
@@ -426,7 +398,7 @@ section{position:relative;border-top:1px solid var(--line)}
       </div>
       <div>
         <h2>Collection</h2>
-        <ul><li><a href="/work.html">The Collection</a></li><li><a href="#process">The Process</a></li><li><a href="#experience">The Experience</a></li><li><a href="#access">Contact</a></li></ul>
+        <ul><li><a href="/work.html">Selected Work</a></li><li><a href="#services">Services</a></li><li><a href="/contact.html">Contact</a></li></ul>
       </div>
       <div>
         <h2>Connect</h2>
