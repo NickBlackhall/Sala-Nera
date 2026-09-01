@@ -7,7 +7,7 @@ for the lead form.
 ```
 index.html          the site
 films.html          served at /films  (PLACEHOLDER — replace with the real films page)
-brand/              logo assets (mark only so far — lockups pending the wordmark font)
+brand/              official full-logo lockups plus standalone mark assets
 api/inquiry.js      lead form handler → emails via Resend
 vercel.json         clean URLs, cache headers, security headers
 media/              hero video, poster, collection stills
@@ -118,8 +118,11 @@ Generated from the same geometry as the site's mark, so they can't drift from it
 | `mark-source.svg` | the original artwork, exactly as exported. Source of truth. |
 | `mark.svg` / `mark-512.png` / `mark-1024.png` | dark backgrounds — site, dark decks, film slates |
 | `mark-dark.svg` / `mark-dark-512.png` / `-1024.png` | **light backgrounds** — email signatures, invoices, white listing decks, print |
+| `sala nera logo cropped dark.svg` | official full logo for dark backgrounds — used by the website |
+| `sala nera logo cropped light.svg` | official full logo for light backgrounds |
 
-All derived from `mark-source.svg`, so they cannot drift from it.
+The standalone mark variants are derived from `mark-source.svg`, so they cannot drift from it.
+The two cropped files are the supplied official full-logo lockups.
 
 **Brand values, taken from the artwork:**
 - Mark aspect ratio **1.127:1** (six bars, second one filled)
@@ -135,5 +138,6 @@ The artwork's 3px stroke is 0.37% of its width, which at nav size (22px) compute
 would disappear. The site's mark uses 1px borders instead — necessarily heavier in proportion.
 That is a normal small-size adaptation, but the two are not pixel-identical by construction.
 
-**Still to come:** the horizontal and vertical lockups (mark + "SALA NERA"). The source SVG is
-mark-only, so the wordmark's typeface, weight and tracking are still needed.
+The website uses the official dark-background full lockup directly. Keep both cropped SVGs
+unchanged: their wordmarks are outlined, so they do not depend on a visitor having the source
+typeface installed.

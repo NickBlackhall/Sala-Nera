@@ -35,8 +35,8 @@ a{color:inherit;text-decoration:none}
 .bars>span.lit{background:var(--oxblood)}
 .nav{padding:22px 0;border-bottom:1px solid var(--line)}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
-.nav-mark{display:flex;align-items:center;gap:12px}
-.nav-mark .word{font-family:var(--font-display);font-weight:700;font-size:16px}
+.nav-mark{display:inline-flex;align-items:center}
+.brand-logo{display:block;width:74px;height:auto}
 .nav-links{display:flex;align-items:center;gap:clamp(18px,3vw,34px)}
 .nav-links a{font-size:13px;color:rgba(244,239,230,.85)}
 .nav-links a:hover{color:var(--paper)}
@@ -55,9 +55,8 @@ h1{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;line-he
 
 <nav class="nav" aria-label="Primary">
   <div class="wrap nav-inner">
-    <a href="/" class="nav-mark">
-      <span class="bars" aria-hidden="true"><span></span><span class="lit"></span><span></span><span></span><span></span><span></span></span>
-      <span class="word">SALA NERA</span>
+    <a href="/" class="nav-mark" aria-label="Sala Nera — home">
+      <img class="brand-logo" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070">
     </a>
     <div class="nav-links">
       <a href="/#collection">Collection</a>

@@ -89,9 +89,9 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;l
 .nav.scrolled::before{opacity:0}
 .nav.scrolled{background:rgba(15,14,13,.92);backdrop-filter:blur(10px);padding:19px 0 14px;border-bottom:1px solid var(--line)}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:24px}
-.nav-mark{display:flex;align-items:center;gap:12px}
-.nav-mark .bars{width:22px;height:19.5px;flex:none}
-.nav-mark .word{font-family:var(--font-display);font-weight:700;font-size:16px;letter-spacing:-.01em}
+.nav-mark{display:inline-flex;align-items:center}
+.brand-logo{display:block;width:auto;height:auto}
+.brand-logo--nav{width:74px}
 .nav-links{display:flex;align-items:center;gap:34px}
 .nav-links a{font-size:13px;color:rgba(244,239,230,.85);transition:color .15s ease}
 .nav-links a:hover{color:var(--paper)}
@@ -120,7 +120,7 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;l
 .hero-video .poster{position:absolute;inset:0;background-color:#181613;background-image:radial-gradient(90% 70% at 50% 0%,#181613 0%,var(--ink) 60%),url("media/hero-poster.jpg");background-size:cover,cover;background-position:center,center;background-blend-mode:normal}
 .hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,14,13,.5) 0%,rgba(15,14,13,.3) 42%,rgba(15,14,13,.8) 100%)}
 .hero-inner{position:relative;z-index:2;text-align:center;max-width:900px;margin:0 auto}
-.hero .bars{width:120px;height:106.5px;margin:0 auto 40px}
+.hero-logo{width:clamp(180px,22vw,240px);margin:0 auto 36px}
 .hero h1{font-size:clamp(2.6rem,7vw,5.2rem);margin-bottom:28px}
 .hero .lede{color:#C9C4BA;font-size:clamp(1rem,1.6vw,1.2rem);max-width:46ch;margin:0 auto 44px}
 .hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
@@ -202,6 +202,7 @@ section{position:relative;border-top:1px solid var(--line)}
 .foot{padding:56px 0 0;border-top:1px solid var(--line)}
 .foot-top{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:40px;padding-bottom:48px}
 .foot-brand .nav-mark{margin-bottom:18px}
+.brand-logo--footer{width:120px}
 .foot-brand p{color:var(--muted);font-size:.92rem;max-width:34ch}
 .foot h2{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;font-family:var(--font-body)}
 .foot ul{list-style:none;display:flex;flex-direction:column;gap:11px}
@@ -242,9 +243,8 @@ section{position:relative;border-top:1px solid var(--line)}
 
 <nav class="nav" id="nav" aria-label="Primary">
   <div class="wrap nav-inner">
-    <a href="#top" class="nav-mark">
-      <span class="bars" aria-hidden="true"><span></span><span class="lit"></span><span></span><span></span><span></span><span></span></span>
-      <span class="word">SALA NERA</span>
+    <a href="#top" class="nav-mark" aria-label="Sala Nera — home">
+      <img class="brand-logo brand-logo--nav" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070">
     </a>
     <div class="nav-links" id="navLinks">
       <a href="/films">Films</a>
@@ -272,7 +272,7 @@ section{position:relative;border-top:1px solid var(--line)}
   </div>
   <div class="hero-overlay"></div>
   <div class="wrap hero-inner">
-    <span class="bars" aria-hidden="true"><span></span><span class="lit"></span><span></span><span></span><span></span><span></span></span>
+    <img class="brand-logo hero-logo" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070" fetchpriority="high">
     <h1>Not every listing<br>earns this.</h1>
     <p class="lede">Sala Nera is the cinematic collection from Blackhall Media Group — a select body of work for the properties that can't afford to look ordinary.</p>
     <div class="hero-ctas">
@@ -404,9 +404,8 @@ section{position:relative;border-top:1px solid var(--line)}
   <div class="wrap">
     <div class="foot-top">
       <div class="foot-brand">
-        <a href="#top" class="nav-mark">
-          <span class="bars" aria-hidden="true"><span></span><span class="lit"></span><span></span><span></span><span></span><span></span></span>
-          <span class="word">SALA NERA</span>
+        <a href="#top" class="nav-mark" aria-label="Sala Nera — home">
+          <img class="brand-logo brand-logo--footer" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070" loading="lazy">
         </a>
         <p>A curated collection from Blackhall Media Group. Cinematic real estate media for the properties that earn it.</p>
       </div>
