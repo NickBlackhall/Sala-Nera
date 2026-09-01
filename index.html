@@ -47,7 +47,7 @@
 <style>
 :root{
   --ink:#0F0E0D; --ink-soft:#1A1917; --paper:#F4EFE6;
-  --oxblood:#6F0F01;          /* fills only — 1.6:1 on ink, never use for text */
+  --oxblood:#770606;          /* from the logo artwork. Fills only — never use for text */
   --ember:#D4552F;            /* text + focus accent — 4.72:1 on ink, WCAG AA */
   --line:#332F29; --muted:#9C978C;
   --font-display:'Instrument Sans',sans-serif; --font-body:'Inter',sans-serif;
@@ -72,9 +72,8 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;l
 .skip:focus{top:16px}
 
 /* BAR DEVICE — six equal bars, only #2 filled oxblood */
-.bars{display:flex;border:1px solid var(--paper)}
-.bars>span{flex:1;border-right:1px solid var(--paper)}
-.bars>span:last-child{border-right:none}
+.bars{display:flex}
+.bars>span{flex:1;border:1px solid var(--paper)}
 .bars>span.lit{background:var(--oxblood)}
 
 .topstrip{position:fixed;top:0;left:0;right:0;height:5px;display:flex;z-index:101}
@@ -91,7 +90,7 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;l
 .nav.scrolled{background:rgba(15,14,13,.92);backdrop-filter:blur(10px);padding:19px 0 14px;border-bottom:1px solid var(--line)}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:24px}
 .nav-mark{display:flex;align-items:center;gap:12px}
-.nav-mark .bars{width:22px;height:18px;flex:none}
+.nav-mark .bars{width:22px;height:19.5px;flex:none}
 .nav-mark .word{font-family:var(--font-display);font-weight:700;font-size:16px;letter-spacing:-.01em}
 .nav-links{display:flex;align-items:center;gap:34px}
 .nav-links a{font-size:13px;color:rgba(244,239,230,.85);transition:color .15s ease}
@@ -121,7 +120,7 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;l
 .hero-video .poster{position:absolute;inset:0;background-color:#181613;background-image:radial-gradient(90% 70% at 50% 0%,#181613 0%,var(--ink) 60%),url("media/hero-poster.jpg");background-size:cover,cover;background-position:center,center;background-blend-mode:normal}
 .hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,14,13,.5) 0%,rgba(15,14,13,.3) 42%,rgba(15,14,13,.8) 100%)}
 .hero-inner{position:relative;z-index:2;text-align:center;max-width:900px;margin:0 auto}
-.hero .bars{width:120px;height:100px;margin:0 auto 40px}
+.hero .bars{width:120px;height:106.5px;margin:0 auto 40px}
 .hero h1{font-size:clamp(2.6rem,7vw,5.2rem);margin-bottom:28px}
 .hero .lede{color:#C9C4BA;font-size:clamp(1rem,1.6vw,1.2rem);max-width:46ch;margin:0 auto 44px}
 .hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
@@ -168,7 +167,7 @@ section{position:relative;border-top:1px solid var(--line)}
 
 /* QUOTE */
 .quote-box{max-width:820px;margin:0 auto;text-align:center}
-.quote-box .mark{width:44px;height:36px;margin:0 auto 24px}
+.quote-box .mark{width:44px;height:39px;margin:0 auto 24px}
 .quote-box blockquote{font-family:var(--font-display);font-weight:600;font-size:clamp(1.3rem,2.8vw,1.9rem);line-height:1.4;letter-spacing:-.01em;margin-bottom:26px}
 .quote-box figcaption{font-size:13px;letter-spacing:.06em;color:var(--muted)}
 .quote-box figcaption b{color:var(--paper);font-weight:600}

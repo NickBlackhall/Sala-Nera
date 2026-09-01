@@ -115,11 +115,25 @@ Generated from the same geometry as the site's mark, so they can't drift from it
 
 | file | use |
 |---|---|
-| `mark-light.svg` / `-512.png` / `-1024.png` | dark backgrounds — the site, dark decks, film slates |
-| `mark-dark.svg` / `-512.png` / `-1024.png` | **light backgrounds** — email signatures, invoices, white listing decks, print |
+| `mark-source.svg` | the original artwork, exactly as exported. Source of truth. |
+| `mark.svg` / `mark-512.png` / `mark-1024.png` | dark backgrounds — site, dark decks, film slates |
+| `mark-dark.svg` / `mark-dark-512.png` / `-1024.png` | **light backgrounds** — email signatures, invoices, white listing decks, print |
 
-The dark-background-only logo you had would vanish on anything white; `mark-dark` is that gap closed.
+All derived from `mark-source.svg`, so they cannot drift from it.
 
-**Still to come:** the horizontal and vertical lockups (mark + "SALA NERA"). Those need the
-wordmark's typeface, weight and tracking from the original Photoshop file — without them the
-letterspacing would be a guess rather than your design.
+**Brand values, taken from the artwork:**
+- Mark aspect ratio **1.127:1** (six bars, second one filled)
+- Red **#770606**
+- Stroke **#FEFEFE**
+
+Note the site's `--paper` is **#F4EFE6** (warm cream) while the artwork strokes are **#FEFEFE**
+(neutral white). The site currently draws the mark in `--paper` so it matches the surrounding
+type. Switching it to #FEFEFE would be more literally on-brand but slightly colder than
+everything around it — an open call.
+
+The artwork's 3px stroke is 0.37% of its width, which at nav size (22px) computes to 0.08px and
+would disappear. The site's mark uses 1px borders instead — necessarily heavier in proportion.
+That is a normal small-size adaptation, but the two are not pixel-identical by construction.
+
+**Still to come:** the horizontal and vertical lockups (mark + "SALA NERA"). The source SVG is
+mark-only, so the wordmark's typeface, weight and tracking are still needed.
