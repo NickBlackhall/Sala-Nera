@@ -64,7 +64,7 @@ a{color:inherit;text-decoration:none}
 .wrap{max-width:var(--wrap);margin:0 auto;padding:0 clamp(20px,5vw,56px)}
 .kicker{font-family:var(--font-body);font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .kicker--accent{color:var(--ember)}
-h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;line-height:1.05}
+h1,h2,h3{font-family:var(--font-display);font-weight:600;letter-spacing:-.02em;line-height:1.05}
 .mt-16{margin-top:16px}
 .mt-32{margin-top:32px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
@@ -75,10 +75,6 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;l
 .bars{display:flex}
 .bars>span{flex:1;border:1px solid var(--paper)}
 .bars>span.lit{background:var(--oxblood)}
-
-.topstrip{position:fixed;top:0;left:0;right:0;height:5px;display:flex;z-index:101}
-.topstrip>span{flex:1;background:var(--ink)}
-.topstrip>span.lit{background:var(--oxblood)}
 
 /* NAV */
 .nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:27px 0 22px;transition:background .3s ease,padding .3s ease,backdrop-filter .3s ease}
@@ -102,14 +98,15 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;l
 .nav-toggle[aria-expanded="true"] span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
 
 /* BUTTONS */
-.btn{font-family:var(--font-body);font-weight:600;font-size:11px;letter-spacing:.12em;text-transform:uppercase;border:0;padding:15px 30px;cursor:pointer;display:inline-block;text-align:center;transition:transform .15s ease,background .15s ease,color .15s ease,border-color .15s ease}
-.btn:hover{transform:translateY(-1px)}
-.btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn{font-family:var(--font-body);font-weight:600;font-size:11px;letter-spacing:.12em;text-transform:uppercase;border:0;padding:15px 30px;cursor:pointer;display:inline-block;text-align:center;transition:background .2s ease,color .2s ease,border-color .2s ease,opacity .2s ease}
+.btn:disabled{opacity:.6;cursor:not-allowed}
 .btn-primary{background:var(--paper);color:var(--ink)}
-.btn-primary:hover{background:#fff}
+.btn-primary:hover{background:#E7E0D5}
 .btn-outline{background:transparent;color:var(--paper);border:1px solid var(--line)}
 .btn-outline:hover{border-color:var(--paper)}
 .btn-sm{padding:11px 22px}
+.text-link{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid rgba(244,239,230,.38);padding:11px 0 7px;transition:border-color .2s ease,color .2s ease}
+.text-link:hover{border-color:var(--paper)}
 
 /* HERO */
 .hero{min-height:100vh;min-height:100svh;display:flex;align-items:center;position:relative;padding-top:120px;padding-bottom:80px;overflow:hidden}
@@ -136,14 +133,14 @@ section{position:relative;border-top:1px solid var(--line)}
 
 /* POSITIONING */
 .positioning-inner{max-width:680px;margin:0 auto;text-align:center}
-.positioning blockquote{font-family:var(--font-display);font-weight:700;font-size:clamp(1.6rem,3.6vw,2.4rem);line-height:1.25;margin-bottom:32px}
+.positioning blockquote{font-family:var(--font-display);font-weight:600;font-size:clamp(1.6rem,3.6vw,2.4rem);line-height:1.25;margin-bottom:32px}
 .positioning p{color:var(--muted);font-size:1.05rem;max-width:58ch;margin:0 auto}
 .positioning p+p{margin-top:16px}
 
 /* THE WORK */
 .work-row{display:grid;grid-template-columns:100px 1fr 1fr;gap:32px;align-items:start;padding:36px 0;border-top:1px solid var(--line)}
 .work-row:last-child{border-bottom:1px solid var(--line)}
-.work-row .idx{font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--muted);padding-top:4px}
+.work-row .idx{font-family:var(--font-display);font-weight:600;font-size:12px;letter-spacing:.1em;color:var(--muted);padding-top:4px}
 .work-row h3{font-size:1.4rem;margin-bottom:10px}
 .work-row p{color:var(--muted);font-size:.98rem;max-width:48ch}
 
@@ -162,7 +159,7 @@ section{position:relative;border-top:1px solid var(--line)}
 .work-card-copy{position:absolute;left:clamp(16px,1.6vw,24px);right:clamp(16px,1.6vw,24px);bottom:clamp(16px,1.6vw,24px)}
 .work-card-copy h3{font-size:clamp(1rem,1.4vw,1.25rem);font-weight:600;margin-bottom:6px}
 .work-card-copy p{font-size:12px;line-height:1.45;color:#BDB7AD}
-.work-card-type{display:block;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ember);margin-bottom:9px}
+.work-card-type{display:block;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#BDB7AD;margin-bottom:9px}
 
 /* APPROACH */
 .approach{background:var(--ink-soft)}
@@ -170,18 +167,17 @@ section{position:relative;border-top:1px solid var(--line)}
 .approach h2{font-size:clamp(1.8rem,4vw,2.8rem);max-width:14ch}
 .approach .body{color:var(--muted);font-size:1.05rem;margin-top:24px;max-width:50ch}
 .approach .body p+p{margin-top:16px}
-.approach-visual{aspect-ratio:3/4;background:linear-gradient(160deg,#232019,var(--ink));position:relative;border:1px solid var(--line)}
-.approach-visual .stripe{position:absolute;top:0;bottom:0;right:24px;width:8px;display:flex;flex-direction:column;border:1px solid rgba(244,239,230,.3)}
-.approach-visual .stripe>span{flex:1;border-bottom:1px solid rgba(244,239,230,.3)}
-.approach-visual .stripe>span:last-child{border-bottom:none}
-.approach-visual .stripe>span.lit{background:var(--oxblood)}
-.approach-visual .note{position:absolute;bottom:20px;left:20px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.experience-list{border-top:1px solid var(--line)}
+.experience-item{display:grid;grid-template-columns:52px 1fr;gap:20px;padding:28px 0;border-bottom:1px solid var(--line)}
+.experience-item .idx{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--muted)}
+.experience-item h3{font-size:1.2rem;margin-bottom:8px}
+.experience-item p{color:var(--muted);font-size:.95rem;max-width:44ch}
 
 /* PROOF */
 .proof{text-align:center}
 .proof .lbl{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:28px}
 .proof-row{display:flex;justify-content:center;gap:clamp(28px,5vw,64px);flex-wrap:wrap;list-style:none}
-.proof-row li{font-family:var(--font-display);font-weight:700;font-size:clamp(1.1rem,2vw,1.5rem);color:var(--muted);letter-spacing:-.01em}
+.proof-row li{font-family:var(--font-display);font-weight:600;font-size:clamp(1.1rem,2vw,1.5rem);color:var(--muted);letter-spacing:-.01em}
 
 /* QUOTE */
 .quote-box{max-width:820px;margin:0 auto;text-align:center}
@@ -198,17 +194,17 @@ section{position:relative;border-top:1px solid var(--line)}
 .contact-info{display:flex;flex-direction:column;gap:14px}
 .contact-info a{font-size:14px;color:var(--paper);display:inline-flex;align-items:center;gap:10px}
 .contact-info .k{color:var(--ember);font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
-.form{border:1px solid var(--line);padding:clamp(28px,3.5vw,40px)}
+.form{border-top:1px solid var(--line);padding:32px 0 0}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .field{margin-bottom:18px}
 .field label{display:flex;flex-direction:column;gap:7px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.field input,.field textarea{font-family:var(--font-body);font-size:1rem;padding:13px 14px;border:1px solid var(--line);background:transparent;color:var(--paper);width:100%}
+.field input,.field textarea{font-family:var(--font-body);font-size:1rem;padding:13px 0;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--paper);width:100%}
 .field input::placeholder,.field textarea::placeholder{color:#7C776E}
 .field input:focus,.field textarea:focus{outline:2px solid var(--ember);outline-offset:1px;border-color:var(--ember)}
 .field textarea{resize:vertical;min-height:100px}
 .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
-.form .btn{width:100%;margin-top:6px}
-.form-note{font-size:12px;color:var(--muted);margin-top:16px;text-align:center}
+.form .btn{width:auto;margin-top:12px}
+.form-note{font-size:12px;color:var(--muted);margin-top:16px;text-align:left}
 .form-error{margin-top:16px;padding:14px;border:1px solid var(--ember);color:var(--paper);font-size:13px;line-height:1.5}
 .form-error a{color:var(--ember);text-decoration:underline}
 .form-success{display:none;text-align:center;padding:20px 0}
@@ -231,7 +227,6 @@ section{position:relative;border-top:1px solid var(--line)}
 /* RESPONSIVE */
 @media(max-width:960px){
   .approach-grid,.contact-grid{grid-template-columns:1fr}
-  .approach-visual{max-width:420px}
   .work-row{grid-template-columns:60px 1fr;grid-template-areas:"idx title" ". body"}
   .work-row .idx{grid-area:idx}
   .work-row h3{grid-area:title}
@@ -260,8 +255,6 @@ section{position:relative;border-top:1px solid var(--line)}
 
 <a class="skip" href="#main">Skip to content</a>
 
-<div class="topstrip" aria-hidden="true"><span></span><span class="lit"></span><span></span><span></span><span></span><span></span></div>
-
 <nav class="nav" id="nav" aria-label="Primary">
   <div class="wrap nav-inner">
     <a href="#top" class="nav-mark" aria-label="Sala Nera — home">
@@ -269,9 +262,9 @@ section{position:relative;border-top:1px solid var(--line)}
     </a>
     <div class="nav-links" id="navLinks">
       <a href="/work.html">Work</a>
-      <a href="/films">Films</a>
       <a href="#process">Process</a>
-      <a href="#access" class="btn btn-outline btn-sm">Request Availability</a>
+      <a href="#experience">Experience</a>
+      <a href="#access">Contact</a>
     </div>
     <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span></span></button>
   </div>
@@ -296,19 +289,19 @@ section{position:relative;border-top:1px solid var(--line)}
   <div class="wrap hero-inner">
     <img class="brand-logo hero-logo" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070" fetchpriority="high">
     <h1>For properties that stand apart.</h1>
-    <p class="lede">A limited collection of cinematic property films and imagery by Blackhall Media Group.</p>
+    <p class="lede">Cinematic property films and imagery, made one property at a time by Blackhall Media Group.</p>
     <div class="hero-ctas">
-      <a href="#access" class="btn btn-primary">Request Availability</a>
-      <a href="/work.html" class="btn btn-outline">See the Work</a>
+      <a href="/work.html" class="btn btn-primary">View the Collection</a>
+      <a href="#access" class="text-link">Begin a Conversation</a>
     </div>
   </div>
 </header>
 
 <section class="pad">
   <div class="wrap positioning-inner positioning">
-    <blockquote>A curated collection, built from twenty years behind a broadcast camera — not a stock drone package.</blockquote>
-    <p>Sala Nera exists for the shoots where the standard listing package isn't enough. Every frame is selected, not just captured — the same discipline behind a broadcast production applied to a single home.</p>
-    <p>Access is limited by design. A small number of properties are accepted each month, and each begins with a conversation about the property itself, not a package off a menu.</p>
+    <blockquote>Twenty years behind the camera. One property at a time.</blockquote>
+    <p>Sala Nera brings the discipline of broadcast filmmaking to properties that call for more than a standard listing package. Each commission is shaped around the home, its light, and the audience it needs to reach.</p>
+    <p>A limited number of commissions are accepted each month.</p>
   </div>
 </section>
 
@@ -316,8 +309,8 @@ section{position:relative;border-top:1px solid var(--line)}
   <div class="wrap">
     <div class="work-showcase-head">
       <div>
-        <span class="kicker">Selected Work</span>
-        <h2 id="work-h">Crafted around the property.</h2>
+        <span class="kicker">The Collection</span>
+        <h2 id="work-h">Made as one body of work.</h2>
       </div>
       <a class="work-showcase-link" href="/work.html">Explore the work &rarr;</a>
     </div>
@@ -349,75 +342,46 @@ section{position:relative;border-top:1px solid var(--line)}
 <section class="pad" id="process" aria-labelledby="process-h">
   <div class="wrap">
     <div class="section-head">
-      <span class="kicker kicker--accent">The Work</span>
-      <h2 id="process-h">What's included is a conversation, not a checklist.</h2>
-      <p>Every Sala Nera property receives the same core discipline. What changes is how far the story needs to go — that's decided together, before anything is scheduled.</p>
+      <span class="kicker kicker--accent">The Process</span>
+      <h2 id="process-h">Nothing begins with a shot list.</h2>
+      <p>We begin by learning how the home is lived in, when its light is right, and what its next owner should feel.</p>
     </div>
     <div class="work-list">
       <div class="work-row">
         <div class="idx">01</div>
-        <h3>Pre-Production Strategy</h3>
-        <p>A walk-through of the property's strongest angles, light, and story before a single frame is shot — the same prep a broadcast production gets, applied to a single home.</p>
+        <h3>Consider</h3>
+        <p>We walk the property, study its light, and find the details that give the story its point of view.</p>
       </div>
       <div class="work-row">
         <div class="idx">02</div>
-        <h3>The Feature Film</h3>
-        <p>A cinematic marketing film treating the property as a character, not a checklist — graded to match, scored, and cut for the audience it's built to move.</p>
+        <h3>Capture</h3>
+        <p>Production is paced around the home and the conditions it needs — measured, discreet, and never reduced to a standard pass.</p>
       </div>
       <div class="work-row">
         <div class="idx">03</div>
-        <h3>Enhanced Aerial Coverage</h3>
-        <p>Extended drone coverage of the property and its setting, shot for the film's pacing rather than a standard listing pass.</p>
-      </div>
-      <div class="work-row">
-        <div class="idx">04</div>
-        <h3>Editorial Stills</h3>
-        <p>A full gallery, color held true, framed with the same eye as the film — not an afterthought shot alongside it.</p>
-      </div>
-      <div class="work-row">
-        <div class="idx">05</div>
-        <h3>Social Cuts</h3>
-        <p>Short-form edits drawn from the same footage — built to move on a feed without diluting what the feature film does.</p>
+        <h3>Finish</h3>
+        <p>Film, color, sound, stills, and campaign cuts are completed as one coherent body of work, personally reviewed before delivery.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="pad approach" aria-labelledby="approach-h">
+<section class="pad approach" id="experience" aria-labelledby="approach-h">
   <div class="wrap approach-grid">
     <div>
-      <span class="kicker kicker--accent">The Approach</span>
-      <h2 id="approach-h" class="mt-16">We wait for the hour the light is on the property's side.</h2>
+      <span class="kicker kicker--accent">The Experience</span>
+      <h2 id="approach-h" class="mt-16">Quiet on set. Exacting in the edit.</h2>
       <div class="body">
-        <p>A house has a version of itself that only shows up under the right conditions — the right hour, the right lens, the right restraint. Sala Nera exists to wait for that version and shoot it properly.</p>
-        <p>Nothing here is aspirational. It's the same craft behind twenty years of broadcast work, pointed at one property at a time.</p>
+        <p>One point of contact carries the property from preparation through delivery. The process is clear, considered, and respectful of the home.</p>
       </div>
       <a href="#access" class="btn btn-outline mt-32">Start a Conversation</a>
     </div>
-    <div class="approach-visual" aria-hidden="true">
-      <div class="stripe"><span></span><span class="lit"></span><span></span><span></span><span></span><span></span></div>
-      <span class="note">Featured film still</span>
+    <div class="experience-list">
+      <div class="experience-item"><span class="idx">01</span><div><h3>Before</h3><p>Clear preparation guidance, thoughtful timing, and a plan shared before production begins.</p></div></div>
+      <div class="experience-item"><span class="idx">02</span><div><h3>During</h3><p>A small, respectful crew and a production day paced around the property rather than the clock.</p></div></div>
+      <div class="experience-item"><span class="idx">03</span><div><h3>After</h3><p>Personally reviewed films and imagery, delivered in the formats needed to bring the property to market.</p></div></div>
     </div>
   </div>
-</section>
-
-<section class="pad proof" aria-labelledby="proof-h">
-  <div class="wrap">
-    <h2 id="proof-h" class="lbl">Past clients include</h2>
-    <!-- TODO: replace with the brokerages and builders you have actually shot for. -->
-    <ul class="proof-row">
-      <li>D.R. Horton</li><li>KB Home</li><li>Lennar</li><li>Briggs Freeman</li><li>Sotheby's</li>
-    </ul>
-  </div>
-</section>
-
-<section class="pad">
-  <figure class="wrap quote-box">
-    <div class="mark bars" aria-hidden="true"><span></span><span class="lit"></span><span></span><span></span><span></span><span></span></div>
-    <blockquote>Sala Nera didn't just photograph the house — it made buyers feel like they already knew it before they walked in.</blockquote>
-    <!-- TODO: replace with a real name + brokerage, or remove this section entirely. -->
-    <figcaption><b>Referring Agent</b> · Dallas–Fort Worth</figcaption>
-  </figure>
 </section>
 
 <section class="pad contact" id="access" aria-labelledby="access-h">
@@ -425,24 +389,19 @@ section{position:relative;border-top:1px solid var(--line)}
     <div>
       <span class="kicker kicker--accent">Request Availability</span>
       <h2 id="access-h" class="mt-16">Tell us about the property.</h2>
-      <p class="sub">A small number of properties are accepted each month. Share a few details and we'll follow up to talk it through.</p>
+      <p class="sub">Share the address, timing, and what makes the property distinctive. We'll respond personally.</p>
       <div class="contact-info">
         <a href="mailto:nick@blackhallmediagroup.com"><span class="k">Email</span> nick@blackhallmediagroup.com</a>
-        <!-- TODO: real number, or delete this line -->
-        <a href="tel:+12145550000"><span class="k">Call</span> (214) 555-0000</a>
       </div>
     </div>
     <div>
       <form class="form" id="accessForm" method="post" action="/api/inquiry">
-        <div class="frow">
-          <div class="field"><label>Name<input type="text" name="name" autocomplete="name" required placeholder="Your name"></label></div>
-          <div class="field"><label>Phone<input type="tel" name="phone" autocomplete="tel" placeholder="(214) 555-0000"></label></div>
-        </div>
+        <div class="field"><label>Name<input type="text" name="name" autocomplete="name" required placeholder="Your name"></label></div>
         <div class="field"><label>Email<input type="email" name="email" autocomplete="email" required placeholder="you@brokerage.com"></label></div>
         <div class="field"><label>Property<input type="text" name="property" placeholder="Address or neighborhood"></label></div>
         <div class="field"><label>Tell us about it<textarea name="details" placeholder="Timeline, what makes this property worth the collection…"></textarea></label></div>
         <div class="hp" aria-hidden="true"><label>Company<input type="text" name="company" tabindex="-1" autocomplete="off"></label></div>
-        <button type="submit" class="btn btn-primary" id="submitBtn">Request Availability</button>
+        <button type="submit" class="btn btn-primary" id="submitBtn">Send Inquiry</button>
         <p class="form-note">We respond personally, usually within one business day.</p>
         <p class="form-error" id="formError" hidden role="alert">Something went wrong on our end and your request didn't send. Please email <a href="mailto:nick@blackhallmediagroup.com">nick@blackhallmediagroup.com</a> directly — we don't want to miss you.</p>
       </form>
@@ -463,11 +422,11 @@ section{position:relative;border-top:1px solid var(--line)}
         <a href="#top" class="nav-mark" aria-label="Sala Nera — home">
           <img class="brand-logo brand-logo--footer" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070" loading="lazy">
         </a>
-        <p>A curated collection from Blackhall Media Group. Cinematic real estate media for the properties that earn it.</p>
+        <p>A limited collection of cinematic property films and imagery by Blackhall Media Group.</p>
       </div>
       <div>
         <h2>Collection</h2>
-        <ul><li><a href="/work.html">Selected Work</a></li><li><a href="#process">The Process</a></li><li><a href="#access">Request Availability</a></li></ul>
+        <ul><li><a href="/work.html">The Collection</a></li><li><a href="#process">The Process</a></li><li><a href="#experience">The Experience</a></li><li><a href="#access">Contact</a></li></ul>
       </div>
       <div>
         <h2>Connect</h2>
@@ -563,7 +522,7 @@ section{position:relative;border-top:1px solid var(--line)}
       })
       .catch(function(){
         btn.disabled = false;
-        btn.textContent = 'Request Availability';
+        btn.textContent = 'Send Inquiry';
         errorEl.hidden = false;
       });
     });

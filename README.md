@@ -88,10 +88,8 @@ Then find-and-replace `https://salanera.com` throughout `index.html`, `films.htm
       corresponding work is ready. Keep a poster image on every video card.
 - [ ] **OG image** — `og-sala-nera.jpg` at exactly 1200×630. This is the link preview
       when you text the site to an agent.
-- [ ] **Client list** — the `.proof-row` list, relabelled "Past clients include".
-      Only names you have actually shot for.
-- [ ] **Testimonial** — a real name and brokerage, or delete the section.
-- [ ] **Phone number** — currently the `(214) 555-0000` placeholder in two places.
+- [ ] **Client proof** — add only verified client names and genuine, attributable
+      testimonials when they are ready.
 - [ ] **Films page** — rename your real `sala_nera_films.html` to `films.html`,
       replacing the placeholder.
 
