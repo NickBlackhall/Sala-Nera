@@ -145,12 +145,15 @@ section{position:relative;border-top:1px solid var(--line)}
 .work-row p{color:var(--muted);font-size:.98rem;max-width:48ch}
 
 /* SELECTED WORK — replace the placeholder panels with real media when ready */
-.work-showcase{background:var(--paper);color:var(--ink)}
+.work-showcase{background:var(--ink);color:var(--paper)}
 .work-showcase-head{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;margin-bottom:clamp(42px,6vw,70px)}
-.work-showcase-head .kicker{color:var(--oxblood);display:block;margin-bottom:14px}
+.work-showcase-head .kicker{color:var(--muted);display:block;margin-bottom:14px}
 .work-showcase-head h2{font-size:clamp(2rem,4vw,3.25rem);font-weight:600;max-width:12ch}
-.work-showcase-link{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid #B7AFA2;padding-bottom:6px;white-space:nowrap}
+.work-showcase-link{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid var(--line);padding-bottom:6px;white-space:nowrap}
 .work-showcase-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(10px,1.4vw,18px)}
+.work-empty{min-height:clamp(260px,32vw,420px);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;background:radial-gradient(65% 75% at 50% 45%,#1B1916 0%,var(--ink) 72%)}
+.work-empty img{width:clamp(64px,7vw,92px);opacity:.18;margin-bottom:24px}
+.work-empty p{color:var(--muted);font-size:.94rem;max-width:42ch}
 .work-card{display:block;position:relative;aspect-ratio:3/4;overflow:hidden;background:#171614;color:var(--paper);border:1px solid #2D2A26}
 .work-card-media{position:absolute;inset:0;background:radial-gradient(80% 55% at 50% 35%,#292621 0%,#171614 70%);transition:transform .7s cubic-bezier(.2,.7,.2,1)}
 .work-card:hover .work-card-media{transform:scale(1.02)}
@@ -162,9 +165,11 @@ section{position:relative;border-top:1px solid var(--line)}
 .work-card-type{display:block;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#BDB7AD;margin-bottom:9px}
 
 /* SERVICES */
-.services{background:var(--ink)}
+.services{background:var(--paper);color:var(--ink)}
 .services .section-head{margin-left:0;text-align:left;max-width:720px}
 .services .section-head h2{max-width:16ch}
+.services .section-head .kicker{color:var(--oxblood)}
+.services .section-head p{color:#6D675F}
 
 /* CONTACT TEASE */
 .contact-tease{background:var(--ink-soft)}
@@ -317,27 +322,9 @@ section{position:relative;border-top:1px solid var(--line)}
       </div>
       <a class="work-showcase-link" href="/work.html">Explore the work &rarr;</a>
     </div>
-    <div class="work-showcase-grid">
-      <a class="work-card" href="/work.html#films">
-        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span>
-        <span class="work-card-shade"></span>
-        <span class="work-card-copy"><span class="work-card-type">Motion</span><h3>Feature Films</h3><p>Cinematic property stories, scored and cut with restraint.</p></span>
-      </a>
-      <a class="work-card" href="/work.html#stills">
-        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span>
-        <span class="work-card-shade"></span>
-        <span class="work-card-copy"><span class="work-card-type">Photography</span><h3>Editorial Stills</h3><p>Architecture, atmosphere, and detail held true.</p></span>
-      </a>
-      <a class="work-card" href="/work.html#aerial">
-        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span>
-        <span class="work-card-shade"></span>
-        <span class="work-card-copy"><span class="work-card-type">Perspective</span><h3>Aerial</h3><p>The property and its setting, considered as one frame.</p></span>
-      </a>
-      <a class="work-card" href="/work.html#social">
-        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span>
-        <span class="work-card-shade"></span>
-        <span class="work-card-copy"><span class="work-card-type">Short Form</span><h3>Social Cuts</h3><p>Focused edits made for the pace of the feed.</p></span>
-      </a>
+    <div class="work-empty">
+      <img src="/brand/mark.svg" alt="" aria-hidden="true">
+      <p>A handful of properties will be presented here as the Sala Nera collection is photographed and filmed.</p>
     </div>
   </div>
 </section>
@@ -349,27 +336,23 @@ section{position:relative;border-top:1px solid var(--line)}
       <h2 id="services-h">Everything the story needs. Nothing it doesn't.</h2>
       <p>Each commission is shaped around the property, with the disciplines selected to serve one coherent point of view.</p>
     </div>
-    <div class="work-list">
-      <div class="work-row">
-        <div class="idx">01</div>
-        <h3>Property Films</h3>
-        <p>Cinematic films with considered pacing, color, sound, and aerial perspective.</p>
-      </div>
-      <div class="work-row">
-        <div class="idx">02</div>
-        <h3>Editorial Photography</h3>
-        <p>Architecture, atmosphere, and detail photographed as a complete visual story.</p>
-      </div>
-      <div class="work-row">
-        <div class="idx">03</div>
-        <h3>Aerial Perspective</h3>
-        <p>The property and its setting shown with scale, restraint, and a sense of place.</p>
-      </div>
-      <div class="work-row">
-        <div class="idx">04</div>
-        <h3>Launch Assets</h3>
-        <p>Focused social edits and campaign-ready formats drawn from the same body of work.</p>
-      </div>
+    <div class="work-showcase-grid">
+      <a class="work-card" href="/work.html#films">
+        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span><span class="work-card-shade"></span>
+        <span class="work-card-copy"><span class="work-card-type">Motion</span><h3>Feature Films</h3><p>Cinematic property stories, scored and cut with restraint.</p></span>
+      </a>
+      <a class="work-card" href="/work.html#stills">
+        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span><span class="work-card-shade"></span>
+        <span class="work-card-copy"><span class="work-card-type">Photography</span><h3>Editorial Stills</h3><p>Architecture, atmosphere, and detail held true.</p></span>
+      </a>
+      <a class="work-card" href="/work.html#aerial">
+        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span><span class="work-card-shade"></span>
+        <span class="work-card-copy"><span class="work-card-type">Perspective</span><h3>Aerial</h3><p>The property and its setting, considered as one frame.</p></span>
+      </a>
+      <a class="work-card" href="/work.html#social">
+        <span class="work-card-media"><img class="work-card-mark" src="/brand/mark.svg" alt="" aria-hidden="true"></span><span class="work-card-shade"></span>
+        <span class="work-card-copy"><span class="work-card-type">Short Form</span><h3>Social Cuts</h3><p>Focused edits made for the pace of the feed.</p></span>
+      </a>
     </div>
   </div>
 </section>
