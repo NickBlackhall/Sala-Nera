@@ -291,15 +291,10 @@ section{position:relative;border-top:1px solid var(--line)}
 <header class="hero" id="top">
   <div class="hero-video">
     <div class="poster"></div>
-    <!--
-      HERO VIDEO — sources are injected by JS so phones and reduced-motion users never download it.
-      1. Compress to a 20s loop with HandBrake ("Fast 1080p30"). Target under 5 MB.
-      2. Export a .webm too if you can — it is ~30% smaller and browsers pick it first.
-      3. Save a still of the first frame as media/hero-poster.jpg (~150 KB).
-      4. Drop the files in /media. No code changes needed.
-    -->
+    <!-- The appropriate mobile or desktop source is injected only after motion and connection checks. -->
     <video id="heroVideoEl" muted loop playsinline preload="none"
-           data-mp4="media/sala-nera-hero.mp4" data-webm="media/sala-nera-hero.webm"></video>
+           data-desktop-mp4="media/sala-nera-hero.mp4"
+           data-mobile-mp4="media/sala-nera-hero-mobile.mp4"></video>
   </div>
   <div class="hero-overlay"></div>
   <div class="wrap hero-inner">
@@ -402,16 +397,18 @@ section{position:relative;border-top:1px solid var(--line)}
 
   document.getElementById('year').textContent = new Date().getFullYear();
 
-  /* ---- Hero video: only loaded on larger screens, never under reduced motion ---- */
+  /* ---- Hero video: device-specific source with accessible/data-aware fallback ---- */
   var video = document.getElementById('heroVideoEl');
-  if (video && !reduceMotion && window.matchMedia('(min-width: 641px)').matches) {
-    ['webm','mp4'].forEach(function(type){
-      var src = video.getAttribute('data-' + type);
-      if (!src) return;
-      var s = document.createElement('source');
-      s.src = src; s.type = 'video/' + type;
-      video.appendChild(s);
-    });
+  var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  var saveData = Boolean(connection && connection.saveData);
+  var slowConnection = Boolean(connection && /(^|slow-)2g/.test(connection.effectiveType || ''));
+  if (video && !reduceMotion && !saveData && !slowConnection) {
+    var mobileHero = window.matchMedia('(max-width: 640px)').matches;
+    var heroSrc = video.getAttribute(mobileHero ? 'data-mobile-mp4' : 'data-desktop-mp4');
+    var source = document.createElement('source');
+    source.src = heroSrc;
+    source.type = 'video/mp4';
+    video.appendChild(source);
     video.addEventListener('playing', function(){ video.classList.add('ready'); });
     video.load();
     var p = video.play();

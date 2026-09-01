@@ -78,11 +78,11 @@ Then find-and-replace `https://salanera.com` throughout `index.html`, `work.html
 
 ## Content still to add
 
-- [ ] **Hero video** — 20s loop, under 5 MB, as `media/sala-nera-hero.mp4`
-      (plus `.webm` if you can export one — ~30% smaller and browsers prefer it).
-      HandBrake, "Fast 1080p30" preset.
-- [ ] **Hero poster** — a still of the first frame as `media/hero-poster.jpg` (~150 KB).
-      This is what phones and reduced-motion users see; the video never loads for them.
+- [x] **Hero video** — device-specific MP4s at `media/sala-nera-hero.mp4` and
+      `media/sala-nera-hero-mobile.mp4`. Reduced-motion, data-saver, and 2G visitors
+      receive the poster instead.
+- [ ] **Hero poster** — a still as `media/hero-poster.jpg` (~150 KB). This remains
+      the fallback for reduced-motion, data-saver, slow-connection, and failed autoplay.
 - [ ] **Work media** — the homepage and `/work` page contain branded placeholder panels
       for Feature Films, Editorial Stills, Aerial, and Social Cuts. Replace each
       `.work-card-media` placeholder with a real `<img>` or muted `<video>` when the
