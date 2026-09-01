@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Films — Sala Nera</title>
+<meta name="description" content="Cinematic property films from the Sala Nera collection by Blackhall Media Group.">
+<link rel="canonical" href="https://salanera.com/films">
+<meta name="theme-color" content="#0F0E0D">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Films — Sala Nera">
+<meta property="og:description" content="Cinematic property films from the Sala Nera collection.">
+<meta property="og:url" content="https://salanera.com/films">
+<meta property="og:image" content="https://salanera.com/og-sala-nera.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0F0E0D;--paper:#F4EFE6;--oxblood:#6F0F01;--ember:#D4552F;--line:#332F29;--muted:#9C978C;
+  --font-display:'Instrument Sans',sans-serif;--font-body:'Inter',sans-serif;--wrap:1180px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font-body);background:var(--ink);color:var(--paper);line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100svh;display:flex;flex-direction:column}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ember);outline-offset:3px}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 clamp(20px,5vw,56px);width:100%}
+.skip{position:absolute;left:16px;top:-100px;z-index:200;background:var(--paper);color:var(--ink);padding:12px 20px;font-weight:600;font-size:14px}
+.skip:focus{top:16px}
+.topstrip{height:5px;display:flex}
+.topstrip>span{flex:1;background:var(--ink)}
+.topstrip>span.lit{background:var(--oxblood)}
+.bars{display:flex;border:1px solid var(--paper);width:22px;height:18px;flex:none}
+.bars>span{flex:1;border-right:1px solid var(--paper)}
+.bars>span:last-child{border-right:none}
+.bars>span.lit{background:var(--oxblood)}
+.nav{padding:22px 0;border-bottom:1px solid var(--line)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.nav-mark{display:flex;align-items:center;gap:12px}
+.nav-mark .word{font-family:var(--font-display);font-weight:700;font-size:16px}
+.nav-links{display:flex;align-items:center;gap:clamp(18px,3vw,34px)}
+.nav-links a{font-size:13px;color:rgba(244,239,230,.85)}
+.nav-links a:hover{color:var(--paper)}
+main{flex:1;display:flex;align-items:center;padding:clamp(80px,12vw,160px) 0}
+.kicker{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:14px}
+h1{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;line-height:1.05;font-size:clamp(2.2rem,5.5vw,3.6rem);margin-bottom:22px}
+.lede{color:var(--muted);font-size:1.05rem;max-width:52ch;margin-bottom:36px}
+.btn{font-weight:600;font-size:14px;border:1px solid var(--line);padding:15px 30px;display:inline-block;transition:border-color .15s ease}
+.btn:hover{border-color:var(--paper)}
+.foot{border-top:1px solid var(--line);padding:20px 0;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="topstrip" aria-hidden="true"><span></span><span class="lit"></span><span></span><span></span><span></span><span></span></div>
+
+<nav class="nav" aria-label="Primary">
+  <div class="wrap nav-inner">
+    <a href="/" class="nav-mark">
+      <span class="bars" aria-hidden="true"><span></span><span class="lit"></span><span></span><span></span><span></span><span></span></span>
+      <span class="word">SALA NERA</span>
+    </a>
+    <div class="nav-links">
+      <a href="/#collection">Collection</a>
+      <a href="/#process">Process</a>
+      <a href="/#access">Request Availability</a>
+    </div>
+  </div>
+</nav>
+
+<main id="main">
+  <div class="wrap">
+    <span class="kicker">The Films</span>
+    <!--
+      PLACEHOLDER PAGE.
+      This exists so the /films link in the nav does not 404 on first deploy.
+      Replace this whole file with your real films page (rename sala_nera_films.html
+      to films.html), keeping the nav, footer and meta block above.
+    -->
+    <h1>The films are being cut.</h1>
+    <p class="lede">Selected property films from the collection are going up here shortly. In the meantime, the recent work is on the main page — or reach out and we'll send a private link to the reel.</p>
+    <a href="/#access" class="btn">Request Availability</a>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <span>&copy; <span id="year">2026</span> Sala Nera. A Blackhall Media Group collection.</span>
+    <span>Dallas–Fort Worth, TX</span>
+  </div>
+</footer>
+<script>document.getElementById('year').textContent=new Date().getFullYear();</script>
+</body>
+</html>
