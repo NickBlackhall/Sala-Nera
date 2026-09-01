@@ -117,11 +117,13 @@ h1,h2,h3{font-family:var(--font-display);font-weight:600;letter-spacing:-.02em;l
 .hero-video .poster{position:absolute;inset:0;background-color:#181613;background-image:radial-gradient(90% 70% at 50% 0%,#181613 0%,var(--ink) 60%),url("media/hero-poster.jpg");background-size:cover,cover;background-position:center,center;background-blend-mode:normal}
 .hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,14,13,.5) 0%,rgba(15,14,13,.3) 42%,rgba(15,14,13,.8) 100%)}
 .hero-inner{position:relative;z-index:2;text-align:center;max-width:900px;margin:0 auto}
-.hero-logo{width:clamp(144px,17.6vw,192px);margin:0 auto 29px}
+.hero-logo{width:clamp(112px,13vw,148px);margin:0 auto 12px}
 .hero h1{font-size:clamp(1.8rem,4.1vw,3.4rem);font-weight:600;letter-spacing:-.03em;max-width:15ch;margin:0 auto 21px}
 .hero .lede{color:#C9C4BA;font-size:clamp(.875rem,1.08vw,.9rem);max-width:52ch;margin:0 auto 35px}
 .hero-ctas{display:flex;gap:11px;justify-content:center;flex-wrap:wrap}
 .hero .btn{font-size:11px;padding:12px 24px}
+.hero-signature{margin-top:clamp(36px,5vw,52px)}
+.hero-signature p{font-size:9px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#B3ADA3}
 
 /* SECTION SHELL */
 section{position:relative;border-top:1px solid var(--line)}
@@ -298,12 +300,15 @@ section{position:relative;border-top:1px solid var(--line)}
   </div>
   <div class="hero-overlay"></div>
   <div class="wrap hero-inner">
-    <img class="brand-logo hero-logo" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070" fetchpriority="high">
     <h1>For properties that stand apart.</h1>
-    <p class="lede">Cinematic property films and imagery, made one property at a time by Blackhall Media Group.</p>
+    <p class="lede">Film and imagery shaped by architecture, atmosphere, and light.</p>
     <div class="hero-ctas">
       <a href="/work.html" class="btn btn-primary">View the Collection</a>
       <a href="/contact.html" class="text-link">Begin a Conversation</a>
+    </div>
+    <div class="hero-signature">
+      <img class="brand-logo hero-logo" src="/brand/sala%20nera%20logo%20cropped%20dark.svg" alt="Sala Nera" width="1669" height="1070" fetchpriority="high">
+      <p>A Blackhall Media Group collection.</p>
     </div>
   </div>
 </header>
