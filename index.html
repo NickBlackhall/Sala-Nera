@@ -117,7 +117,9 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;l
 .hero-video video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1s ease}
 .hero-video video.ready{opacity:1}
 /* Poster layer: real still if present, gradient underneath so there is never a blank frame */
-.hero-video .poster{position:absolute;inset:0;background-color:#181613;background-image:radial-gradient(90% 70% at 50% 0%,#181613 0%,var(--ink) 60%),url("media/hero-poster.jpg");background-size:cover,cover;background-position:center,center;background-blend-mode:normal}
+/* Add a real still as media/hero-poster.jpg and append it to background-image:
+   ...,url("media/hero-poster.jpg") — this is what mobile and reduced-motion visitors see. */
+.hero-video .poster{position:absolute;inset:0;background-color:#181613;background-image:radial-gradient(90% 70% at 50% 0%,#181613 0%,var(--ink) 60%);background-size:cover;background-position:center}
 .hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,14,13,.5) 0%,rgba(15,14,13,.3) 42%,rgba(15,14,13,.8) 100%)}
 .hero-inner{position:relative;z-index:2;text-align:center;max-width:900px;margin:0 auto}
 .hero-logo{width:clamp(180px,22vw,240px);margin:0 auto 36px}
@@ -261,14 +263,14 @@ section{position:relative;border-top:1px solid var(--line)}
   <div class="hero-video">
     <div class="poster"></div>
     <!--
-      HERO VIDEO — sources are injected by JS so phones and reduced-motion users never download it.
-      1. Compress to a 20s loop with HandBrake ("Fast 1080p30"). Target under 5 MB.
-      2. Export a .webm too if you can — it is ~30% smaller and browsers pick it first.
-      3. Save a still of the first frame as media/hero-poster.jpg (~150 KB).
-      4. Drop the files in /media. No code changes needed.
+      HERO VIDEO — media/sala-nera-hero.mp4 (1920x1080 H.264, 22.8s, 6.3 MB, no audio track).
+      Sources are injected by JS, so phones and reduced-motion visitors download nothing.
+      To swap the clip: replace that file, keeping the name. No code change needed.
+      Optional: add a .webm alongside it and restore data-webm below — browsers prefer it
+      and it is usually ~30% smaller.
     -->
     <video id="heroVideoEl" muted loop playsinline preload="none"
-           data-mp4="media/sala-nera-hero.mp4" data-webm="media/sala-nera-hero.webm"></video>
+           data-mp4="media/sala-nera-hero.mp4"></video>
   </div>
   <div class="hero-overlay"></div>
   <div class="wrap hero-inner">

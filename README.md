@@ -76,11 +76,11 @@ Then find-and-replace `https://salanera.com` throughout `index.html`, `films.htm
 
 ## Content still to add
 
-- [ ] **Hero video** — 20s loop, under 5 MB, as `media/sala-nera-hero.mp4`
-      (plus `.webm` if you can export one — ~30% smaller and browsers prefer it).
-      HandBrake, "Fast 1080p30" preset.
-- [ ] **Hero poster** — a still of the first frame as `media/hero-poster.jpg` (~150 KB).
-      This is what phones and reduced-motion users see; the video never loads for them.
+- [x] **Hero video** — in place as `media/sala-nera-hero.mp4` (1920x1080 H.264 Main,
+      22.8s, 6.3 MB, no audio track). Replace that file to swap the clip.
+- [ ] **Hero poster** — a still from the clip as `media/hero-poster.jpg` (~150 KB).
+      This is what phones and reduced-motion visitors see; without it they get a bare
+      gradient. Once added, append it to the `.poster` background-image in index.html.
 - [ ] **Collection grid** — REMOVED for launch (no finished property sets yet). When you
       have 2–3, it goes back as a row of larger cards. Ask and it's a ten-minute edit.
 - [ ] **OG image** — `og-sala-nera.jpg` at exactly 1200×630. This is the link preview
