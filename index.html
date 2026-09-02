@@ -436,6 +436,14 @@ section{position:relative;border-top:1px solid var(--line)}
       toggle.setAttribute('aria-expanded', String(open));
       toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
       document.body.classList.toggle('menu-open', open);
+      var main = document.querySelector('main');
+      var footer = document.querySelector('footer');
+      if (main) main.inert = open;
+      if (footer) footer.inert = open;
+      if (open) {
+        var firstLink = links.querySelector('a');
+        if (firstLink) firstLink.focus();
+      }
     };
     toggle.addEventListener('click', function(){
       setMenu(toggle.getAttribute('aria-expanded') !== 'true');
@@ -446,6 +454,16 @@ section{position:relative;border-top:1px solid var(--line)}
     document.addEventListener('keydown', function(e){
       if (e.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
         setMenu(false); toggle.focus();
+      }
+      if (e.key === 'Tab' && toggle.getAttribute('aria-expanded') === 'true') {
+        var focusable = Array.prototype.slice.call(links.querySelectorAll('a')).concat(toggle);
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first.focus();
+        }
       }
     });
   }
