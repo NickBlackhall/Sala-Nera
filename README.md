@@ -13,8 +13,10 @@ brand/              official full-logo lockups plus standalone mark assets
 api/inquiry.js      lead form handler → emails via Resend
 vercel.json         clean URLs, cache headers, security headers
 media/              hero video, poster, collection stills
-og-sala-nera.jpg    1200×630 link preview image  (TODO: add)
+og-sala-nera.jpg    1200×630 link preview image
 favicon.svg
+apple-touch-icon.png / icon-192.png / icon-512.png
+site.webmanifest
 ```
 
 ---
@@ -81,13 +83,13 @@ Then find-and-replace `https://salanera.com` throughout `index.html`, `work.html
 - [x] **Hero video** — device-specific MP4s at `media/sala-nera-hero.mp4` and
       `media/sala-nera-hero-mobile.mp4`. Reduced-motion, data-saver, and 2G visitors
       receive the poster instead.
-- [ ] **Hero poster** — a still as `media/hero-poster.jpg` (~150 KB). This remains
+- [x] **Hero poster** — a still as `media/hero-poster.jpg` (~165 KB). This remains
       the fallback for reduced-motion, data-saver, slow-connection, and failed autoplay.
 - [ ] **Work media** — the homepage and `/work` page contain branded placeholder panels
       for Feature Films, Editorial Stills, Aerial, and Social Cuts. Replace each
       `.work-card-media` placeholder with a real `<img>` or muted `<video>` when the
       corresponding work is ready. Keep a poster image on every video card.
-- [ ] **OG image** — `og-sala-nera.jpg` at exactly 1200×630. This is the link preview
+- [x] **OG image** — `og-sala-nera.jpg` at exactly 1200×630. This is the link preview
       when you text the site to an agent.
 - [ ] **Client proof** — add only verified client names and genuine, attributable
       testimonials when they are ready.
@@ -103,8 +105,9 @@ Every one of these is marked with a `TODO` comment in the source.
 - `--oxblood` (#6F0F01) is for **fills only** — it fails contrast badly as text.
   `--ember` (#D4552F) is the text and focus accent, measured at 4.72:1 on the ink
   background, which clears WCAG AA. Don't use oxblood for type.
-- The hero video is injected by JS and only on screens above 640px, and never when
-  the visitor has reduced motion enabled. Phones get the poster image.
+- The hero video is injected by JS only after connection and motion checks. Screens
+  up to 640px receive the 4.1 MB mobile encode; larger screens receive the 6.3 MB
+  desktop encode. Reduced-motion, data-saver, and 2G visitors receive the poster.
 - All anchored sections use `scroll-margin-top` so the fixed nav doesn't cover
   headings when you jump to them.
 
