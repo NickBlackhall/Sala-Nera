@@ -141,3 +141,5 @@ That is a normal small-size adaptation, but the two are not pixel-identical by c
 The website uses the official dark-background full lockup directly. Keep both cropped SVGs
 unchanged: their wordmarks are outlined, so they do not depend on a visitor having the source
 typeface installed.
+
+<!-- trigger: production branch is now nextjs-portal-foundation; this nudges Vercel to build it -->
