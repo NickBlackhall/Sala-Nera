@@ -1,18 +1,17 @@
 # Sala Nera
 
-Static site for the Sala Nera collection (Blackhall Media Group), deployed on Vercel.
-No framework, no build step. One HTML file per page plus one serverless function
-for the lead form.
+Next.js site for the Sala Nera collection (Blackhall Media Group), deployed on Vercel.
+It includes the public marketing site, a Resend-backed inquiry endpoint, and the
+client-portal foundation with demo galleries.
 
 ```
-index.html          the site
-films.html          served at /films  (PLACEHOLDER — replace with the real films page)
-brand/              official full-logo lockups plus standalone mark assets
-api/inquiry.js      lead form handler → emails via Resend
-vercel.json         clean URLs, cache headers, security headers
-media/              hero video, poster, collection stills
-og-sala-nera.jpg    1200×630 link preview image  (TODO: add)
-favicon.svg
+app/                    App Router pages, components, and API routes
+app/portal/[slug]/      client gallery route (demo data until services are connected)
+lib/                    portal demo data and database schema
+public/brand/           official lockups and standalone mark assets
+public/media/           responsive hero reels and poster
+public/og-sala-nera.jpg 1200×630 link preview image
+next.config.mjs         cache and security headers
 ```
 
 ---
@@ -23,7 +22,7 @@ favicon.svg
 
 1. Push this folder to a GitHub repo.
 2. Vercel → Add New → Project → Import that repo.
-3. Framework Preset: **Other**. No build command, no output directory.
+3. Framework Preset: **Next.js**. The defaults are correct.
 4. Deploy.
 
 Every push to `main` then goes to production. Every push to any other branch gets
@@ -69,40 +68,38 @@ firewall rules can add rate limiting on top.
 Vercel → Settings → Domains → add the domain, then create the DNS record it prints
 (`A` for an apex domain, `CNAME` for a subdomain). TLS is automatic.
 
-Then find-and-replace `https://salanera.com` throughout `index.html`, `films.html`,
-`robots.txt`, and `sitemap.xml` with your real domain.
+Then update `https://salanera.com` in `app/layout.tsx`, `public/robots.txt`, and
+`public/sitemap.xml` if the final domain differs.
 
 ---
 
 ## Content still to add
 
-- [x] **Hero video** — in place as `media/sala-nera-hero.mp4` (1920x1080 H.264 Main,
+- [x] **Desktop hero video** — `public/media/sala-nera-hero.mp4` (1920x1080 H.264 Main,
       22.8s, 6.3 MB, no audio track). Replace that file to swap the clip.
-- [ ] **Hero poster** — a still from the clip as `media/hero-poster.jpg` (~150 KB).
-      This is what phones and reduced-motion visitors see; without it they get a bare
-      gradient. Once added, append it to the `.poster` background-image in index.html.
+- [x] **Mobile hero video** — `public/media/sala-nera-hero-mobile.mp4` (4.3 MB).
+- [x] **Hero poster** — `public/media/hero-poster.jpg` (~167 KB), used before playback
+      and whenever reduced-motion or data-saving settings suppress the reel.
 - [ ] **Collection grid** — REMOVED for launch (no finished property sets yet). When you
       have 2–3, it goes back as a row of larger cards. Ask and it's a ten-minute edit.
-- [ ] **OG image** — `og-sala-nera.jpg` at exactly 1200×630. This is the link preview
+- [x] **OG image** — `public/og-sala-nera.jpg` at exactly 1200×630. This is the link preview
       when you text the site to an agent.
 - [ ] **Client list** — the `.proof-row` list, relabelled "Past clients include".
       Only names you have actually shot for.
 - [ ] **Testimonial** — a real name and brokerage, or delete the section.
-- [ ] **Phone number** — currently the `(214) 555-0000` placeholder in two places.
-- [ ] **Films page** — rename your real `sala_nera_films.html` to `films.html`,
-      replacing the placeholder.
+- [ ] **Films page** — replace the `/films` holding page when the first collection is ready.
 
-Every one of these is marked with a `TODO` comment in the source.
+The public work grid intentionally remains restrained until the first finished property sets exist.
 
 ---
 
 ## Notes for whoever edits this next
 
-- `--oxblood` (#6F0F01) is for **fills only** — it fails contrast badly as text.
+- `--oxblood` (#770606) is for **fills only** — it fails contrast badly as text.
   `--ember` (#D4552F) is the text and focus accent, measured at 4.72:1 on the ink
   background, which clears WCAG AA. Don't use oxblood for type.
-- The hero video is injected by JS and only on screens above 640px, and never when
-  the visitor has reduced motion enabled. Phones get the poster image.
+- The hero component selects the 4.3 MB mobile reel at 640px and below. Reduced-motion,
+  data-saving, and slow-connection visitors get the poster instead.
 - All anchored sections use `scroll-margin-top` so the fixed nav doesn't cover
   headings when you jump to them.
 
@@ -134,9 +131,7 @@ Note the site's `--paper` is **#F4EFE6** (warm cream) while the artwork strokes 
 type. Switching it to #FEFEFE would be more literally on-brand but slightly colder than
 everything around it — an open call.
 
-The artwork's 3px stroke is 0.37% of its width, which at nav size (22px) computes to 0.08px and
-would disappear. The site's mark uses 1px borders instead — necessarily heavier in proportion.
-That is a normal small-size adaptation, but the two are not pixel-identical by construction.
+The website uses the heavier approved web lockup so the bar outlines remain legible at nav size.
 
 The website uses the official dark-background full lockup directly. Keep both cropped SVGs
 unchanged: their wordmarks are outlined, so they do not depend on a visitor having the source

@@ -1,21 +1,28 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
-const SITE = 'https://salanera.com'; // TODO: real domain
+const SITE = 'https://salanera.com';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
   title: 'Sala Nera — A Curated Collection',
   description:
-    'Sala Nera is the cinematic real estate media collection from Blackhall Media Group. Not every listing earns this.',
+    'Sala Nera is a limited collection of cinematic property films and imagery by Blackhall Media Group.',
   alternates: { canonical: '/' },
-  icons: { icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }] },
+  manifest: '/site.webmanifest',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   openGraph: {
     type: 'website',
     siteName: 'Sala Nera',
     title: 'Sala Nera — A Curated Collection',
     description:
-      'Cinematic real estate media from Blackhall Media Group. Not every listing earns this.',
+      'A limited collection of cinematic property films and imagery by Blackhall Media Group.',
     url: '/',
     images: [{ url: '/og-sala-nera.jpg', width: 1200, height: 630, alt: 'Sala Nera — cinematic real estate media' }],
   },
@@ -23,7 +30,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Sala Nera — A Curated Collection',
     description:
-      'Cinematic real estate media from Blackhall Media Group. Not every listing earns this.',
+      'A limited collection of cinematic property films and imagery by Blackhall Media Group.',
     images: ['/og-sala-nera.jpg'],
   },
 };

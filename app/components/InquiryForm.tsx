@@ -6,12 +6,20 @@ type State = 'idle' | 'sending' | 'sent' | 'error';
 
 export default function InquiryForm() {
   const [state, setState] = useState<State>('idle');
+  const [startedAt] = useState(() => Date.now());
+  const [requestId] = useState(() =>
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setState('sending');
 
-    const payload = Object.fromEntries(new FormData(e.currentTarget));
+    const payload: Record<string, FormDataEntryValue | string | number> = Object.fromEntries(
+      new FormData(e.currentTarget),
+    );
+    payload.startedAt = startedAt;
+    payload.requestId = requestId;
     try {
       const res = await fetch('/api/inquiry', {
         method: 'POST',
@@ -38,13 +46,8 @@ export default function InquiryForm() {
 
   return (
     <form className="form" id="accessForm" onSubmit={onSubmit}>
-      <div className="frow">
-        <div className="field">
-          <label>Name<input type="text" name="name" autoComplete="name" required placeholder="Your name" /></label>
-        </div>
-        <div className="field">
-          <label>Phone<input type="tel" name="phone" autoComplete="tel" placeholder="(214) 555-0000" /></label>
-        </div>
+      <div className="field">
+        <label>Name<input type="text" name="name" autoComplete="name" required placeholder="Your name" /></label>
       </div>
       <div className="field">
         <label>Email<input type="email" name="email" autoComplete="email" required placeholder="you@brokerage.com" /></label>
@@ -62,9 +65,12 @@ export default function InquiryForm() {
       </div>
 
       <button type="submit" className="btn btn-primary" id="submitBtn" disabled={state === 'sending'}>
-        {state === 'sending' ? 'Sending…' : 'Request Availability'}
+        {state === 'sending' ? 'Sending…' : 'Send Inquiry'}
       </button>
-      <p className="form-note">We respond personally, usually within one business day.</p>
+      <p className="form-note">
+        We respond personally, usually within one business day. By submitting, you allow Blackhall
+        Media Group to use these details to respond to your inquiry. <a href="/privacy">Privacy</a>.
+      </p>
 
       {state === 'error' && (
         <p className="form-error" role="alert">

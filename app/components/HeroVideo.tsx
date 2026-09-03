@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-/**
- * The clip is attached by JS rather than markup so that phones and anyone with
- * reduced motion enabled download nothing at all. They get the poster layer.
- */
-export default function HeroVideo({ src }: { src: string }) {
+type HeroVideoProps = {
+  desktopSrc: string;
+  mobileSrc: string;
+  poster: string;
+};
+
+export default function HeroVideo({ desktopSrc, mobileSrc, poster }: HeroVideoProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const [ready, setReady] = useState(false);
 
@@ -15,11 +17,14 @@ export default function HeroVideo({ src }: { src: string }) {
     if (!video) return;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const bigEnough = window.matchMedia('(min-width: 641px)').matches;
-    if (reduceMotion || !bigEnough) return;
+    const connection = (navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string };
+    }).connection;
+    const slowConnection = /(^|slow-)2g/.test(connection?.effectiveType ?? '');
+    if (reduceMotion || connection?.saveData || slowConnection) return;
 
     const source = document.createElement('source');
-    source.src = src;
+    source.src = window.matchMedia('(max-width: 640px)').matches ? mobileSrc : desktopSrc;
     source.type = 'video/mp4';
     video.appendChild(source);
 
@@ -30,12 +35,15 @@ export default function HeroVideo({ src }: { src: string }) {
       /* autoplay blocked — the poster simply stays */
     });
 
-    return () => video.removeEventListener('playing', onPlaying);
-  }, [src]);
+    return () => {
+      video.removeEventListener('playing', onPlaying);
+      source.remove();
+    };
+  }, [desktopSrc, mobileSrc]);
 
   return (
     <div className="hero-video">
-      <div className="poster" />
+      <div className="poster" style={{ backgroundImage: `url(${poster})` }} />
       <video
         ref={ref}
         id="heroVideoEl"
@@ -44,6 +52,7 @@ export default function HeroVideo({ src }: { src: string }) {
         loop
         playsInline
         preload="none"
+        poster={poster}
       />
     </div>
   );
