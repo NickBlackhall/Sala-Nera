@@ -44,6 +44,12 @@ actual break — everything checked out clean.
 
 ## The one concrete remaining step
 
+The schema has never actually been applied to either Neon branch (checked
+directly — see above). Three ways to close this, in the order Nick was
+working through them:
+
+### Option A — hit the deployed endpoint (the original README path)
+
 Per `README.md` section 4 ("Portal database foundation"):
 
 1. Get the `MIGRATE_TOKEN` value from Vercel → Settings → Environment
@@ -64,13 +70,143 @@ Per `README.md` section 4 ("Portal database foundation"):
    Vercel, or `DATABASE_URL` isn't actually reaching that environment —
    check the env var is set for the right environment (Production /
    Preview / Development all need it set separately in Vercel).
-5. Re-check Neon's Tables view afterward — `clients`, `listings`, `media`,
-   `invoices`, `downloads` should now exist (empty, no rows — that's
-   correct, no real client data should exist yet).
+
+### Option B — run it locally against the real database (Nick is trying this next, in a GitHub Codespace)
+
+This exercises the actual endpoint code (transaction, `portal_migrations`
+tracking table, idempotency) instead of hand-run SQL, and as a side effect
+confirms whether `DATABASE_URL`/`MIGRATE_TOKEN` are correctly set in Vercel
+at all — which Option C below cannot tell you.
+
+```sh
+git fetch origin
+git checkout portal-build
+git pull
+npm install
+npx vercel link          # first time only — links this checkout to the bmg/sala-nera Vercel project
+npx vercel env pull .env.local     # pulls real DATABASE_URL / MIGRATE_TOKEN from Vercel
+npm run dev               # runs the app locally, but pointed at the real Neon database
+```
+Then, in a second terminal:
+```sh
+curl -X POST http://localhost:3000/api/portal/migrate \
+  -H "Authorization: Bearer $(grep MIGRATE_TOKEN .env.local | cut -d '=' -f2)"
+```
+Expect `{"ok":true,"status":"applied","migration":"0001_portal_foundation",...}`.
+A 503 means the env vars didn't actually pull through — worth knowing either way.
+
+### Option C — paste the raw SQL directly into Neon's SQL Editor (fastest, but skips verifying Vercel's env vars)
+
+Neon dashboard → **Postgres database → SQL Editor**, on the branch you want
+(`production` or `preview/portal-build`). The exact statements, copied from
+`lib/portal-migration.ts` plus the same `portal_migrations` bookkeeping the
+endpoint does (so calling the endpoint later still correctly reports
+`already_applied` instead of erroring):
+
+```sql
+CREATE TABLE IF NOT EXISTS "portal_migrations" (
+  "id" text PRIMARY KEY NOT NULL,
+  "applied_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "clients" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "email" text NOT NULL,
+  "name" text,
+  "company" text,
+  "phone" text,
+  "stripe_customer_id" text,
+  "team" text,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "clients_email_key" ON "clients" USING btree ("email");
+CREATE INDEX IF NOT EXISTS "clients_team_idx" ON "clients" USING btree ("team");
+
+CREATE TABLE IF NOT EXISTS "listings" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "client_id" integer,
+  "address" text NOT NULL,
+  "slug" text NOT NULL,
+  "city" text,
+  "shoot_date" timestamp with time zone,
+  "cover_key" text,
+  "download_locked" boolean DEFAULT true NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "listings_client_id_clients_id_fk"
+    FOREIGN KEY ("client_id") REFERENCES "public"."clients"("id")
+    ON DELETE set null ON UPDATE no action
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "listings_slug_key" ON "listings" USING btree ("slug");
+CREATE INDEX IF NOT EXISTS "listings_client_idx" ON "listings" USING btree ("client_id");
+
+CREATE TABLE IF NOT EXISTS "media" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "listing_id" integer NOT NULL,
+  "kind" text NOT NULL,
+  "r2_key" text NOT NULL,
+  "filename" text NOT NULL,
+  "bytes" bigint,
+  "width" integer,
+  "height" integer,
+  "sort" integer DEFAULT 0 NOT NULL,
+  CONSTRAINT "media_listing_id_listings_id_fk"
+    FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id")
+    ON DELETE cascade ON UPDATE no action
+);
+CREATE INDEX IF NOT EXISTS "media_listing_idx" ON "media" USING btree ("listing_id", "sort");
+
+CREATE TABLE IF NOT EXISTS "invoices" (
+  "stripe_invoice_id" text PRIMARY KEY NOT NULL,
+  "listing_id" integer,
+  "client_email" text,
+  "property_address" text,
+  "status" text,
+  "amount_due" integer,
+  "hosted_invoice_url" text,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "invoices_listing_id_listings_id_fk"
+    FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id")
+    ON DELETE set null ON UPDATE no action
+);
+CREATE INDEX IF NOT EXISTS "invoices_listing_idx" ON "invoices" USING btree ("listing_id");
+
+CREATE TABLE IF NOT EXISTS "downloads" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "media_id" integer,
+  "listing_id" integer,
+  "client_email" text,
+  "filename" text,
+  "at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "downloads_media_id_media_id_fk"
+    FOREIGN KEY ("media_id") REFERENCES "public"."media"("id")
+    ON DELETE set null ON UPDATE no action,
+  CONSTRAINT "downloads_listing_id_listings_id_fk"
+    FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id")
+    ON DELETE cascade ON UPDATE no action
+);
+CREATE INDEX IF NOT EXISTS "downloads_listing_idx" ON "downloads" USING btree ("listing_id");
+CREATE INDEX IF NOT EXISTS "downloads_at_idx" ON "downloads" USING btree ("at");
+
+INSERT INTO "portal_migrations" ("id") VALUES ('0001_portal_foundation')
+ON CONFLICT ("id") DO NOTHING;
+```
+
+Every statement is `IF NOT EXISTS`, so it's safe to run more than once, and
+safe to also run Option A/B afterward — the endpoint will just see
+`already_applied`.
+
+**After any of these:** re-check Neon's Tables view — `clients`, `listings`,
+`media`, `invoices`, `downloads`, and `portal_migrations` should all exist
+(empty, no rows — correct, no real client data should exist yet).
 
 That's the only thing blocking full Neon/Vercel wiring. Everything else
 (the integration itself, the deploy pipeline, the migration endpoint's
 code) is already done and working.
+
+**Status as of this update:** none of the three options above had been run
+yet. Nick was about to try Option B from a GitHub Codespace when this note
+was last updated — check Neon's Tables view first thing in a new session
+to see whether that succeeded before re-explaining any of this.
 
 ## Notes for whoever picks this up
 
