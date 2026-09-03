@@ -7,7 +7,9 @@ client-portal foundation with demo galleries.
 ```
 app/                    App Router pages, components, and API routes
 app/portal/[slug]/      client gallery route (demo data until services are connected)
-lib/                    portal demo data and database schema
+app/api/portal/migrate/ protected production migration endpoint
+lib/                    portal demo data, database client, schema, and migration DDL
+drizzle/                generated schema migration and metadata
 public/brand/           official lockups and standalone mark assets
 public/media/           responsive hero reels and poster
 public/og-sala-nera.jpg 1200×630 link preview image
@@ -70,6 +72,32 @@ Vercel → Settings → Domains → add the domain, then create the DNS record i
 
 Then update `https://salanera.com` in `app/layout.tsx`, `public/robots.txt`, and
 `public/sitemap.xml` if the final domain differs.
+
+## 4. Portal database foundation
+
+The portal uses Neon Postgres through Drizzle. Until `DATABASE_URL` is set, the
+two sample portal URLs continue to use `lib/demo.ts`; no production data is
+created or implied.
+
+1. Connect a Neon database to the Vercel project.
+2. Generate a long random `MIGRATE_TOKEN` and add it to the same Vercel
+   environments as `DATABASE_URL`. Never expose either value in client code.
+3. Redeploy so the function receives both variables.
+4. Apply the schema once from a trusted terminal:
+
+   ```sh
+   curl -X POST "https://YOUR-DEPLOYMENT/api/portal/migrate" \
+     -H "Authorization: Bearer YOUR_MIGRATE_TOKEN"
+   ```
+
+The endpoint is POST-only, uses constant-time token comparison, runs the DDL in
+a transaction, records migration `0001_portal_foundation`, and is safe to retry.
+It returns `already_applied` after a successful run. The response never includes
+database credentials or raw database errors.
+
+For future schema changes, update `lib/schema.ts`, run `npm run db:generate`,
+and add a new versioned set of idempotent statements before deploying it. Do not
+use `drizzle-kit push` against production.
 
 ---
 
