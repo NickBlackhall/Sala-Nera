@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, or } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
 import { clients, listings, media } from '@/lib/schema';
 import type { Client, Listing, Media } from '@/lib/schema';
@@ -55,4 +55,51 @@ export async function getListingBySlug(slug: string): Promise<ListingBundle | nu
   }
 
   return { listing, media: items, client };
+}
+
+/** Look a viewer up by the email on their session. */
+export async function getClientByEmail(email: string): Promise<Client | null> {
+  const db = getDatabase();
+  const [row] = await db
+    .select()
+    .from(clients)
+    .where(eq(clients.email, email.toLowerCase()))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * Team-aware ownership, the rule lib/schema.ts warns about: a listing belongs
+ * to a viewer if they are its client, or if both sit on the same non-null team.
+ * A null team must never match another null team, or every unassigned client
+ * would see every other unassigned client's work.
+ */
+export function ownsListing(viewer: Client, owner: Client | null): boolean {
+  if (!owner) return false;
+  if (owner.id === viewer.id) return true;
+  return Boolean(viewer.team) && viewer.team === owner.team;
+}
+
+/** Every listing a viewer may see: their own plus their team's, newest first. */
+export async function getListingsForViewer(viewer: Client): Promise<Listing[]> {
+  const db = getDatabase();
+
+  const scope = viewer.team
+    ? or(eq(clients.id, viewer.id), and(isNotNull(clients.team), eq(clients.team, viewer.team)))
+    : eq(clients.id, viewer.id);
+
+  const rows = await db
+    .select({ listing: listings })
+    .from(listings)
+    .innerJoin(clients, eq(listings.clientId, clients.id))
+    .where(scope)
+    .orderBy(desc(listings.shootDate), desc(listings.id));
+
+  return rows.map((r) => r.listing);
+}
+
+/** Admins see everything. */
+export async function getAllListings(): Promise<Listing[]> {
+  const db = getDatabase();
+  return db.select().from(listings).orderBy(desc(listings.shootDate), desc(listings.id));
 }
