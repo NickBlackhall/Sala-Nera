@@ -75,7 +75,7 @@ export default function InquiryForm() {
       {state === 'error' && (
         <p className="form-error" role="alert">
           Something went wrong on our end and your request didn&rsquo;t send. Please email{' '}
-          <a href="mailto:nick@blackhallmediagroup.com">nick@blackhallmediagroup.com</a> directly — we
+          <a href="mailto:nblackhall@blackhallmediagroup.com">nblackhall@blackhallmediagroup.com</a> directly — we
           don&rsquo;t want to miss you.
         </p>
       )}

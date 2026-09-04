@@ -29,7 +29,7 @@ export default function Footer({ compact = false }: { compact?: boolean }) {
           </div>
           <div>
             <h2>Connect</h2>
-            <ul><li><a href="mailto:nick@blackhallmediagroup.com">Email</a></li><li><a href="https://www.blackhallmediagroup.com" target="_blank" rel="noopener">Blackhall Media Group</a></li></ul>
+            <ul><li><a href="mailto:nblackhall@blackhallmediagroup.com">Email</a></li><li><a href="https://www.blackhallmediagroup.com" target="_blank" rel="noopener">Blackhall Media Group</a></li></ul>
           </div>
         </div>
         <div className="foot-bottom">

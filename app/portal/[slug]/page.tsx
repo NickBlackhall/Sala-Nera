@@ -61,7 +61,7 @@ function render(data: ListingBundle) {
       <footer className="pfoot">
         <div className="wrap">
           <span>Sala Nera — a Blackhall Media Group collection</span>
-          <a href="mailto:nick@blackhallmediagroup.com">nick@blackhallmediagroup.com</a>
+          <a href="mailto:nblackhall@blackhallmediagroup.com">nblackhall@blackhallmediagroup.com</a>
         </div>
       </footer>
     </div>

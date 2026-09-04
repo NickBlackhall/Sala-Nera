@@ -49,7 +49,7 @@ The form posts to `/api/inquiry`, which sends you an email through Resend.
    | Name | Value |
    |---|---|
    | `RESEND_API_KEY` | `re_...` from step 3 |
-   | `NOTIFY_EMAIL` | `nick@blackhallmediagroup.com` |
+   | `NOTIFY_EMAIL` | `nblackhall@blackhallmediagroup.com` |
    | `FROM_EMAIL` | `Sala Nera <inquiries@salanera.com>` |
 
    Set them for Production, Preview, and Development.

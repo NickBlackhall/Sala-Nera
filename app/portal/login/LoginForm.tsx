@@ -54,7 +54,7 @@ export default function LoginForm({ expired }: { expired: boolean }) {
       {state === 'error' && (
         <p className="form-error">
           Something went wrong. Email{' '}
-          <a href="mailto:nick@blackhallmediagroup.com">nick@blackhallmediagroup.com</a> directly.
+          <a href="mailto:nblackhall@blackhallmediagroup.com">nblackhall@blackhallmediagroup.com</a> directly.
         </p>
       )}
     </form>

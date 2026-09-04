@@ -48,7 +48,7 @@ const jsonLd = {
     name: 'Blackhall Media Group',
     url: 'https://www.blackhallmediagroup.com',
   },
-  email: 'nick@blackhallmediagroup.com',
+  email: 'nblackhall@blackhallmediagroup.com',
   areaServed: { '@type': 'Place', name: 'Dallas–Fort Worth, Texas' },
   address: { '@type': 'PostalAddress', addressRegion: 'TX', addressCountry: 'US' },
   serviceType: ['Real estate videography', 'Architectural photography', 'Aerial cinematography'],
