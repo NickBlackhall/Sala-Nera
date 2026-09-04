@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
-    "db:check": "drizzle-kit check"
+    "db:check": "drizzle-kit check",
+    "db:seed": "node --env-file=.env.local scripts/seed-portal.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

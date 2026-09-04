@@ -2,18 +2,22 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Gallery from '@/app/components/Gallery';
 import { DEMO_CLIENT, DEMO_LISTINGS, DEMO_MEDIA, IS_DEMO } from '@/lib/demo';
+import { getListingBySlug, type ListingBundle } from '@/lib/portal-queries';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false }, // client galleries stay out of search
 };
 
-async function getListing(slug: string) {
+// Every render reads the database, so there is nothing to prerender at build
+// time — and once sessions gate this page, a cached copy would be wrong anyway.
+export const dynamic = 'force-dynamic';
+
+async function getListing(slug: string): Promise<ListingBundle | null> {
   if (IS_DEMO) {
     const listing = DEMO_LISTINGS.find((l) => l.slug === slug);
     return listing ? { listing, media: DEMO_MEDIA, client: DEMO_CLIENT } : null;
   }
-  // Real lookup lands here once DATABASE_URL exists.
-  return null;
+  return getListingBySlug(slug);
 }
 
 export default async function PortalListing({
