@@ -11,3 +11,7 @@ node_modules
 next-env.d.ts
 tsconfig.tsbuildinfo
 .env*
+
+# Confidential third-party course materials - never commit
+reference/
+.claude/skills/
