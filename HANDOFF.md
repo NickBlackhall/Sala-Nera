@@ -319,7 +319,31 @@ configured, which is exactly such a URL. The route resolves them against the
 incoming request now. Worth remembering the general shape: a clean build says
 nothing about a route nobody has called.
 
-**The anti-bot timing gate was silently eating real leads.** Both form routes
+**The anti-spam defences ate three real submissions before anyone noticed, and
+the pattern is the thing to remember.** Every one of them answered `200 {ok:true}`
+and showed a success screen while sending nothing. To the person submitting,
+a discarded lead and a delivered one look identical. Nick lost his own bookings
+to two of these; a third silently swallowed a verification run, so the "test"
+that was meant to prove the system worked proved nothing.
+
+The three:
+
+1. **Upper time bound.** Anything from a page open more than two hours was
+   binned. That is a distracted human far more often than a bot. Removed.
+2. **The honeypot name.** The hidden field was `company` with a `Company`
+   label, so browser autofill filled it from the visitor's own profile and
+   every agent with a brokerage saved was classed as a bot. Renamed to `hp_ref`
+   with no label. `autoComplete="off"` does not prevent this; browsers ignore it.
+3. **Lower time bound.** 3 seconds turned out to be reachable by a real fast
+   pass with autofill. Now 500ms.
+
+**The rule this leaves:** never add a silent-discard rule to these routes
+without asking what fraction of real people it will catch, and never trust the
+success screen as evidence that anything sent. `npx vercel logs
+https://salanera.com` is the only proof — a delivered submission logs `info`
+with no `warn` line beside it. Every discard now logs one.
+
+**The historical note on the timing gate, kept because it explains the code:** Both form routes
 discarded any submission whose form had been open more than two hours, by
 answering `200 {ok:true}` and sending nothing. The visitor saw "Booking request
 received" and Nick heard nothing at all. Nick hit this himself on his first
