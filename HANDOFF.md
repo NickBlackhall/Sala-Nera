@@ -296,6 +296,19 @@ configured, which is exactly such a URL. The route resolves them against the
 incoming request now. Worth remembering the general shape: a clean build says
 nothing about a route nobody has called.
 
+**The anti-bot timing gate was silently eating real leads.** Both form routes
+discarded any submission whose form had been open more than two hours, by
+answering `200 {ok:true}` and sending nothing. The visitor saw "Booking request
+received" and Nick heard nothing at all. Nick hit this himself on his first
+test. Worse, it was backwards: a bot that simply omits `startedAt` skips the
+check entirely, while an agent who opened the form and got pulled into a
+showing was thrown away.
+
+The upper bound is gone from both routes. The "impossibly fast" lower bound
+stays, and every silent discard now logs a line so it is visible in
+`vercel logs` instead of vanishing. **If a lead is ever reported missing, look
+there first.**
+
 **A button that changes `type` between renders will submit the form.** The
 booking form's last nav button switches from `type="button"` (Continue) to
 `type="submit"` (Send). React reused the same DOM node and just flipped the

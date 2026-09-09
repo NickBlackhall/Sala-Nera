@@ -64,14 +64,30 @@ export async function POST(req: Request) {
   }
 
   // Honeypot: answer 200 so the bot believes it succeeded and does not retry.
-  if (clean(body.company, 50)) return json({ ok: true });
+  // Logged, because every silent discard is indistinguishable from a lost lead
+  // unless there is a trace of it somewhere.
+  if (clean(body.company, 50)) {
+    console.warn('booking: discarded, honeypot filled');
+    return json({ ok: true });
+  }
 
-  // A booking form has five steps; a human cannot finish one in under a few
-  // seconds, and a form open for two hours is a stale tab, not a submission.
+  /**
+   * Only the "impossibly fast" half of this is a bot signal.
+   *
+   * There is deliberately no upper bound. An agent can open the form, get
+   * pulled into a showing, and come back three hours later — and throwing that
+   * away behind a success screen loses a real booking in the most invisible way
+   * possible. This route previously did exactly that above two hours.
+   *
+   * The bound that remains is weak on its own, and so was the one removed: a
+   * bot that omits startedAt skips this check entirely. It is one signal
+   * alongside the honeypot and the origin check, not the gate.
+   */
   const startedAt = Number(body.startedAt ?? 0);
   if (startedAt) {
     const elapsed = Date.now() - startedAt;
-    if (!Number.isFinite(elapsed) || elapsed < 3000 || elapsed > 7_200_000) {
+    if (!Number.isFinite(elapsed) || elapsed < 3000) {
+      console.warn('booking: discarded, submitted in %sms', elapsed);
       return json({ ok: true });
     }
   }

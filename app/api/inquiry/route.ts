@@ -41,13 +41,21 @@ export async function POST(req: Request) {
     return json({ error: 'Invalid request body' }, 400);
   }
 
-  // Honeypot: respond 200 so the bot believes it succeeded.
-  if (clean(body.company, 50)) return json({ ok: true });
+  // Honeypot: respond 200 so the bot believes it succeeded. Logged, because a
+  // silent discard is indistinguishable from a lost lead without a trace.
+  if (clean(body.company, 50)) {
+    console.warn('inquiry: discarded, honeypot filled');
+    return json({ ok: true });
+  }
 
+  // No upper bound, deliberately — see the longer note in app/api/booking/route.ts.
+  // This used to discard anything from a tab open more than two hours, which is
+  // a real person who got distracted far more often than it is a bot.
   const startedAt = Number(body.startedAt ?? 0);
   if (startedAt) {
     const elapsed = Date.now() - startedAt;
-    if (!Number.isFinite(elapsed) || elapsed < 1800 || elapsed > 7_200_000) {
+    if (!Number.isFinite(elapsed) || elapsed < 1800) {
+      console.warn('inquiry: discarded, submitted in %sms', elapsed);
       return json({ ok: true });
     }
   }
