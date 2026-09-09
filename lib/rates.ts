@@ -187,8 +187,37 @@ export const TRAVEL_BANDS: DistanceBand[] = [
 ];
 
 /** The furthest the service area reaches, in miles — the last priced ceiling. */
-export const SERVICE_AREA_MILES: number =
-  [...TRAVEL_BANDS].reverse().find((b) => b.maxMiles !== null)?.maxMiles ?? 0;
+export function serviceAreaMiles(bands: DistanceBand[] = TRAVEL_BANDS): number {
+  return [...bands].reverse().find((b) => b.maxMiles !== null)?.maxMiles ?? 0;
+}
+
+/** @deprecated Prefer serviceAreaMiles(card.travelBands) once a card is in hand. */
+export const SERVICE_AREA_MILES: number = serviceAreaMiles();
+
+/**
+ * Everything the site needs in order to price a booking.
+ *
+ * This exists because the rate card is moving out of this file and into the
+ * database, so Nick can edit it without a deploy. The constants above stay as
+ * the built-in default: a database with no saved card yet, or one that cannot
+ * be reached, falls back to them rather than failing to price anything. That
+ * is the same shape as lib/storage.ts and lib/geocode.ts — a missing
+ * dependency degrades to something honest instead of breaking the page.
+ */
+export type RateCard = {
+  services: Service[];
+  travelBands: DistanceBand[];
+  baseLocation: GeoPoint & { label: string };
+  /** Whether the *shoot* prices are still stand-ins. Travel is real either way. */
+  ratesArePlaceholder: boolean;
+};
+
+export const DEFAULT_RATE_CARD: RateCard = {
+  services: SERVICES,
+  travelBands: TRAVEL_BANDS,
+  baseLocation: BASE_LOCATION,
+  ratesArePlaceholder: RATES_ARE_PLACEHOLDER,
+};
 
 /** Turns TRAVEL_BANDS into the sentence RATE_NOTES shows, so the two cannot drift apart. */
 function describeTravelPolicy(): string {

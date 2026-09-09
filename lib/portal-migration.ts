@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0001_portal_foundation';
+export const PORTAL_MIGRATION_ID = '0002_rate_cards';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -95,4 +95,17 @@ export const PORTAL_MIGRATION_STATEMENTS = [
   )`,
   `CREATE INDEX IF NOT EXISTS "events_at_idx" ON "events" USING btree ("at")`,
   `CREATE INDEX IF NOT EXISTS "events_kind_idx" ON "events" USING btree ("kind", "at")`,
+  // The rate card, versioned: one row per save, newest row is live. No "active"
+  // flag, because two rows both claiming to be active is a bug that cannot
+  // happen if "newest wins" is the only rule. The card is one jsonb document
+  // rather than relational rows because it is edited as a whole — a half-saved
+  // card is a state the editor should be structurally unable to produce.
+  `CREATE TABLE IF NOT EXISTS "rate_cards" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "data" jsonb NOT NULL,
+    "note" text,
+    "edited_by" text,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS "rate_cards_created_idx" ON "rate_cards" USING btree ("created_at")`,
 ] as const;

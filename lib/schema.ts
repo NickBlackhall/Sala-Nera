@@ -1,5 +1,5 @@
 import {
-  pgTable, serial, text, integer, bigint, boolean, timestamp, index, uniqueIndex,
+  pgTable, serial, text, integer, bigint, boolean, timestamp, index, uniqueIndex, jsonb,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -125,7 +125,40 @@ export const events = pgTable(
   (t) => [index('events_at_idx').on(t.at), index('events_kind_idx').on(t.kind, t.at)],
 );
 
+/**
+ * The rate card, versioned.
+ *
+ * One row per save, and the newest row is the live card — there is no "active"
+ * flag, because two rows claiming to be active is a bug waiting to happen and
+ * "newest wins" cannot be got wrong. Rolling back means saving an old card
+ * again as a new version, which keeps the history honest: what was live, and
+ * when, is never rewritten.
+ *
+ * The whole card is one jsonb document rather than relational rows because it
+ * is edited as a whole. A half-saved rate card — services updated, travel
+ * bands not — is a state no editor should be able to produce, and a single
+ * document makes that structurally impossible rather than merely unlikely.
+ *
+ * An empty table is fine and expected: lib/rate-card.ts falls back to the
+ * card defined in lib/rates.ts, so the site prices correctly before anyone
+ * has ever opened the editor.
+ */
+export const rateCards = pgTable(
+  'rate_cards',
+  {
+    id: serial('id').primaryKey(),
+    /** A RateCard, as defined in lib/rates.ts. Validated before it ever lands here. */
+    data: jsonb('data').notNull(),
+    /** What changed, in Nick's words. Optional, but it is what makes history readable. */
+    note: text('note'),
+    editedBy: text('edited_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('rate_cards_created_idx').on(t.createdAt)],
+);
+
 export type Client = typeof clients.$inferSelect;
 export type Listing = typeof listings.$inferSelect;
 export type Media = typeof media.$inferSelect;
 export type Event = typeof events.$inferSelect;
+export type RateCardRow = typeof rateCards.$inferSelect;

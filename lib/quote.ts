@@ -1,4 +1,6 @@
-import { SERVICES, TRAVEL_BANDS, type DistanceBand, type Service, type Tier } from '@/lib/rates';
+import {
+  DEFAULT_RATE_CARD, type DistanceBand, type RateCard, type Service, type Tier,
+} from '@/lib/rates';
 
 /**
  * Turns "this square footage, these services" into a priced estimate.
@@ -40,7 +42,7 @@ export type Quote = {
   tierLabel: string | null;
 };
 
-const byId = new Map(SERVICES.map((s) => [s.id, s]));
+const byId = new Map(DEFAULT_RATE_CARD.services.map((s) => [s.id, s]));
 
 /** The first tier whose ceiling the property fits under; the last tier catches the rest. */
 function tierFor(tiers: Tier[], sqft: number): Tier {
@@ -94,10 +96,13 @@ function bandFor(bands: DistanceBand[], miles: number): DistanceBand {
  * app/api/booking/travel-estimate/route.ts can price a single address
  * without also needing a square footage and a service list.
  */
-export function travelLine(miles: number | null): QuoteLine | null {
+export function travelLine(
+  miles: number | null,
+  bands: DistanceBand[] = DEFAULT_RATE_CARD.travelBands,
+): QuoteLine | null {
   if (miles === null || !Number.isFinite(miles) || miles < 0) return null;
 
-  const band = bandFor(TRAVEL_BANDS, miles);
+  const band = bandFor(bands, miles);
   return {
     id: 'travel',
     name: 'Travel',
@@ -118,14 +123,15 @@ export function quote(
   sqft: number | null,
   serviceIds: string[],
   distanceMiles: number | null = null,
+  card: RateCard = DEFAULT_RATE_CARD,
 ): Quote {
   // Iterate SERVICES rather than serviceIds so the order on an invoice always
   // matches the order on the form, and unknown ids submitted by hand are
   // dropped instead of trusted.
-  const chosen = SERVICES.filter((s) => serviceIds.includes(s.id));
+  const chosen = card.services.filter((s) => serviceIds.includes(s.id));
   const lines = chosen.map((s) => priceOne(s, sqft));
 
-  const travel = travelLine(distanceMiles);
+  const travel = travelLine(distanceMiles, card.travelBands);
   if (travel) lines.push(travel);
 
   const tiered = chosen.find((s) => s.pricing.kind === 'tiered');
