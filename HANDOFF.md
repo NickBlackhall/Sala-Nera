@@ -126,11 +126,7 @@ The probe rows were deleted afterwards; the database is back to seed state
 ### What is left
 
 1. **Cloudflare R2** — still needs Nick present, still a real billing signup.
-   When it exists: set `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`,
-   `R2_SECRET_ACCESS_KEY` in all three Vercel environments, move the demo images
-   into the bucket, and change `scripts/seed-portal.mjs` to write object keys
-   instead of `/demo/*.jpg` paths. Nothing else should need touching — that is
-   what the two modes in `lib/storage.ts` are for.
+   Step-by-step instructions are in the appendix at the bottom of this file.
 2. **Browser upload**, replacing `scripts/seed-portal.mjs`. Still no upload UI.
 3. **Stripe** — `invoice.paid` should call the same `setListingLock()` the admin
    button calls. Still needs Nick present; it touches his live invoicing.
@@ -251,3 +247,95 @@ every reference updated at once.
   `env pull` all work), which is the fastest way to check production truth.
 - Nick is on Vercel's Hobby plan and knows it does not cover commercial use.
   He will upgrade before real clients are on the portal. Don't raise it again.
+
+---
+
+## Appendix: connecting R2, step by step
+
+Written down so this is a fifteen-minute job whenever Nick has fifteen minutes,
+rather than a research task. Cloudflare moves its dashboard labels around, so
+match on meaning rather than exact wording — what each step needs to *produce*
+is what matters, and every value is named below.
+
+### What you are collecting
+
+Four values. Nothing else about the bucket is wired into the code.
+
+| Env var | Where it comes from |
+|---|---|
+| `R2_ACCOUNT_ID` | The 32-hex-character id in the R2 endpoint URL, `https://<this>.r2.cloudflarestorage.com` |
+| `R2_BUCKET` | Whatever you name the bucket in step 2 |
+| `R2_ACCESS_KEY_ID` | Shown once when you create the API token |
+| `R2_SECRET_ACCESS_KEY` | Shown once when you create the API token |
+
+The last two are shown **once**. Paste them into Vercel before closing the tab;
+if you lose them, delete the token and make another — you cannot re-read one.
+
+### Steps
+
+1. **Sign up / sign in** at `dash.cloudflare.com`, then open **R2** in the
+   sidebar. R2 asks for a payment method even to use the free tier. The free
+   tier is 10 GB of storage and, importantly, **zero egress** — which is the
+   whole reason R2 was chosen over Supabase Storage. Nick will exceed 10 GB of
+   storage quickly at real listing volume; egress is what would actually have
+   hurt, and that stays free.
+
+2. **Create a bucket.** Name it something stable — `sala-nera-media` is fine.
+   Location: automatic, or North America if offered. **Leave public access
+   OFF.** A public bucket would defeat the entire signed-download system: the
+   route would still check the lock, and anyone with a plain URL would still
+   walk straight past it. Private is the point.
+
+3. **Create an API token.** In R2, find API / "Manage R2 API Tokens" and create
+   one with **Object Read & Write** permission, scoped to just this bucket
+   rather than the whole account. Copy the Access Key ID and Secret Access Key.
+
+4. **Note the account id** from the S3 endpoint shown on the bucket or API page:
+   `https://<32 hex chars>.r2.cloudflarestorage.com`. That hex string is
+   `R2_ACCOUNT_ID` — not the bucket name, and not the token id.
+
+5. **Put all four into Vercel**, in **all three environments** (Production,
+   Preview, Development). Either the dashboard, or:
+
+   ```sh
+   npx vercel env add R2_ACCOUNT_ID production
+   # …repeat per variable per environment, or paste them in the dashboard
+   ```
+
+   Remember `lib/storage.ts` treats a *partial* config as no config, on purpose.
+   Three of four set means the app quietly keeps serving unsigned local paths
+   rather than half-working — so check all four landed.
+
+6. **Pull them locally** so dev matches: `npx vercel env pull`. (See the
+   `.env.local` gotcha above — it is a snapshot, not a live link.)
+
+7. **Upload the media.** Until the upload UI exists, drag the ten files in
+   `public/demo/` into the bucket through the Cloudflare dashboard. Keep the
+   filenames. If you nest them under a prefix like `demo/`, the object keys
+   become `demo/living-room.jpg` and step 8 has to match.
+
+8. **Point the seed at object keys.** In `scripts/seed-portal.mjs`, the media
+   rows and the two `coverKey` values currently say `/demo/aerial.jpg` and so
+   on. Those leading slashes make them local public paths. Strip the slash (or
+   set whatever prefix you used in step 7) so they are object keys, then
+   `npm run db:seed`.
+
+9. **Check it.** `npm run dev`, sign in, open a listing. Images should still
+   render — but their URLs will now be long `r2.cloudflarestorage.com` links
+   with an `X-Amz-Signature` on the end. Then confirm the lock is finally real:
+   copy one of those image URLs, wait for it to expire (previews last an hour,
+   downloads five minutes), and load it again. It should be refused.
+
+10. **The notice disappears on its own.** The admin dashboard's "media is not on
+    R2 yet" warning is conditional on `isRemoteStorage()`. When it stops
+    appearing, the lock is genuinely protection and the portal can be described
+    that way — not before.
+
+### If R2 answers 403
+
+The signing is already checked against AWS's published reference vector
+(`npm run check:sigv4`, and it passes), so a 403 is almost certainly *not* the
+signature. In rough order of likelihood: the account id is wrong (easy to grab
+the token id by mistake), the token is not scoped to that bucket, the bucket
+name has a typo, or the object key does not match what got uploaded — check for
+a `demo/` prefix you did or did not include.
