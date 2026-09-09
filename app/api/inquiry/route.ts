@@ -50,13 +50,14 @@ export async function POST(req: Request) {
     return json({ ok: true });
   }
 
-  // No upper bound, deliberately — see the longer note in app/api/booking/route.ts.
-  // This used to discard anything from a tab open more than two hours, which is
-  // a real person who got distracted far more often than it is a bot.
+  // Floor lowered to 500ms and the upper bound removed — see the longer note in
+  // app/api/booking/route.ts. Both bounds were binning real people silently,
+  // which for a form whose entire job is catching leads is the worst trade
+  // available.
   const startedAt = Number(body.startedAt ?? 0);
   if (startedAt) {
     const elapsed = Date.now() - startedAt;
-    if (!Number.isFinite(elapsed) || elapsed < 1800) {
+    if (!Number.isFinite(elapsed) || elapsed < 500) {
       console.warn('inquiry: discarded, submitted in %sms', elapsed);
       return json({ ok: true });
     }

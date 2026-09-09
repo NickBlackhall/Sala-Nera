@@ -82,21 +82,26 @@ export async function POST(req: Request) {
   }
 
   /**
-   * Only the "impossibly fast" half of this is a bot signal.
+   * A floor low enough that only a machine can be under it.
    *
-   * There is deliberately no upper bound. An agent can open the form, get
-   * pulled into a showing, and come back three hours later — and throwing that
-   * away behind a success screen loses a real booking in the most invisible way
-   * possible. This route previously did exactly that above two hours.
+   * This has now eaten real submissions twice. It began as "under 3 seconds or
+   * over 2 hours". The upper bound threw away anyone who left the tab open; the
+   * 3-second floor then threw away a fast run through the form, because with
+   * autofill and a familiar form five steps really can take under three
+   * seconds. Both failures looked identical to the sender: a success screen and
+   * silence.
    *
-   * The bound that remains is weak on its own, and so was the one removed: a
-   * bot that omits startedAt skips this check entirely. It is one signal
-   * alongside the honeypot and the origin check, not the gate.
+   * 500ms is kept only to swat naive replay scripts that bother to send
+   * startedAt at all. It is nearly worthless as a defence — a bot that omits
+   * the field skips this entirely — so the honeypot and the origin check are
+   * what actually stand here. If real spam ever arrives, the answer is rate
+   * limiting, not a higher floor: every increase buys a little spam protection
+   * and risks silently binning a paying client.
    */
   const startedAt = Number(body.startedAt ?? 0);
   if (startedAt) {
     const elapsed = Date.now() - startedAt;
-    if (!Number.isFinite(elapsed) || elapsed < 3000) {
+    if (!Number.isFinite(elapsed) || elapsed < 500) {
       console.warn('booking: discarded, submitted in %sms', elapsed);
       return json({ ok: true });
     }
