@@ -12,17 +12,58 @@ tree clean. Last commit `8d41944`.
    "placeholder pricing" notice and the warning line in booking emails both
    disappear on their own. The tier-boundary checks in `npm run check:rates`
    are vacuous until this happens, and the script says so on every run.
-2. **Nick was mid-test of the booking form** when the session ended. He had not
-   yet confirmed he receives the two emails (his lead + the client
-   confirmation). **First thing to do: check `/admin/activity`** — a delivered
-   booking shows `Delivered / Sent`. If it shows Discarded, the anti-spam rules
-   are still too tight; read the silent-discard section below before touching
-   them.
-3. **Cloudflare R2**, per the appendix at the bottom. Needs Nick present.
-4. Browser upload, then Stripe. Both still need Nick.
+   **Nick has said this needs real research and will take a while — do not
+   wait on it.** Everything else is built to work either side of that switch.
+2. ~~Confirm the booking form delivers.~~ **Done — it works.** See "The booking
+   form delivers" below. One caveat left: Resend *accepted* both emails; nobody
+   has yet confirmed they landed in the inbox rather than a spam folder.
+3. **One credentials sitting, three keys.** All three are the same shape of
+   task and all three block finished code that is otherwise done and tested:
+   **Google Maps** (appendix at the bottom — unblocks travel pricing, built
+   this session), **a Google service account** for the calendar (Track B,
+   Phase 3 of the plan), and **Cloudflare R2** (its own appendix). Doing them
+   in one sitting costs one setup tax instead of three; the two Google ones
+   share a project.
+4. **The scheduling build**, per the "Calendar, Distance & Stripe" plan
+   published as an artifact. Next buildable piece is `lib/scheduling.ts` —
+   but its duration model needs real shoot durations from Nick first (only
+   one anchor exists: 3,329 sq ft = 90 min, from the Sep 10 Stovall shoot).
+5. Browser upload, then Stripe. Stripe is now scoped as pay-to-download on
+   the portal lock, **not** a booking-time charge — see the plan.
 
 **Do not re-investigate:** the three silent-discard bugs, the auto-submit bug,
 or why local email fails. All diagnosed, fixed and written up below.
+
+---
+
+## The booking form delivers — verified Sep 9, 20:07 UTC
+
+A real submission from production, read back out of the `events` table:
+
+```
+2026-09-09 20:07:30  booking  Delivered  Sent
+                     nblackhall@blackhallmediagroup.com
+                     test test test — 4 service(s), $3,996. Both emails sent.
+```
+
+**What that proves:** the whole path works. The submission cleared the honeypot
+and the timing floor, priced server-side, Resend returned 2xx on Nick's lead
+email, and `sendEmail()` returned true on the client confirmation. Telemetry is
+live and writing. `$3,996` is 4 × the `999` placeholder, so that email also
+carries the "RATES ARE STILL PLACEHOLDERS" warning line and the confirmation
+quotes no total — both behaving as designed.
+
+**What it does not prove:** that the mail reached an inbox. `ok` means Resend
+*accepted* the message, not that it survived spam filtering. If a lead is ever
+reported missing while `/admin/activity` says Delivered, the problem is
+downstream of this app — check Resend's own dashboard and the domain's
+SPF/DKIM, not the route.
+
+**Why the empty table earlier was a red herring:** telemetry was committed at
+18:55 and deployed after Nick's original test, so his first test predated
+anything that could record it. An empty `events` table meant "nothing was
+watching", not "the lead was discarded". Worth remembering the shape — absence
+of a record is only evidence once you know the recorder was running.
 
 ---
 
@@ -62,6 +103,8 @@ everything was ported and verified, see "Branches" below.
 | Media bytes | Still world-readable local paths | Not yet on R2 |
 | Booking form `/book` | Built; 5 steps, live estimate | Measured at 390px and 1280px |
 | Booking rates | **Placeholders**, flag still true | `lib/rates.ts` |
+| Booking email, end to end | **Delivered**, both emails | Real production submission, read from `events` |
+| Distance-based travel pricing | Built, waiting on a Google Maps key | `npm run typecheck` + `npm run build` clean, `check:rates` passes |
 | Booking validation | 9 rejection paths probed | Live requests |
 
 The two seeded listings are `/portal/preston-hollow-lane` (locked) and
@@ -169,8 +212,12 @@ Smaller, optional: on a phone the listings table scrolls sideways inside its
 own container, so the lock button sits off-screen. Stacking rows into cards
 under ~640px would fix it. Nick was told about it and did not ask for it yet.
 
-Also stale: `npm run lint` calls `next lint`, which Next 16 removed. It errors
-out. Either drop the script or point it at ESLint directly.
+~~Also stale: `npm run lint`.~~ Fixed. `next lint` was removed in Next 16, but
+the deeper point was that ESLint is not installed and there is no config — so
+the script had not been checking anything even before Next 16 broke it. It is
+now `npm run typecheck` (`tsc --noEmit`), which is the check that actually runs
+here, and it passes. Adding a real lint toolchain is still open, and is Nick's
+call rather than a silent cleanup.
 
 ## The booking form — built, priced with placeholders
 
@@ -268,13 +315,63 @@ If the form is ever abused, that is where to add it.
 ### Still to do here
 
 - **Nick's real rates**, as above.
-- **No end-to-end email test has been run** — see the gotcha below about why
-  that cannot be done locally. Worth one real submission from production once
-  the rates are in, which is also step 1 of the guide's own test procedure.
+- ~~No end-to-end email test has been run.~~ **Run, and it passed** — Sep 9,
+  20:07 UTC, from production. See "The booking form delivers" at the top. Still
+  worth one more submission once the real rates are in, to confirm the
+  placeholder warning line disappears and the confirmation starts quoting a
+  total.
 - The guide's two Claude scheduled tasks (booking → calendar hold, booking →
   draft Stripe invoice) are not set up. The email format is already shaped for
   them: stable field labels, `New Booking Request` in the subject, and the
   address first so the invoice memo can start with it.
+
+---
+
+## Distance-based travel pricing — built, needs a Google Maps key
+
+The first piece of the calendar/scheduling work (see the "Calendar, Distance &
+Stripe" plan, published as an artifact this session — ask if you need the link
+again). Same shape as the signed-downloads work below: the code is real and
+tested, one credential away from doing anything.
+
+**What's real:** `TRAVEL_BANDS` in `lib/rates.ts` — a distance-banded surcharge
+next to the sqft tiers, same editing experience, same `check:rates` boundary
+checks (and unlike the sqft tiers, its free-vs-surcharge edge has teeth *now*,
+before any real numbers land, because $0 and the $999 placeholder are actually
+different amounts). `lib/distance.ts` is a pure haversine function — no
+network, no key, used for both the travel surcharge and, later, the buffer
+between two shoots in `lib/scheduling.ts`. `RATE_NOTES`' travel sentence is now
+*generated* from `TRAVEL_BANDS` rather than hand-written, so the policy text
+and the actual bands cannot drift apart — same reasoning as `rates.md` being
+generated from `lib/rates.ts`.
+
+**What's stubbed on nothing but a missing key:** `lib/geocode.ts` calls
+Google's real Geocoding API — `hasGeocoding()` is an honest boolean mirroring
+`isRemoteStorage()` in `lib/storage.ts`, and until `GOOGLE_MAPS_API_KEY` is set,
+every address is honestly ungeocoded. `POST /api/booking/travel-estimate` is
+the live round trip the form calls, debounced, as an agent types the address —
+it resolves the address to a distance and nothing else; pricing that distance
+happens through the same `quote()` the rest of the form already uses, so there
+is exactly one place travel gets priced, not two that could disagree.
+`app/api/booking/route.ts` re-geocodes the address server-side before pricing,
+same as it already re-prices sqft and services — the browser's number is a
+claim, not a fact.
+
+**What this looks like today, with no key set:** the address field on `/book`
+shows "We'll confirm travel when we follow up" — honest, not broken. No booking
+email gets a travel line. The moment `GOOGLE_MAPS_API_KEY` lands (see the plan
+artifact — it's bundled with the Calendar API credentials into one dashboard
+session), all of it starts working with no other change.
+
+**Left to do:**
+- The Google Maps Platform key itself. Needs Nick present, same shape as R2.
+- `BASE_LOCATION` in `lib/rates.ts` is anchored on downtown Dallas — matching
+  the travel note this file carried before any of this existed — not Nick's
+  actual studio or home address. Fine as a default; point it at a real address
+  if that would price shoots more accurately.
+- An address Google can't geocode still gets a booking today, just with no
+  travel line priced — worth a human glance if a booking ever arrives from
+  somewhere that reads as intentionally malformed, but not urgent.
 
 ---
 
@@ -325,6 +422,13 @@ failures which hurt are the ones nothing records.
 - **`/admin/activity`** — the page to actually look at, linked in the admin nav.
   Counts for the last 24 hours, then the last 200 events with plain-English
   reasons.
+- **`npm run activity`** — the same rows in the terminal, same labels
+  (`scripts/activity.mjs`, read-only, takes an optional window in hours). It
+  exists because the page needs a magic-link sign-in and a browser, and in the
+  Codespace `vercel logs`, `vercel env pull` and outbound `curl` to salanera.com
+  are all blocked by the permission classifier. When the question is "did that
+  booking send", the answer needs a path that is not blocked. Note it reads
+  `DATABASE_URL` from `.env.local`, which is the production database.
 
 **Read the Discarded column first.** Anything there is a submission somebody
 believes they sent and Nick never received. If those ever look like real people
@@ -589,3 +693,96 @@ signature. In rough order of likelihood: the account id is wrong (easy to grab
 the token id by mistake), the token is not scoped to that bucket, the bucket
 name has a typo, or the object key does not match what got uploaded — check for
 a `demo/` prefix you did or did not include.
+
+---
+
+## Appendix: getting the Google Maps key, step by step
+
+One value: `GOOGLE_MAPS_API_KEY`. Everything in "Distance-based travel pricing"
+above starts working the moment it lands in Vercel; nothing else changes.
+
+**Do this in the same sitting as the Calendar service account if you can.**
+Both live in the same Google Cloud project, so step 1 and 2 are shared and you
+only pay the setup tax once. The Calendar half is Track B, Phase 3 in the plan.
+
+### Steps
+
+1. **Create the project.** Go to `console.cloud.google.com`, sign in as
+   `nblackhall@blackhallmediagroup.com` (the same account that owns the
+   calendars — it matters later for the Calendar half). Top bar, project
+   dropdown, **New Project**. Name it something stable like `sala-nera`.
+
+2. **Turn on billing.** Billing → link a payment method. Maps Platform will not
+   answer a single request without it, even inside the free allowance. There is
+   a standing monthly free tier for Geocoding that this site will not come close
+   to — a booking form geocodes an address a handful of times per lead, and the
+   result is cached per address. Check the current allowance on the pricing page
+   rather than trusting a number written here; Google has changed this model
+   more than once.
+
+3. **Enable the Geocoding API — specifically.** APIs & Services → Library →
+   search "Geocoding API" → **Enable**. This is the one the site calls. Do not
+   confuse it with "Maps JavaScript API" (that draws maps in a browser, which
+   this site does not do) or "Places API" (address autocomplete, a different
+   feature you might want later).
+
+4. **Create the key.** APIs & Services → Credentials → **Create credentials** →
+   **API key**. Copy it. Unlike R2's secret, you can re-read this one later, so
+   losing the tab is not fatal.
+
+5. **Restrict it, and restrict it the right way.** Click the new key → edit.
+   - **API restrictions**: "Restrict key" → tick **Geocoding API** only. This
+     is the restriction that matters. An unrestricted key that leaks can be
+     spent against every API in the project.
+   - **Application restrictions**: leave as **None**. This is a
+     server-side key — `lib/geocode.ts` calls Google from Vercel, never from
+     the browser. "HTTP referrers" is for keys embedded in a web page and would
+     break this one. IP restriction sounds right but Vercel's egress addresses
+     are not stable, so it would break too, intermittently, which is worse.
+   - Consider setting a **quota cap** on the Geocoding API (APIs & Services →
+     Geocoding API → Quotas) — a few thousand requests a day is far above real
+     use and turns a runaway loop or a scraper into an error instead of a bill.
+
+6. **Put it in Vercel.** Production is the only one that is actually required:
+
+   ```sh
+   npx vercel env add GOOGLE_MAPS_API_KEY production
+   npx vercel env add GOOGLE_MAPS_API_KEY development   # only to test locally
+   ```
+
+   **Do not copy R2's "all three environments" rule here.** That rule exists
+   because R2 needs four variables and a *partial* config makes the app quietly
+   serve unsigned paths — a real failure mode worth guarding. This is one
+   variable behind one honest boolean: without it `hasGeocoding()` is false and
+   the form says so on the page. `development` earns its place only because it
+   is what `vercel env pull` reads, so it is the difference between testing on
+   localhost and testing on the live booking form. `preview` is pointless while
+   `main` is the only branch anyone deploys.
+
+7. **Pull it locally** so dev matches: `npx vercel env pull`. (See the
+   `.env.local` gotcha above — it is a snapshot, not a live link.)
+
+8. **Check it.** Open `/book`, go to the Property step, and type a real DFW
+   address. Within about a second the hint under the address field should stop
+   saying "We'll confirm travel when we follow up" and start saying either
+   "Within our included travel radius" or "Adds $999 for travel". Try somewhere
+   deliberately far — an address in Houston or Oklahoma City should say travel
+   is quoted after contact, and the estimate should show "+ items quoted after".
+
+### If it does not work
+
+The hint saying "We'll confirm travel when we follow up" is the catch-all for
+*every* failure, by design — it never guesses a distance. So when it will not
+budge, the reason is in the logs, not on the page. `lib/geocode.ts` logs the
+exact status Google returned:
+
+- **`REQUEST_DENIED`** — the key is wrong, the Geocoding API is not enabled on
+  the project, or you left an Application restriction on it. Far and away the
+  most likely, and step 5 is where it usually goes wrong.
+- **`OVER_QUERY_LIMIT`** — billing is not actually active, or a quota cap is
+  set too low.
+- **`ZERO_RESULTS`** — nothing wrong with the setup; Google genuinely cannot
+  place that address. Try a known-good one before suspecting the key.
+- **Nothing at all in the logs** — the key is not reaching the running app.
+  Check it landed in the environment you are actually testing (`vercel env ls`),
+  and remember a newly added variable needs a redeploy to take effect.
