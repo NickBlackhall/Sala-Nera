@@ -19,10 +19,10 @@ The full set, edited and delivered in MLS and full resolution.
 
 | Property size | Price |
 |---|---|
-| 0–1,999 sq ft | $275 |
-| 2,000–3,499 sq ft | $350 |
-| 3,500–4,999 sq ft | $450 |
-| 5,000–7,499 sq ft | $575 |
+| 0–1,999 sq ft | $999 |
+| 2,000–3,499 sq ft | $999 |
+| 3,500–4,999 sq ft | $999 |
+| 5,000–7,499 sq ft | $999 |
 | 7,500+ sq ft | Quoted after a walkthrough |
 
 ### Cinematic property film
@@ -31,8 +31,8 @@ A 60–90 second film, scored and colour graded.
 
 | Property size | Price |
 |---|---|
-| 0–3,499 sq ft | $650 |
-| 3,500–6,999 sq ft | $850 |
+| 0–3,499 sq ft | $999 |
+| 3,500–6,999 sq ft | $999 |
 | 7,000+ sq ft | Quoted after a walkthrough |
 
 ## Add-ons
@@ -41,37 +41,37 @@ A 60–90 second film, scored and colour graded.
 
 Licensed drone coverage of the property and its setting.
 
-**$175**, flat.
+**$999**, flat.
 
 ### Aerial video
 
 Moving aerial footage, cut into the film or delivered on its own.
 
-**$250**, flat.
+**$999**, flat.
 
 ### Twilight session
 
 A second visit at dusk — the shot that sells the listing.
 
-**$225**, flat.
+**$999**, flat.
 
 ### Floor plan
 
 Measured 2D plan, MLS ready.
 
-**$150**, flat.
+**$999**, flat.
 
 ### 3D walkthrough tour
 
 Navigable tour, hosted and linkable.
 
-**$275**, flat.
+**$999**, flat.
 
 ### Community & lifestyle
 
 The neighbourhood, amenities, and what living there looks like.
 
-**$200**, flat.
+**$999**, flat.
 
 ### Virtual staging
 
@@ -83,7 +83,7 @@ Furnished digitally, per image.
 
 Everything delivered by 9am the day after the shoot.
 
-**$150**, flat.
+**$999**, flat.
 
 ## Rules
 

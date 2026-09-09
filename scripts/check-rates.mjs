@@ -80,8 +80,25 @@ if (quotedId && flat) {
 check('unknown ids drop out', quote(3000, ['not-a-service']).lines.length, 0);
 check('duplicate ids count once', quote(3000, [flat.id, flat.id]).lines.length, 1);
 
+/**
+ * A boundary check can only catch a bug when the two bands either side of the
+ * edge cost different amounts. While the rate card is all placeholders they do
+ * not, so the checks above pass without proving anything — say so rather than
+ * report a green run that means nothing.
+ */
+const tieredPrices = SERVICES.flatMap((s) =>
+  s.pricing.kind === 'tiered' ? s.pricing.tiers.map((t) => t.price).filter((p) => p !== null) : [],
+);
+const vacuous = new Set(tieredPrices).size <= 1;
+
 if (failures === 0) {
   console.log('Pricing matches the rate card, including every tier boundary.');
+  if (vacuous) {
+    console.log(
+      '\nNote: every tier currently costs the same, so the boundary checks cannot\n' +
+        'fail. They prove nothing until real rates land in lib/rates.ts.',
+    );
+  }
 } else {
   console.error(`\n${failures} pricing check(s) failed.`);
   process.exit(1);

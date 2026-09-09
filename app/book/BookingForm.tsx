@@ -280,8 +280,10 @@ export default function BookingForm() {
 
       {RATES_ARE_PLACEHOLDER && (
         <p className="bk-placeholder" role="note">
-          <strong>Indicative only.</strong> These figures are placeholders while the rate card is
-          finalised — your real quote comes back with our reply.
+          <strong>Placeholder pricing — not our rates.</strong> Every figure on this page is a
+          stand-in while the rate card is being finalised, which is why they are all the same
+          number. Nothing here is a quote. Send the form and we&rsquo;ll come back with real
+          pricing for the property.
         </p>
       )}
 

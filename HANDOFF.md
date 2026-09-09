@@ -151,11 +151,22 @@ out. Either drop the script or point it at ESLint directly.
 `/book` is live in the codebase: a five-step form that prices the shoot as an
 agent fills it in, then emails Nick a complete, machine-readable brief.
 
-**The one thing outstanding is the rates.** `lib/rates.ts` holds placeholder
-numbers with `RATES_ARE_PLACEHOLDER = true`. While that flag is true the form
-shows a visible "indicative only" notice, and every booking email carries a
-warning line. Replace the numbers, flip the flag to false, run `npm run
-rates:doc`, and both disappear on their own.
+**The one thing outstanding is the rates.** Every price in `lib/rates.ts` is
+`999`, on purpose: a uniform absurd number cannot be mistaken for real pricing,
+where a plausible one could. `RATES_ARE_PLACEHOLDER = true` alongside it, so the
+form carries a "placeholder pricing — not our rates" notice and every booking
+email gets a warning line. Replace the numbers, flip the flag to false, run
+`npm run rates:doc`, and all of that disappears on its own.
+
+Nick asked for it this way after being told the site was about to go public with
+invented prices on it; he is not worried about traffic yet, since nobody knows
+the site exists.
+
+One cost to be aware of: while every tier costs the same, the tier-boundary
+checks in `scripts/check-rates.mjs` cannot fail — every band agrees, so they
+pass without proving anything. The script prints a note saying so on every run.
+Real numbers restore its teeth, and it has been confirmed to catch an off-by-one
+once the bands differ.
 
 ### Where the guide was followed, and where it was not
 

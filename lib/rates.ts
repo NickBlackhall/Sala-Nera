@@ -1,10 +1,17 @@
 /**
  * The rate card. One source of truth for every price the site quotes.
  *
- * ⚠️ THE NUMBERS BELOW ARE PLACEHOLDERS. Nick has not supplied real rates yet.
- * Replace them, then set RATES_ARE_PLACEHOLDER to false — the booking form
- * shows a visible "indicative only" banner until you do, so a wrong number can
- * never quietly become a quote someone holds you to.
+ * ⚠️ EVERY PRICE BELOW IS 999. That is deliberate, not a typo and not a real
+ * rate — a uniform absurd number cannot be mistaken for pricing, which a
+ * plausible-looking one could. Nick has not supplied real rates yet.
+ *
+ * Replace them, then set RATES_ARE_PLACEHOLDER to false — until you do, the
+ * booking form says so on the page and every booking email carries a warning
+ * line, so a placeholder can never quietly become a quote someone holds you to.
+ *
+ * One side effect to know about: while every tier costs the same, the boundary
+ * checks in scripts/check-rates.mjs cannot fail, because every band agrees.
+ * The script says so when it runs. Real numbers restore its teeth.
  *
  * Deliberately not `server-only`: the booking form prices the shoot live in the
  * browser from exactly the same data the server re-prices it from. Two rate
@@ -50,10 +57,10 @@ export const SERVICES: Service[] = [
     pricing: {
       kind: 'tiered',
       tiers: [
-        { maxSqft: 1999, price: 275 },
-        { maxSqft: 3499, price: 350 },
-        { maxSqft: 4999, price: 450 },
-        { maxSqft: 7499, price: 575 },
+        { maxSqft: 1999, price: 999 },
+        { maxSqft: 3499, price: 999 },
+        { maxSqft: 4999, price: 999 },
+        { maxSqft: 7499, price: 999 },
         { maxSqft: null, price: null }, // 7,500+ is quoted after a walkthrough
       ],
     },
@@ -66,8 +73,8 @@ export const SERVICES: Service[] = [
     pricing: {
       kind: 'tiered',
       tiers: [
-        { maxSqft: 3499, price: 650 },
-        { maxSqft: 6999, price: 850 },
+        { maxSqft: 3499, price: 999 },
+        { maxSqft: 6999, price: 999 },
         { maxSqft: null, price: null },
       ],
     },
@@ -77,42 +84,42 @@ export const SERVICES: Service[] = [
     name: 'Aerial stills',
     blurb: 'Licensed drone coverage of the property and its setting.',
     group: 'addon',
-    pricing: { kind: 'flat', price: 175 },
+    pricing: { kind: 'flat', price: 999 },
   },
   {
     id: 'drone-video',
     name: 'Aerial video',
     blurb: 'Moving aerial footage, cut into the film or delivered on its own.',
     group: 'addon',
-    pricing: { kind: 'flat', price: 250 },
+    pricing: { kind: 'flat', price: 999 },
   },
   {
     id: 'twilight',
     name: 'Twilight session',
     blurb: 'A second visit at dusk — the shot that sells the listing.',
     group: 'addon',
-    pricing: { kind: 'flat', price: 225 },
+    pricing: { kind: 'flat', price: 999 },
   },
   {
     id: 'floorplan',
     name: 'Floor plan',
     blurb: 'Measured 2D plan, MLS ready.',
     group: 'addon',
-    pricing: { kind: 'flat', price: 150 },
+    pricing: { kind: 'flat', price: 999 },
   },
   {
     id: 'tour-3d',
     name: '3D walkthrough tour',
     blurb: 'Navigable tour, hosted and linkable.',
     group: 'addon',
-    pricing: { kind: 'flat', price: 275 },
+    pricing: { kind: 'flat', price: 999 },
   },
   {
     id: 'community',
     name: 'Community & lifestyle',
     blurb: 'The neighbourhood, amenities, and what living there looks like.',
     group: 'addon',
-    pricing: { kind: 'flat', price: 200 },
+    pricing: { kind: 'flat', price: 999 },
   },
   {
     id: 'virtual-staging',
@@ -128,7 +135,7 @@ export const SERVICES: Service[] = [
     name: 'Next-morning delivery',
     blurb: 'Everything delivered by 9am the day after the shoot.',
     group: 'addon',
-    pricing: { kind: 'flat', price: 150 },
+    pricing: { kind: 'flat', price: 999 },
   },
 ];
 
