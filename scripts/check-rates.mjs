@@ -11,7 +11,8 @@
  */
 
 import { chosenLines, quote, travelLine } from '../lib/quote.ts';
-import { SERVICES, SERVICE_AREA_MILES, TRAVEL_BANDS } from '../lib/rates.ts';
+import { DEFAULT_RATE_CARD, SERVICES, SERVICE_AREA_MILES, TRAVEL_BANDS } from '../lib/rates.ts';
+import { validateRateCard } from '../lib/rate-card-validate.ts';
 
 let failures = 0;
 
@@ -130,6 +131,17 @@ check('inside the service area', travelLine(SERVICE_AREA_MILES)?.outOfArea, fals
 check('past the service area', travelLine(SERVICE_AREA_MILES + 1)?.outOfArea, true);
 check('out of area carries no price', travelLine(SERVICE_AREA_MILES + 1)?.amount, null);
 check('services are not', quote(3000, [flat.id]).lines[0].automatic, undefined);
+
+/**
+ * The same validator the editor runs before it will save anything, pointed at
+ * the card compiled into lib/rates.ts. Running it here is what stops the rules
+ * drifting apart: a card Nick could not save through the editor should not be
+ * one this repo ships either.
+ */
+for (const problem of validateRateCard(DEFAULT_RATE_CARD)) {
+  console.error(`FAIL  rate card invalid — ${problem.where}: ${problem.message}`);
+  failures += 1;
+}
 
 /**
  * A boundary check can only catch a bug when the two bands either side of the

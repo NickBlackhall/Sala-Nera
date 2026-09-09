@@ -48,6 +48,15 @@ export type Service = {
   /** Core services are the shoot itself; add-ons attach to it. */
   group: 'core' | 'addon';
   pricing: Pricing;
+  /**
+   * Retired: hidden from the booking form, still resolvable everywhere else.
+   *
+   * Services are never deleted. A past booking names the ids it was quoted
+   * under, and rates.md tells the invoicing automation to bill line items by
+   * exact name — so removing a service outright breaks the record of work
+   * already done. Retiring stops it being offered without rewriting history.
+   */
+  archived?: boolean;
 };
 
 export const SERVICES: Service[] = [

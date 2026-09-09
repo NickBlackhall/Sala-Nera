@@ -20,8 +20,9 @@ type TravelState = { status: 'idle' | 'checking' | 'ready' | 'unavailable'; mile
 
 const STEPS = ['Contact', 'Property', 'Services', 'Notes', 'Review'] as const;
 
-const CORE = SERVICES.filter((s) => s.group === 'core');
-const ADDONS = SERVICES.filter((s) => s.group === 'addon');
+const LIVE = SERVICES.filter((s) => !s.archived);
+const CORE = LIVE.filter((s) => s.group === 'core');
+const ADDONS = LIVE.filter((s) => s.group === 'addon');
 
 /** Today in the local timezone, as the date input wants it. */
 function today(): string {
