@@ -23,6 +23,8 @@
  * `npm run rates:doc` after editing so the two cannot drift.
  */
 
+import type { GeoPoint } from '@/lib/distance';
+
 export const RATES_ARE_PLACEHOLDER = true;
 
 /** Currency is USD throughout; amounts are whole dollars. */
@@ -140,13 +142,79 @@ export const SERVICES: Service[] = [
 ];
 
 /**
+ * Where "travel included" is measured from. Downtown Dallas, matching the
+ * travel note this file already carried before any distance pricing existed
+ * to enforce it — see HANDOFF.md. Straight-line distance, not drive time (see
+ * lib/distance.ts for why). Point this at your actual studio or home address
+ * instead if you'd rather anchor from there — it isn't wired to anything else.
+ */
+export const BASE_LOCATION: GeoPoint & { label: string } = {
+  label: 'downtown Dallas',
+  lat: 32.7767,
+  lng: -96.797,
+};
+
+/** Distance is in miles, straight-line from BASE_LOCATION. */
+export type DistanceBand = {
+  /** Inclusive upper bound in miles. null means "no ceiling". */
+  maxMiles: number | null;
+  /** null means this band is quoted individually rather than priced. */
+  surcharge: number | null;
+};
+
+/**
+ * $0 for the first band is real, already-stated policy, not a placeholder —
+ * it is the exact 30-mile figure this file used to carry as a sentence with
+ * nothing behind it. The $999 band is a placeholder, same as everywhere else
+ * in this file, and reads that way on the boundary check because 0 and 999
+ * are not the same number — this pair of bands has teeth already, before any
+ * real numbers land.
+ */
+export const TRAVEL_BANDS: DistanceBand[] = [
+  { maxMiles: 30, surcharge: 0 },
+  { maxMiles: 60, surcharge: 999 },
+  { maxMiles: null, surcharge: null }, // 60+ miles is quoted after contact
+];
+
+/** Turns TRAVEL_BANDS into the sentence RATE_NOTES shows, so the two cannot drift apart. */
+function describeTravelPolicy(): string {
+  const sentences: string[] = [];
+
+  /**
+   * The previous band's ceiling, which is the number every sentence after the
+   * first has to be phrased against. Miles are continuous, unlike square feet
+   * — so "from 31 miles" is wrong where "over 30 miles" is right: a property
+   * 30.4 miles out is past the included band, and the integer phrasing left
+   * it in a gap the price list never named.
+   */
+  let previousCeiling: number | null = null;
+
+  for (const band of TRAVEL_BANDS) {
+    const from = previousCeiling;
+    const fee = band.surcharge === null ? null : `$${band.surcharge.toLocaleString('en-US')}`;
+
+    if (from === null && band.surcharge === 0 && band.maxMiles !== null) {
+      sentences.push(`Travel is included within ${band.maxMiles} miles of ${BASE_LOCATION.label}.`);
+    } else if (band.surcharge === null) {
+      sentences.push(`Beyond ${from ?? 0} miles, travel is quoted before the shoot.`);
+    } else if (band.maxMiles === null) {
+      sentences.push(`Over ${from ?? 0} miles adds ${fee}.`);
+    } else {
+      sentences.push(`Over ${from ?? 0} and up to ${band.maxMiles} miles adds ${fee}.`);
+    }
+
+    if (band.maxMiles !== null) previousCeiling = band.maxMiles;
+  }
+
+  return sentences.join(' ');
+}
+
+/**
  * Rules that shape a quote but are not line items. Shown on the form so an
  * agent is never surprised by a number that was not on screen when they booked.
  */
 export const RATE_NOTES: string[] = [
-  'Travel is included within 30 miles of downtown Dallas. Beyond that it is quoted before the shoot.',
+  describeTravelPolicy(),
   'Properties over 7,500 sq ft are quoted after a short walkthrough call.',
   'Estimates assume one visit. A twilight session is a second visit and is priced as such.',
 ];
-
-export const TRAVEL_RADIUS_MILES = 30;

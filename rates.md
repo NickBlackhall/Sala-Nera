@@ -85,9 +85,19 @@ Everything delivered by 9am the day after the shoot.
 
 **$999**, flat.
 
+## Travel
+
+Straight-line distance from downtown Dallas.
+
+| Distance | Surcharge |
+|---|---|
+| Up to 30 miles | Included |
+| Over 30, up to 60 miles | $999 |
+| Over 60 miles | Quoted after contact |
+
 ## Rules
 
-- Travel is included within 30 miles of downtown Dallas. Beyond that it is quoted before the shoot.
+- Travel is included within 30 miles of downtown Dallas. Over 30 and up to 60 miles adds $999. Beyond 60 miles, travel is quoted before the shoot.
 - Properties over 7,500 sq ft are quoted after a short walkthrough call.
 - Estimates assume one visit. A twilight session is a second visit and is priced as such.
 

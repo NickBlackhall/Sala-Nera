@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { milesBetween } from '@/lib/distance';
 import { sendEmail } from '@/lib/email';
+import { geocodeAddress, hasGeocoding } from '@/lib/geocode';
 import { money, quote } from '@/lib/quote';
-import { RATES_ARE_PLACEHOLDER } from '@/lib/rates';
+import { BASE_LOCATION, RATES_ARE_PLACEHOLDER } from '@/lib/rates';
 import { record } from '@/lib/telemetry';
 
 /**
@@ -148,8 +150,15 @@ export async function POST(req: Request) {
       email, requestId: reqId });
     return json({ error: 'A property address is required.' }, 400);
   }
-  // The authoritative price. Unknown service ids are dropped inside quote().
-  const priced = quote(sqft, services);
+  // The address is re-geocoded here rather than trusted from the browser's
+  // travel-estimate call, same reasoning as sqft and services: a number that
+  // becomes an invoice line has to come from this route's own work, not from
+  // whatever the client claims. Geocoding failure is not a rejection — an
+  // address Google can't place still gets a booking, just without a priced
+  // travel line, same as a shoot with no square footage yet.
+  const point = hasGeocoding() ? await geocodeAddress(address) : null;
+  const distanceMiles = point ? milesBetween(BASE_LOCATION, point) : null;
+  const priced = quote(sqft, services, distanceMiles);
 
   // Checked against the *priced* lines rather than the submitted array: a
   // payload naming only ids that do not exist would otherwise pass a

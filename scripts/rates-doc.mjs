@@ -11,7 +11,7 @@
  */
 
 import { writeFileSync } from 'node:fs';
-import { SERVICES, RATE_NOTES, RATES_ARE_PLACEHOLDER } from '../lib/rates.ts';
+import { SERVICES, RATE_NOTES, RATES_ARE_PLACEHOLDER, TRAVEL_BANDS, BASE_LOCATION } from '../lib/rates.ts';
 
 const money = (n) => `$${n.toLocaleString('en-US')}`;
 
@@ -47,6 +47,27 @@ function section(service) {
 const core = SERVICES.filter((s) => s.group === 'core');
 const addons = SERVICES.filter((s) => s.group === 'addon');
 
+// Phrased against the previous band's ceiling, not an incremented floor —
+// miles are continuous, so "31–60" silently leaves 30.4 in a gap the table
+// never names. Matches describeTravelPolicy() in lib/rates.ts.
+function travelRows() {
+  const lines = [];
+  let previousCeiling = null;
+  for (const band of TRAVEL_BANDS) {
+    const range =
+      previousCeiling === null
+        ? `Up to ${band.maxMiles} miles`
+        : band.maxMiles === null
+          ? `Over ${previousCeiling} miles`
+          : `Over ${previousCeiling}, up to ${band.maxMiles} miles`;
+    const price =
+      band.surcharge === null ? 'Quoted after contact' : band.surcharge === 0 ? 'Included' : money(band.surcharge);
+    lines.push(`| ${range} | ${price} |`);
+    if (band.maxMiles !== null) previousCeiling = band.maxMiles;
+  }
+  return lines;
+}
+
 const doc = [
   '# Rate card — Sala Nera',
   '',
@@ -71,6 +92,14 @@ const doc = [
   '## Add-ons',
   '',
   ...addons.flatMap(section),
+  '## Travel',
+  '',
+  `Straight-line distance from ${BASE_LOCATION.label}.`,
+  '',
+  '| Distance | Surcharge |',
+  '|---|---|',
+  ...travelRows(),
+  '',
   '## Rules',
   '',
   ...RATE_NOTES.map((n) => `- ${n}`),

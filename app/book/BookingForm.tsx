@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { money, quote } from '@/lib/quote';
 import { RATES_ARE_PLACEHOLDER, RATE_NOTES, SERVICES } from '@/lib/rates';
 
@@ -15,6 +15,8 @@ import { RATES_ARE_PLACEHOLDER, RATE_NOTES, SERVICES } from '@/lib/rates';
  */
 
 type State = 'idle' | 'sending' | 'sent' | 'error';
+
+type TravelState = { status: 'idle' | 'checking' | 'ready' | 'unavailable'; miles: number | null };
 
 const STEPS = ['Contact', 'Property', 'Services', 'Notes', 'Review'] as const;
 
@@ -52,7 +54,78 @@ export default function BookingForm() {
     return Number.isFinite(n) && n > 0 ? n : null;
   }, [f.sqft]);
 
-  const estimate = useMemo(() => quote(sqftNumber, services), [sqftNumber, services]);
+  /**
+   * Sqft and services price instantly, client-side, from the same rate card
+   * the server re-checks against — no round trip needed, the whole card is
+   * already in this bundle. Distance can't work that way: placing an address
+   * needs a geocode, and the key that requires has to stay server-only. So
+   * this is the one piece of the estimate that comes back over the network,
+   * debounced as the address is typed — and once it does, it still goes
+   * through the exact same quote() everything else uses, not a second price
+   * computed on the server and trusted blindly.
+   */
+  const [travel, setTravel] = useState<TravelState>({ status: 'idle', miles: null });
+  const travelRequestId = useRef(0);
+
+  useEffect(() => {
+    // Bumped here rather than inside the timer, so *every* change to the
+    // address invalidates whatever is already in flight. Doing it in the
+    // timer left two ways for a stale answer to win: clearing the field
+    // returned early without invalidating anything (so the response for a
+    // since-deleted address still landed), and a reply arriving inside the
+    // debounce window still matched the id it was issued under.
+    const id = (travelRequestId.current += 1);
+    const current = () => travelRequestId.current === id;
+
+    const address = f.address.trim();
+
+    // A geocode is a paid call once a key exists, so don't spend one on a
+    // house number typed on its own. Nothing shorter than this is an address.
+    if (address.length < 8) {
+      setTravel({ status: 'idle', miles: null });
+      return;
+    }
+
+    setTravel((prev) => ({ ...prev, status: 'checking' }));
+
+    const timer = setTimeout(() => {
+      fetch('/api/booking/travel-estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (!current()) return;
+          setTravel(
+            data.unavailable ? { status: 'unavailable', miles: null } : { status: 'ready', miles: data.miles },
+          );
+        })
+        .catch(() => {
+          if (current()) setTravel({ status: 'unavailable', miles: null });
+        });
+    }, 600); // long enough to let a full address get typed before spending a geocode call on it
+
+    return () => clearTimeout(timer);
+  }, [f.address]);
+
+  const estimate = useMemo(
+    () => quote(sqftNumber, services, travel.status === 'ready' ? travel.miles : null),
+    [sqftNumber, services, travel.status, travel.miles],
+  );
+
+  /** What to say under the address field — mirrors the sqft field's live hint. */
+  const travelHint = useMemo(() => {
+    if (travel.status === 'checking') return 'Checking distance…';
+    if (travel.status === 'unavailable') return "We'll confirm travel when we follow up.";
+    if (travel.status !== 'ready') return null;
+
+    const line = estimate.lines.find((l) => l.id === 'travel');
+    if (!line) return null;
+    if (line.amount === 0) return 'Within our included travel radius.';
+    if (line.amount === null) return `Travel — ${line.note ?? 'quoted after contact'}.`;
+    return `Adds ${money(line.amount)} for travel.`;
+  }, [travel.status, estimate.lines]);
 
   function toggle(id: string) {
     setServices((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
@@ -180,6 +253,7 @@ export default function BookingForm() {
           <legend className="bk-legend">The property</legend>
           <div className="field">
             <label>Address<input type="text" value={f.address} onChange={set('address')} required placeholder="Street, city" /></label>
+            {travelHint && <p className="field-hint">{travelHint}</p>}
           </div>
           <div className="field">
             <label>

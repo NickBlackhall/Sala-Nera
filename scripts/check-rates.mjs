@@ -10,8 +10,8 @@
  *   npm run check:rates
  */
 
-import { quote } from '../lib/quote.ts';
-import { SERVICES } from '../lib/rates.ts';
+import { quote, travelLine } from '../lib/quote.ts';
+import { SERVICES, TRAVEL_BANDS } from '../lib/rates.ts';
 
 let failures = 0;
 
@@ -79,6 +79,38 @@ if (quotedId && flat) {
 // Ids that do not exist are dropped, not trusted.
 check('unknown ids drop out', quote(3000, ['not-a-service']).lines.length, 0);
 check('duplicate ids count once', quote(3000, [flat.id, flat.id]).lines.length, 1);
+
+// Same boundary logic as the sqft tiers above, for TRAVEL_BANDS. Unlike the
+// sqft tiers, the free-vs-surcharge edge (0 vs 999) is real even while every
+// dollar figure is a placeholder, so this block has teeth today.
+{
+  let floor = 0;
+  for (const band of TRAVEL_BANDS) {
+    check(`travel @ ${floor}mi (band floor)`, travelLine(floor)?.amount ?? null, band.surcharge);
+
+    if (band.maxMiles !== null) {
+      check(`travel @ ${band.maxMiles}mi (band ceiling)`, travelLine(band.maxMiles)?.amount ?? null, band.surcharge);
+      const next = TRAVEL_BANDS.find((b) => b.maxMiles === null || b.maxMiles > band.maxMiles);
+      check(
+        `travel @ ${band.maxMiles + 1}mi (over the edge)`,
+        travelLine(band.maxMiles + 1)?.amount ?? null,
+        next?.surcharge ?? null,
+      );
+      floor = band.maxMiles + 1;
+    }
+  }
+}
+check('travel with no distance known', travelLine(null), null);
+check('travel rejects a negative distance', travelLine(-1), null);
+
+// The travel line rides in quote().lines alongside the services, under the id
+// 'travel'. A service claiming that id would collide with it — the form looks
+// its card price up by id, so one would quietly render the other's number.
+check(
+  "no service uses the reserved id 'travel'",
+  SERVICES.some((s) => s.id === 'travel'),
+  false,
+);
 
 /**
  * A boundary check can only catch a bug when the two bands either side of the

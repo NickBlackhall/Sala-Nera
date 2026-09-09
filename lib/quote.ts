@@ -1,4 +1,4 @@
-import { SERVICES, type Service, type Tier } from '@/lib/rates';
+import { SERVICES, TRAVEL_BANDS, type DistanceBand, type Service, type Tier } from '@/lib/rates';
 
 /**
  * Turns "this square footage, these services" into a priced estimate.
@@ -68,12 +68,45 @@ function priceOne(service: Service, sqft: number | null): QuoteLine {
   }
 }
 
-export function quote(sqft: number | null, serviceIds: string[]): Quote {
+/** The band whose ceiling the distance fits under; the last band catches the rest. */
+function bandFor(bands: DistanceBand[], miles: number): DistanceBand {
+  return bands.find((b) => b.maxMiles === null || miles <= b.maxMiles) ?? bands[bands.length - 1];
+}
+
+/**
+ * The travel line, or null when there is nothing honest to say yet.
+ *
+ * "Distance unknown" is not the same claim as "no travel needed" — an
+ * ungeocoded address gets no line at all rather than one that quietly reads
+ * as free. Exported on its own (not folded silently into quote()) so
+ * app/api/booking/travel-estimate/route.ts can price a single address
+ * without also needing a square footage and a service list.
+ */
+export function travelLine(miles: number | null): QuoteLine | null {
+  if (miles === null || !Number.isFinite(miles) || miles < 0) return null;
+
+  const band = bandFor(TRAVEL_BANDS, miles);
+  return {
+    id: 'travel',
+    name: 'Travel',
+    amount: band.surcharge,
+    note: band.surcharge === null ? 'Quoted after contact' : band.surcharge === 0 ? 'Included' : undefined,
+  };
+}
+
+export function quote(
+  sqft: number | null,
+  serviceIds: string[],
+  distanceMiles: number | null = null,
+): Quote {
   // Iterate SERVICES rather than serviceIds so the order on an invoice always
   // matches the order on the form, and unknown ids submitted by hand are
   // dropped instead of trusted.
   const chosen = SERVICES.filter((s) => serviceIds.includes(s.id));
   const lines = chosen.map((s) => priceOne(s, sqft));
+
+  const travel = travelLine(distanceMiles);
+  if (travel) lines.push(travel);
 
   const tiered = chosen.find((s) => s.pricing.kind === 'tiered');
   const tierLabel =
