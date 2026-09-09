@@ -1,5 +1,31 @@
 # Sala Nera — Handoff (Sep 9 2026)
 
+## Start here — state at the end of the Sep 9 session
+
+Everything below is committed, pushed and deployed to salanera.com. Working
+tree clean. Last commit `8d41944`.
+
+**Open, in priority order:**
+
+1. **Nick's real rates.** Every price in `lib/rates.ts` is `999`. Replace them,
+   set `RATES_ARE_PLACEHOLDER = false`, run `npm run rates:doc`. The on-page
+   "placeholder pricing" notice and the warning line in booking emails both
+   disappear on their own. The tier-boundary checks in `npm run check:rates`
+   are vacuous until this happens, and the script says so on every run.
+2. **Nick was mid-test of the booking form** when the session ended. He had not
+   yet confirmed he receives the two emails (his lead + the client
+   confirmation). **First thing to do: check `/admin/activity`** — a delivered
+   booking shows `Delivered / Sent`. If it shows Discarded, the anti-spam rules
+   are still too tight; read the silent-discard section below before touching
+   them.
+3. **Cloudflare R2**, per the appendix at the bottom. Needs Nick present.
+4. Browser upload, then Stripe. Both still need Nick.
+
+**Do not re-investigate:** the three silent-discard bugs, the auto-submit bug,
+or why local email fails. All diagnosed, fixed and written up below.
+
+---
+
 This replaces two earlier handoff notes that had gone stale and actively
 misled the start of this session. Both described work that was already done.
 They are deleted; `git log` still has them if you want the archaeology.
