@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sendEmail } from '@/lib/email';
 import { money, quote } from '@/lib/quote';
 import { RATES_ARE_PLACEHOLDER } from '@/lib/rates';
+import { record } from '@/lib/telemetry';
 
 /**
  * Booking submissions.
@@ -64,6 +65,10 @@ export async function POST(req: Request) {
     return json({ error: 'Invalid request body' }, 400);
   }
 
+  // Read before any discard path, so a submission we throw away can still be
+  // tied back to the browser request that sent it.
+  const reqId = clean(body.requestId, 100).replace(/[^a-zA-Z0-9_-]/g, '');
+
   /**
    * Honeypot: answer 200 so the bot believes it succeeded and does not retry.
    * Logged, because every silent discard is indistinguishable from a lost lead
@@ -77,7 +82,11 @@ export async function POST(req: Request) {
    * sail through rather than be discarded.
    */
   if (clean(body.hp_ref, 50)) {
-    console.warn('booking: discarded, honeypot filled');
+    await record({
+      kind: 'booking', outcome: 'discarded', reason: 'honeypot',
+      detail: 'Hidden field was filled. If this is a real person, autofill is doing it.',
+      email: clean(body.email, 200), requestId: reqId,
+    });
     return json({ ok: true });
   }
 
@@ -102,7 +111,11 @@ export async function POST(req: Request) {
   if (startedAt) {
     const elapsed = Date.now() - startedAt;
     if (!Number.isFinite(elapsed) || elapsed < 500) {
-      console.warn('booking: discarded, submitted in %sms', elapsed);
+      await record({
+        kind: 'booking', outcome: 'discarded', reason: 'too_fast',
+        detail: `Submitted ${elapsed}ms after the form loaded; the floor is 500ms.`,
+        email: clean(body.email, 200), requestId: reqId,
+      });
       return json({ ok: true });
     }
   }
@@ -115,7 +128,7 @@ export async function POST(req: Request) {
   const accessNotes = clean(body.accessNotes, MAX.accessNotes);
   const notes = clean(body.notes, MAX.notes);
   const desiredDate = cleanInline(body.desiredDate, MAX.date);
-  const requestId = clean(body.requestId, 100).replace(/[^a-zA-Z0-9_-]/g, '');
+  const requestId = reqId;
 
   const sqftRaw = Number(body.sqft);
   const sqft =
@@ -126,9 +139,13 @@ export async function POST(req: Request) {
     : [];
 
   if (!name || !EMAIL_RE.test(email)) {
+    await record({ kind: 'booking', outcome: 'rejected', reason: 'missing_name_or_email',
+      email, requestId: reqId });
     return json({ error: 'A name and a valid email address are required.' }, 400);
   }
   if (!address) {
+    await record({ kind: 'booking', outcome: 'rejected', reason: 'missing_address',
+      email, requestId: reqId });
     return json({ error: 'A property address is required.' }, 400);
   }
   // The authoritative price. Unknown service ids are dropped inside quote().
@@ -138,6 +155,9 @@ export async function POST(req: Request) {
   // payload naming only ids that do not exist would otherwise pass a
   // length check and arrive as a booking for nothing, estimated at zero.
   if (priced.lines.length === 0) {
+    await record({ kind: 'booking', outcome: 'rejected', reason: 'no_valid_services',
+      detail: `Submitted service ids: ${services.join(', ') || '(none)'}`,
+      email, requestId: reqId });
     return json({ error: 'Choose at least one service.' }, 400);
   }
 
@@ -149,6 +169,9 @@ export async function POST(req: Request) {
     console.error('booking: missing env vars', {
       hasKey: !!RESEND_API_KEY, hasNotify: !!NOTIFY_EMAIL, hasFrom: !!FROM_EMAIL,
     });
+    await record({ kind: 'booking', outcome: 'failed', reason: 'not_configured',
+      detail: 'RESEND_API_KEY, NOTIFY_EMAIL or FROM_EMAIL is missing from the environment.',
+      email, requestId: reqId });
     return json({ error: 'not_configured' }, 500);
   }
 
@@ -213,11 +236,17 @@ export async function POST(req: Request) {
     });
 
     if (!r.ok) {
-      console.error('booking: resend rejected', r.status, await r.text());
+      const body = await r.text();
+      console.error('booking: resend rejected', r.status, body);
+      await record({ kind: 'booking', outcome: 'failed', reason: 'resend_rejected',
+        detail: `Resend answered ${r.status}: ${body.slice(0, 300)}`,
+        email, requestId: reqId });
       return json({ error: 'send_failed' }, 502);
     }
   } catch (err) {
     console.error('booking: send threw', err);
+    await record({ kind: 'booking', outcome: 'failed', reason: 'send_threw',
+      detail: String(err).slice(0, 300), email, requestId: reqId });
     return json({ error: 'send_failed' }, 502);
   }
 
@@ -236,11 +265,16 @@ export async function POST(req: Request) {
     text: clientConfirmation({ name, address, desiredDate, priced }),
   });
 
-  if (!confirmed) {
-    // Worth knowing about: the agent is now waiting on a confirmation that
-    // never arrived, even though Nick has the booking.
-    console.error('booking: client confirmation failed to send to', email);
-  }
+  await record({
+    kind: 'booking',
+    outcome: confirmed ? 'ok' : 'failed',
+    reason: confirmed ? 'sent' : 'confirmation_failed',
+    detail: confirmed
+      ? `${address} — ${priced.lines.length} service(s), ${money(priced.total)}. Both emails sent.`
+      : `${address} — the lead reached Nick, but the client's confirmation did not send.`,
+    email,
+    requestId: reqId,
+  });
 
   return json({ ok: true });
 }

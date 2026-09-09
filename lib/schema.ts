@@ -96,6 +96,36 @@ export const downloads = pgTable(
   (t) => [index('downloads_listing_idx').on(t.listingId), index('downloads_at_idx').on(t.at)],
 );
 
+/**
+ * What happened, when, and why — the thing that was missing the day three
+ * separate anti-spam rules threw away real bookings behind a success screen.
+ *
+ * Deliberately not foreign-keyed to anything. An event must survive the record
+ * it describes being deleted, and must be writable when the thing it is
+ * reporting on is precisely that a record could not be created.
+ */
+export const events = pgTable(
+  'events',
+  {
+    id: serial('id').primaryKey(),
+    at: timestamp('at', { withTimezone: true }).defaultNow().notNull(),
+    /** Which part of the system: 'booking' | 'inquiry' | 'download' | 'auth'. */
+    kind: text('kind').notNull(),
+    /** 'ok' | 'discarded' | 'rejected' | 'failed'. See lib/telemetry.ts. */
+    outcome: text('outcome').notNull(),
+    /** Short machine-readable cause, e.g. 'honeypot', 'too_fast', 'resend_rejected'. */
+    reason: text('reason'),
+    /** One line a human can read without decoding anything. */
+    detail: text('detail'),
+    /** Who it concerned, when there is a who. */
+    email: text('email'),
+    /** Ties an event to the browser request that caused it. */
+    requestId: text('request_id'),
+  },
+  (t) => [index('events_at_idx').on(t.at), index('events_kind_idx').on(t.kind, t.at)],
+);
+
 export type Client = typeof clients.$inferSelect;
 export type Listing = typeof listings.$inferSelect;
 export type Media = typeof media.$inferSelect;
+export type Event = typeof events.$inferSelect;

@@ -31,6 +31,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <nav className="admin-nav">
             <Link href="/admin">Listings</Link>
             <Link href="/admin/clients">Clients</Link>
+            <Link href="/admin/activity">Activity</Link>
             <Link href="/portal">Client view</Link>
             <form action="/api/portal/logout" method="post">
               <button type="submit">Sign out</button>

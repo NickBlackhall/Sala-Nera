@@ -1,8 +1,9 @@
 import 'server-only';
 
-import { asc, desc, eq, sql } from 'drizzle-orm';
+import { asc, count, desc, eq, gte, sql } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
-import { clients, downloads, listings, media } from '@/lib/schema';
+import { clients, downloads, events, listings, media } from '@/lib/schema';
+import type { Event } from '@/lib/schema';
 import type { Client, Listing, Media } from '@/lib/schema';
 
 /**
@@ -185,4 +186,26 @@ export async function emailIsTaken(email: string, exceptId?: number): Promise<bo
     .where(eq(clients.email, email.toLowerCase()))
     .limit(1);
   return row !== undefined && row.id !== exceptId;
+}
+
+/**
+ * The diagnostics feed. Newest first, capped — this is a "what just happened"
+ * view for chasing a specific complaint, not an analytics warehouse.
+ */
+export async function getRecentEvents(limit = 200): Promise<Event[]> {
+  const db = getDatabase();
+  return db.select().from(events).orderBy(desc(events.at), desc(events.id)).limit(limit);
+}
+
+/** Counts per outcome over a window, so a bad day is visible at a glance. */
+export async function getEventSummary(hours = 24): Promise<
+  { outcome: string; kind: string; n: number }[]
+> {
+  const db = getDatabase();
+  const since = new Date(Date.now() - hours * 3600_000);
+  return db
+    .select({ outcome: events.outcome, kind: events.kind, n: count() })
+    .from(events)
+    .where(gte(events.at, since))
+    .groupBy(events.outcome, events.kind);
 }

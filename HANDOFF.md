@@ -284,6 +284,47 @@ Production and Development before cleaning up.
 
 ---
 
+## Telemetry — /admin/activity
+
+Every booking, inquiry and download now writes an event saying what happened
+and why. Built after the silent-discard day below, on the principle that the
+failures which hurt are the ones nothing records.
+
+- **`lib/telemetry.ts`** — `record()`. Console line first and unconditionally,
+  then a row in the `events` table. It never throws and never blocks: a booking
+  must not fail because we could not write down that it happened.
+- **`events` table** — no foreign keys on purpose. An event has to outlive what
+  it describes, and has to be writable when the thing being reported is that no
+  record could be created.
+- **`/admin/activity`** — the page to actually look at, linked in the admin nav.
+  Counts for the last 24 hours, then the last 200 events with plain-English
+  reasons.
+
+**Read the Discarded column first.** Anything there is a submission somebody
+believes they sent and Nick never received. If those ever look like real people
+rather than bots, the anti-spam rules are too tight — which is exactly what
+happened, three times, on the day this was built.
+
+Four outcomes: `ok` (worked), `discarded` (thrown away on bot suspicion — the
+dangerous one), `rejected` (refused and the sender was told), `failed`
+(something broke).
+
+The `events` table is unbounded. At current volume that is irrelevant, but if it
+ever gets large the fix is a delete of rows older than N days, not a rewrite.
+
+**Not added, deliberately:** any third-party analytics. Vercel Analytics or
+similar would need a line in the privacy policy and is a product decision, not
+a debugging one. Ask Nick before adding page tracking.
+
+### A CSS trap this uncovered
+
+`.admin-muted` sets `display:block`. That is right for the spans it was written
+for and silently destroys table layout the moment it lands on a `<td>` — cells
+stop sharing a row and columns drift out of alignment, with nothing in the
+console. Use `.ev-dim` for muted cells. There is now a
+`.admin-table td.admin-muted{display:table-cell}` guard, but the real lesson is
+that a display-setting utility class is a landmine in a table.
+
 ## What links to what
 
 Worth knowing before adding a page, because two have already been built with no

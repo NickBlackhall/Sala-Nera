@@ -3,6 +3,7 @@ import { authorizeListing, recordDownloads } from '@/lib/downloads';
 import { DEMO_MEDIA, IS_DEMO } from '@/lib/demo';
 import { getMediaWithListing } from '@/lib/portal-queries';
 import { DOWNLOAD_TTL, mediaUrl } from '@/lib/storage';
+import { record } from '@/lib/telemetry';
 
 /**
  * One file, by media id.
@@ -48,6 +49,14 @@ export async function GET(
   const auth = await authorizeListing(row?.listing ?? null);
 
   if (!auth.ok) {
+    // Both refusals are worth seeing: 'locked' is usually a client who has not
+    // paid yet, 'missing' can be a stale link — or someone poking at ids.
+    await record({
+      kind: 'download',
+      outcome: 'rejected',
+      reason: auth.reason,
+      detail: `Media ${mediaId}${row ? ` on ${row.listing.address}` : ' (not found)'}`,
+    });
     if (auth.reason === 'locked') {
       return NextResponse.json(
         { error: 'This gallery is awaiting payment.' },
@@ -63,6 +72,11 @@ export async function GET(
   // the download is out of our hands, and a row written on a request we did not
   // authorise would be worse than a row for a download the client abandoned.
   await recordDownloads(auth.listing, [item], auth.session.email);
+  await record({
+    kind: 'download', outcome: 'ok', reason: 'single',
+    detail: `${item.filename} from ${auth.listing.address}`,
+    email: auth.session.email,
+  });
 
   return NextResponse.redirect(
     absolute(mediaUrl(item.r2Key, { expiresIn: DOWNLOAD_TTL, downloadAs: item.filename }), request),

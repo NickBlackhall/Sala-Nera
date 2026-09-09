@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { record } from '@/lib/telemetry';
 
 const MAX = { name: 120, email: 200, phone: 40, property: 200, details: 4000 } as const;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -45,8 +46,14 @@ export async function POST(req: Request) {
   // silent discard is indistinguishable from a lost lead without a trace.
   // Named `hp_ref`, not `company` — see the longer note in the booking route.
   // Browser autofill was filling the old field and binning real inquiries.
+  const reqId = clean(body.requestId, 100).replace(/[^a-zA-Z0-9_-]/g, '');
+
   if (clean(body.hp_ref, 50)) {
-    console.warn('inquiry: discarded, honeypot filled');
+    await record({
+      kind: 'inquiry', outcome: 'discarded', reason: 'honeypot',
+      detail: 'Hidden field was filled. If this is a real person, autofill is doing it.',
+      email: clean(body.email, 200), requestId: reqId,
+    });
     return json({ ok: true });
   }
 
@@ -58,7 +65,11 @@ export async function POST(req: Request) {
   if (startedAt) {
     const elapsed = Date.now() - startedAt;
     if (!Number.isFinite(elapsed) || elapsed < 500) {
-      console.warn('inquiry: discarded, submitted in %sms', elapsed);
+      await record({
+        kind: 'inquiry', outcome: 'discarded', reason: 'too_fast',
+        detail: `Submitted ${elapsed}ms after the form loaded; the floor is 500ms.`,
+        email: clean(body.email, 200), requestId: reqId,
+      });
       return json({ ok: true });
     }
   }
@@ -68,9 +79,11 @@ export async function POST(req: Request) {
   const phone = cleanInline(body.phone, MAX.phone);
   const property = cleanInline(body.property, MAX.property);
   const details = clean(body.details, MAX.details);
-  const requestId = clean(body.requestId, 100).replace(/[^a-zA-Z0-9_-]/g, '');
+  const requestId = reqId;
 
   if (!name || !EMAIL_RE.test(email)) {
+    await record({ kind: 'inquiry', outcome: 'rejected', reason: 'missing_name_or_email',
+      email, requestId: reqId });
     return json({ error: 'A name and a valid email address are required.' }, 400);
   }
 
@@ -79,6 +92,9 @@ export async function POST(req: Request) {
     console.error('inquiry: missing env vars', {
       hasKey: !!RESEND_API_KEY, hasNotify: !!NOTIFY_EMAIL, hasFrom: !!FROM_EMAIL,
     });
+    await record({ kind: 'inquiry', outcome: 'failed', reason: 'not_configured',
+      detail: 'RESEND_API_KEY, NOTIFY_EMAIL or FROM_EMAIL is missing from the environment.',
+      email, requestId: reqId });
     return json({ error: 'not_configured' }, 500);
   }
 
@@ -114,12 +130,20 @@ export async function POST(req: Request) {
     });
 
     if (!r.ok) {
-      console.error('inquiry: resend rejected', r.status, await r.text());
+      const detail = await r.text();
+      console.error('inquiry: resend rejected', r.status, detail);
+      await record({ kind: 'inquiry', outcome: 'failed', reason: 'resend_rejected',
+        detail: `Resend answered ${r.status}: ${detail.slice(0, 300)}`,
+        email, requestId: reqId });
       return json({ error: 'send_failed' }, 502);
     }
+    await record({ kind: 'inquiry', outcome: 'ok', reason: 'sent',
+      detail: property || name, email, requestId: reqId });
     return json({ ok: true });
   } catch (err) {
     console.error('inquiry: send threw', err);
+    await record({ kind: 'inquiry', outcome: 'failed', reason: 'send_threw',
+      detail: String(err).slice(0, 300), email, requestId: reqId });
     return json({ error: 'send_failed' }, 502);
   }
 }

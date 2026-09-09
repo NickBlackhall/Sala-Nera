@@ -3,6 +3,7 @@ import { authorizeListing, recordDownloads } from '@/lib/downloads';
 import { DEMO_LISTINGS, DEMO_MEDIA, IS_DEMO } from '@/lib/demo';
 import { getListingBySlug, getMediaForListing } from '@/lib/portal-queries';
 import { DOWNLOAD_TTL, mediaUrl } from '@/lib/storage';
+import { record } from '@/lib/telemetry';
 
 /**
  * A selection, or a whole listing: POST { slug, ids? }, get back one signed URL
@@ -60,6 +61,10 @@ export async function POST(request: Request) {
   const auth = await authorizeListing(bundle?.listing ?? null);
 
   if (!auth.ok) {
+    await record({
+      kind: 'download', outcome: 'rejected', reason: auth.reason,
+      detail: `Listing "${slug}"${requested?.length ? `, ${requested.length} file(s) selected` : ', whole gallery'}`,
+    });
     if (auth.reason === 'locked') {
       return NextResponse.json(
         { error: 'This gallery is awaiting payment.' },
@@ -75,6 +80,12 @@ export async function POST(request: Request) {
   }
 
   await recordDownloads(auth.listing, items, auth.session.email);
+  await record({
+    kind: 'download', outcome: 'ok',
+    reason: requested?.length ? 'selection' : 'whole_gallery',
+    detail: `${items.length} file(s) from ${auth.listing.address}`,
+    email: auth.session.email,
+  });
 
   return NextResponse.json({
     files: items.map((item) => ({

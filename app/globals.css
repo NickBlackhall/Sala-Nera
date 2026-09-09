@@ -319,3 +319,25 @@ section{position:relative;border-top:1px solid var(--line)}
   .bk-nav .btn{flex:1;text-align:center}
   .bk-total-v{font-size:1.35rem}
 }
+
+/* ---- Admin activity / diagnostics ---- */
+.admin-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:26px}
+.admin-stat{border:1px solid var(--line);padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.admin-stat--warn{border-color:var(--ember)}
+.admin-stat-n{font-family:var(--font-display);font-size:1.9rem;font-weight:600;letter-spacing:-.02em;line-height:1}
+.admin-stat--warn .admin-stat-n{color:var(--ember)}
+.admin-stat-k{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+/* Muted table cells need their own class: .admin-muted sets display:block,
+   which is right for the spans it was written for and silently destroys table
+   layout when put on a <td>. The guard below catches that misuse anywhere. */
+.admin-table td.admin-muted{display:table-cell}
+.ev-dim{color:var(--muted);font-size:.82rem}
+.admin-events td{vertical-align:top;font-size:.85rem}
+.admin-ev-detail{max-width:38ch}
+.ev-badge{display:inline-block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border:1px solid var(--line);white-space:nowrap}
+.ev-badge--ok{color:var(--muted)}
+.ev-badge--discarded{color:var(--ember);border-color:var(--ember)}
+.ev-badge--failed{color:var(--ember);border-color:var(--ember);background:rgba(212,85,47,.12)}
+.ev-badge--rejected{color:var(--muted)}
+.ev--discarded td,.ev--failed td{background:rgba(212,85,47,.05)}
+@media(max-width:640px){.admin-stats{grid-template-columns:1fr 1fr}}

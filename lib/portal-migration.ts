@@ -80,4 +80,19 @@ export const PORTAL_MIGRATION_STATEMENTS = [
   )`,
   `CREATE INDEX IF NOT EXISTS "downloads_listing_idx" ON "downloads" USING btree ("listing_id")`,
   `CREATE INDEX IF NOT EXISTS "downloads_at_idx" ON "downloads" USING btree ("at")`,
+  // Diagnostics. No foreign keys on purpose: an event must outlive whatever it
+  // describes, and must be writable when the thing being reported is that a
+  // record could not be created at all.
+  `CREATE TABLE IF NOT EXISTS "events" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "at" timestamp with time zone DEFAULT now() NOT NULL,
+    "kind" text NOT NULL,
+    "outcome" text NOT NULL,
+    "reason" text,
+    "detail" text,
+    "email" text,
+    "request_id" text
+  )`,
+  `CREATE INDEX IF NOT EXISTS "events_at_idx" ON "events" USING btree ("at")`,
+  `CREATE INDEX IF NOT EXISTS "events_kind_idx" ON "events" USING btree ("kind", "at")`,
 ] as const;
