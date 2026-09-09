@@ -71,6 +71,7 @@ export default function Nav({ solid = false }: { solid?: boolean }) {
             <a href="/work" aria-current={pathname === '/work' ? 'page' : undefined} onClick={() => setOpen(false)}>Work</a>
             <a href="/#services" onClick={() => setOpen(false)}>Services</a>
             <a href="/contact" aria-current={pathname === '/contact' ? 'page' : undefined} onClick={() => setOpen(false)}>Contact</a>
+            <a className="nav-cta" href="/book" aria-current={pathname === '/book' ? 'page' : undefined} onClick={() => setOpen(false)}>Book a Shoot</a>
           </div>
 
           <button

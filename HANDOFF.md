@@ -34,6 +34,9 @@ everything was ported and verified, see "Branches" below.
 | Mobile layout | All 7 portal/admin pages fit 390px, no sideways scroll | Playwright measurement |
 | Download authorisation | Enforced server-side, 8 cases probed | Live requests, see below |
 | Media bytes | Still world-readable local paths | Not yet on R2 |
+| Booking form `/book` | Built; 5 steps, live estimate | Measured at 390px and 1280px |
+| Booking rates | **Placeholders**, flag still true | `lib/rates.ts` |
+| Booking validation | 9 rejection paths probed | Live requests |
 
 The two seeded listings are `/portal/preston-hollow-lane` (locked) and
 `/portal/rockwall-shores-drive` (unlocked), both owned by the demo client
@@ -143,6 +146,78 @@ under ~640px would fix it. Nick was told about it and did not ask for it yet.
 Also stale: `npm run lint` calls `next lint`, which Next 16 removed. It errors
 out. Either drop the script or point it at ESLint directly.
 
+## The booking form — built, priced with placeholders
+
+`/book` is live in the codebase: a five-step form that prices the shoot as an
+agent fills it in, then emails Nick a complete, machine-readable brief.
+
+**The one thing outstanding is the rates.** `lib/rates.ts` holds placeholder
+numbers with `RATES_ARE_PLACEHOLDER = true`. While that flag is true the form
+shows a visible "indicative only" notice, and every booking email carries a
+warning line. Replace the numbers, flip the flag to false, run `npm run
+rates:doc`, and both disappear on their own.
+
+### Where the guide was followed, and where it was not
+
+`reference/The Booking Form System.pdf` specifies **Formspree**, on the
+reasoning that you have "no server, no database". That has not been true of this
+project for a while. The form posts to `app/api/booking/route.ts` instead —
+Nick's own endpoint, carrying the same hardening as the inquiry route (honeypot,
+timing gate, origin check, size caps, idempotency key). It still emails him, so
+the Gmail-label automations the guide describes work unchanged; it just does not
+hand a third party the front door, and it leaves the option of talking to the
+database open. Everything else follows the guide: five steps in the order it
+gives, sqft driving the tier, add-ons as one-tap cards, per-image work marked
+"quoted after", and the desired date labelled a request rather than a booking.
+
+### One source of truth for pricing
+
+`lib/rates.ts` is it. Two things read it and they must never disagree:
+
+- The **browser** prices live as the agent types.
+- The **server** re-prices the submission in `app/api/booking/route.ts` before
+  the email goes out, and *its* number is the one sent. The browser's figure is
+  treated as a claim — a form can be edited in a devtools console, and this
+  number becomes an invoice. When they differ the email says so rather than
+  rejecting the booking, because the usual cause is the rate card changing while
+  someone had the form open.
+
+`rates.md` is **generated** from `lib/rates.ts` by `npm run rates:doc`. It exists
+because the invoicing automation reads plain English while the site needs typed
+data — and two hand-maintained copies is exactly how a price ends up right on
+the site and wrong on an invoice. Do not edit `rates.md` by hand.
+
+### Verified
+
+- `npm run check:rates` checks every tier boundary — the square foot either side
+  of each band edge, plus flat items, quoted-after items, unknown ids and
+  duplicates. It reads the edges out of the rate card rather than hard-coding
+  dollars, so it keeps working once Nick's real numbers land. It was confirmed
+  to have teeth by breaking `<=` to `<` and watching six checks fail.
+- Every rejection path probed live: missing name, bad email, missing address, no
+  services, wrong content-type, foreign origin, honeypot filled, submitted
+  instantly, and a three-hour-old tab. The three bot cases answer `200 {ok:true}`
+  so a bot believes it worked and does not retry.
+- A submission naming **only** service ids that do not exist used to pass the
+  "at least one service" check and arrive as a booking for nothing at $0. It is
+  now checked against the *priced* lines, not the submitted array.
+- Measured in a real browser at 390px and 1280px: no horizontal overflow on any
+  of the five steps, and the live estimate computes correctly end to end
+  ($350 photography at 3,200 sq ft + $175 aerial = $525, tier label right).
+
+### Still to do here
+
+- **Nick's real rates**, as above.
+- **No end-to-end email test has been run** — see the gotcha below about why
+  that cannot be done locally. Worth one real submission from production once
+  the rates are in, which is also step 1 of the guide's own test procedure.
+- The guide's two Claude scheduled tasks (booking → calendar hold, booking →
+  draft Stripe invoice) are not set up. The email format is already shaped for
+  them: stable field labels, `New Booking Request` in the subject, and the
+  address first so the invoice memo can start with it.
+
+---
+
 ## Branches — one command still outstanding
 
 `main` is current. The other three on GitHub are dead:
@@ -212,6 +287,14 @@ not a project dependency, so a script importing it needs a temporary symlink
 from `node_modules/` into the npx cache — remove it afterward. To reach
 `/admin` in a headless browser, mint a session cookie directly with `jose`
 using `AUTH_SECRET` and `ADMIN_EMAILS` rather than driving the email flow.
+
+**Email cannot be tested locally, and the error blames the wrong thing.**
+`vercel env pull` redacts anything marked sensitive, writing the literal string
+`[SENSITIVE]` as the value. So `RESEND_API_KEY` locally *is* the text
+`[SENSITIVE]`, and Resend answers `400 API key is invalid` — which reads exactly
+like a real broken key and sent this session looking for a production outage
+that did not exist. Production is fine; Vercel injects the true value at
+runtime. Any email path can only be tested from a deployment.
 
 **`.env.local` goes stale.** It is a snapshot pulled from Vercel, not a live
 link. It was pulled 19 minutes before the commit that fixed the dead mailbox,

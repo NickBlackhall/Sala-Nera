@@ -1,0 +1,88 @@
+/**
+ * Checks the pricing engine against the rate card, with the emphasis on tier
+ * boundaries — the square foot either side of a band edge is where a pricing
+ * bug actually lives, and it is the kind that quietly undercharges for months.
+ *
+ * These assertions read tier edges out of lib/rates.ts rather than hard-coding
+ * dollar amounts, so they keep working when Nick replaces the placeholder
+ * numbers with his real ones.
+ *
+ *   npm run check:rates
+ */
+
+import { quote } from '../lib/quote.ts';
+import { SERVICES } from '../lib/rates.ts';
+
+let failures = 0;
+
+function check(label, actual, expected) {
+  const a = JSON.stringify(actual);
+  const e = JSON.stringify(expected);
+  if (a === e) return;
+  console.error(`FAIL  ${label}\n        expected ${e}\n        actual   ${a}`);
+  failures += 1;
+}
+
+const amountFor = (sqft, id) => quote(sqft, [id]).lines[0]?.amount ?? null;
+
+for (const service of SERVICES) {
+  if (service.pricing.kind !== 'tiered') continue;
+
+  let floor = 0;
+  for (const tier of service.pricing.tiers) {
+    // The bottom of every band prices as that band.
+    check(`${service.id} @ ${floor} (band floor)`, amountFor(floor || 1, service.id), tier.price);
+
+    if (tier.maxSqft !== null) {
+      // The exact ceiling belongs to this band...
+      check(`${service.id} @ ${tier.maxSqft} (band ceiling)`, amountFor(tier.maxSqft, service.id), tier.price);
+      // ...and one square foot more does not.
+      const next = service.pricing.tiers.find(
+        (t) => t.maxSqft === null || t.maxSqft > tier.maxSqft,
+      );
+      check(
+        `${service.id} @ ${tier.maxSqft + 1} (over the edge)`,
+        amountFor(tier.maxSqft + 1, service.id),
+        next?.price ?? null,
+      );
+      floor = tier.maxSqft + 1;
+    }
+  }
+
+  // No square footage means no tier, and an honest "unpriced" rather than a
+  // guess at the cheapest band.
+  check(`${service.id} with no sqft`, amountFor(null, service.id), null);
+  check(`${service.id} with sqft 0`, amountFor(0, service.id), null);
+}
+
+for (const service of SERVICES) {
+  if (service.pricing.kind === 'flat') {
+    // Flat items ignore square footage entirely.
+    check(`${service.id} flat @ 500`, amountFor(500, service.id), service.pricing.price);
+    check(`${service.id} flat @ 50000`, amountFor(50_000, service.id), service.pricing.price);
+    check(`${service.id} flat with no sqft`, amountFor(null, service.id), service.pricing.price);
+  }
+  if (service.pricing.kind === 'quoted') {
+    check(`${service.id} is never priced`, amountFor(4000, service.id), null);
+  }
+}
+
+// Totals exclude quoted-after items rather than treating them as free.
+const quotedId = SERVICES.find((s) => s.pricing.kind === 'quoted')?.id;
+const flat = SERVICES.find((s) => s.pricing.kind === 'flat');
+if (quotedId && flat) {
+  const q = quote(3000, [flat.id, quotedId]);
+  check('total ignores quoted items', q.total, flat.pricing.price);
+  check('quoted items are flagged', q.hasQuotedItems, true);
+}
+
+// Ids that do not exist are dropped, not trusted.
+check('unknown ids drop out', quote(3000, ['not-a-service']).lines.length, 0);
+check('duplicate ids count once', quote(3000, [flat.id, flat.id]).lines.length, 1);
+
+if (failures === 0) {
+  console.log('Pricing matches the rate card, including every tier boundary.');
+} else {
+  console.error(`\n${failures} pricing check(s) failed.`);
+  process.exit(1);
+}

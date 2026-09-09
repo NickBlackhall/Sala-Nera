@@ -10,6 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "db:seed": "node --env-file=.env.local scripts/seed-portal.mjs",
+    "rates:doc": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/rates-doc.mjs",
+    "check:rates": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/ts-alias-hook.mjs scripts/check-rates.mjs",
     "check:sigv4": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/check-sigv4.mjs"
   },
   "dependencies": {
