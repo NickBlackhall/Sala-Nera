@@ -9,7 +9,8 @@
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
-    "db:seed": "node --env-file=.env.local scripts/seed-portal.mjs"
+    "db:seed": "node --env-file=.env.local scripts/seed-portal.mjs",
+    "check:sigv4": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/check-sigv4.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

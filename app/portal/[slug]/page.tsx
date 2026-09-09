@@ -9,6 +9,7 @@ import {
   type ListingBundle,
 } from '@/lib/portal-queries';
 import { getSession } from '@/lib/session';
+import { previewUrl, withPreviewUrls } from '@/lib/storage';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false }, // client galleries stay out of search
@@ -38,7 +39,14 @@ function render(data: ListingBundle) {
         </div>
       )}
 
-      <header className="pcover" style={{ backgroundImage: `url(${listing.coverKey})` }}>
+      <header
+        className="pcover"
+        style={
+          listing.coverKey
+            ? { backgroundImage: `url(${previewUrl(listing.coverKey)})` }
+            : undefined
+        }
+      >
         <div className="pcover-scrim" />
         <div className="pcover-inner">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -56,7 +64,12 @@ function render(data: ListingBundle) {
         </div>
       </header>
 
-      <Gallery media={media} locked={locked} invoiceUrl={locked ? '#' : '#'} />
+      <Gallery
+        slug={listing.slug}
+        media={withPreviewUrls(media)}
+        locked={locked}
+        invoiceUrl={locked ? '#' : '#'}
+      />
 
       <footer className="pfoot">
         <div className="wrap">

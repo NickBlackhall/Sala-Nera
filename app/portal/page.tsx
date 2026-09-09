@@ -7,6 +7,7 @@ import {
   getListingsForViewer,
 } from '@/lib/portal-queries';
 import { getSession } from '@/lib/session';
+import { previewUrl } from '@/lib/storage';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -62,7 +63,7 @@ export default async function PortalIndex() {
                 <Link href={`/portal/${l.slug}`} className="pindex-card">
                   {l.coverKey && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={l.coverKey} alt="" loading="lazy" />
+                    <img src={previewUrl(l.coverKey)} alt="" loading="lazy" />
                   )}
                   <div className="pindex-card-body">
                     <h2>{l.address}</h2>

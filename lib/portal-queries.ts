@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, asc, desc, eq, isNotNull, or } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, or } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
 import { clients, listings, media } from '@/lib/schema';
 import type { Client, Listing, Media } from '@/lib/schema';
@@ -102,4 +102,46 @@ export async function getListingsForViewer(viewer: Client): Promise<Listing[]> {
 export async function getAllListings(): Promise<Listing[]> {
   const db = getDatabase();
   return db.select().from(listings).orderBy(desc(listings.shootDate), desc(listings.id));
+}
+
+/** One media row with the listing it belongs to, for the download route. */
+export async function getMediaWithListing(
+  mediaId: number,
+): Promise<{ item: Media; listing: Listing } | null> {
+  const db = getDatabase();
+  const [row] = await db
+    .select({ item: media, listing: listings })
+    .from(media)
+    .innerJoin(listings, eq(media.listingId, listings.id))
+    .where(eq(media.id, mediaId))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * The media rows a download request names, restricted to one listing.
+ *
+ * Ids are filtered here rather than trusted: a request can list any ids it
+ * likes, and anything outside this listing simply does not come back. The
+ * caller then authorises the listing once, instead of once per file.
+ */
+export async function getMediaForListing(
+  listingId: number,
+  ids?: number[],
+): Promise<Media[]> {
+  const db = getDatabase();
+  const where =
+    ids && ids.length > 0
+      ? and(eq(media.listingId, listingId), inArray(media.id, ids))
+      : eq(media.listingId, listingId);
+
+  return db.select().from(media).where(where).orderBy(asc(media.sort), asc(media.id));
+}
+
+/** The client a listing belongs to, for ownership checks that start from media. */
+export async function getClientById(id: number | null): Promise<Client | null> {
+  if (id === null) return null;
+  const db = getDatabase();
+  const [row] = await db.select().from(clients).where(eq(clients.id, id)).limit(1);
+  return row ?? null;
 }

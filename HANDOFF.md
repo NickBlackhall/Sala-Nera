@@ -30,8 +30,10 @@ everything was ported and verified, see "Branches" below.
 | Owner admin `/admin` | Live in production | Committed `37e7f90`, deployed |
 | `ADMIN_EMAILS` / `NOTIFY_EMAIL` on Vercel | `nblackhall@…`, correct in all 3 environments | `vercel env pull` |
 | `DATABASE_URL` on Vercel | Set for Production, Preview, Development | `vercel env ls` |
-| Production build | Clean, 20 routes | `npm run build` |
+| Production build | Clean, 22 routes | `npm run build` |
 | Mobile layout | All 7 portal/admin pages fit 390px, no sideways scroll | Playwright measurement |
+| Download authorisation | Enforced server-side, 8 cases probed | Live requests, see below |
+| Media bytes | Still world-readable local paths | Not yet on R2 |
 
 The two seeded listings are `/portal/preston-hollow-lane` (locked) and
 `/portal/rockwall-shores-drive` (unlocked), both owned by the demo client
@@ -54,40 +56,96 @@ owner area does not confirm its own existence to a stranger.
 **`61e8399` — the stretched-logo fix.** Covered below under Gotchas, because
 it is the kind of bug that will happen again.
 
+**The signed-download server side**, which has its own section immediately
+below because its half-done state is easy to misread.
+
 ---
 
-## The next real task: signed downloads
+## Signed downloads — server side done, storage not yet swapped
 
-**The lock is currently presentation only.** A locked listing hides the
-download buttons and shows watermarked previews, but the images are still
-plain URLs — anyone with a link can fetch the file regardless of lock state.
-The dashboard says so on the page rather than letting the button imply
-protection it does not provide. Do not describe the portal as protecting
-anything until this is done.
+**Read this carefully, the state is genuinely half-and-half.**
 
-Closing it needs, roughly in order:
+What is now real: every download goes through a route that checks the session,
+checks team-aware ownership, checks the payment lock, and writes a `downloads`
+row. `lib/downloads.ts` is the only place any of those decisions are made —
+routes must not re-check ownership themselves, because the rules are subtle and
+a second implementation is a second chance to get one wrong.
 
-1. **Cloudflare R2** for media storage. Chosen over Supabase Storage because
-   Supabase's free tier pauses projects after inactivity and needs a manual
-   restore — a bad failure mode for a live client gallery link. R2 has zero
-   egress fees, which matters because clients download gigabytes.
-2. **A signed-download route** that checks ownership server-side, mints a
-   short-lived signed URL, and writes a `downloads` row. The admin page's
-   "Download activity" section is already built and empty, waiting for this.
-3. **Browser upload**, replacing `scripts/seed-portal.mjs` as the way media
-   gets in. There is no upload UI today, by design.
-4. **Stripe** — Nick already invoices through Stripe, so `invoice.paid` should
-   call the same `setListingLock()` the admin button calls, and unlock
-   automatically.
+What is still not real: **the bytes are still world-readable.** Media rows point
+at `/demo/*.jpg` under `public/`, so anyone with a path can fetch a file without
+passing the route at all. The route is the enforcement point, and it works, but
+it only starts protecting anything once the files move behind a private bucket.
+Until then, do not describe the portal as protecting files.
 
-Do **not** create R2 or Stripe accounts without Nick present. Each is a real
-signup with billing and, for Stripe, a webhook touching his live invoicing.
+### What shipped
+
+- `lib/sigv4.ts` — AWS SigV4 query presigning, hand-written rather than pulling
+  in `@aws-sdk/s3-request-presigner` (one function versus twenty-odd packages).
+  It takes every input as an argument, clock included, which is what lets
+  `npm run check:sigv4` verify it against AWS's published reference vector.
+  **It passes.** So if R2 answers 403 on the first real request, suspect the
+  credentials or the bucket name, not the signature.
+- `lib/storage.ts` — the policy layer that holds the credentials. Two modes,
+  chosen by whether all four `R2_*` vars are set: presigned URLs, or local paths
+  passed through unchanged. A *partial* R2 config is treated as unconfigured —
+  deliberately, so a half-finished deployment fails loudly instead of quietly
+  serving unsigned paths behind working previews.
+- `lib/downloads.ts` — `authorizeListing()` and `recordDownloads()`.
+- `GET /api/portal/download/[id]` — one file, 302 to a signed URL. A redirect
+  rather than a proxy: streaming bytes through a serverless function would bill
+  for every gigabyte and undo the reason R2 was chosen.
+- `POST /api/portal/download` — `{ slug, ids? }` returns one signed URL per
+  file. Not a zip: zipping means buffering or streaming gigabytes through a
+  function. A real zip belongs in a job that writes the archive to R2 once.
+- The Gallery buttons, which were previously inert, now work. The lightbox
+  "Download" link points at the route, not at the image, so it cannot skip the
+  lock check or the logging.
+- Previews are signed too (`withPreviewUrls`, `previewUrl`). There is no
+  "public thumbnail, private original" split — a private bucket means every
+  `<img>` needs a signed URL, and all five render sites were updated.
+
+### Verified, not assumed
+
+Probed against the real Neon database with minted session cookies:
+
+| Case | Result |
+|---|---|
+| No session | 404 |
+| Signed in, not your listing | 404 |
+| Owner, unlocked listing | 302 to the file, row logged |
+| Owner, locked listing | 403 with a reason |
+| Admin, locked listing | 403 — admins do not bypass the lock by default |
+| Same-team client | 302 — team sharing works |
+| Two clients both with `team = null` | 404 — the null-vs-null trap holds |
+| Batch naming another listing's media ids | Those ids dropped, not leaked |
+
+The admin "Download activity" panel, empty since the day it was built, fills in.
+The probe rows were deleted afterwards; the database is back to seed state
+(1 client, 2 listings, 0 downloads).
+
+### What is left
+
+1. **Cloudflare R2** — still needs Nick present, still a real billing signup.
+   When it exists: set `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`,
+   `R2_SECRET_ACCESS_KEY` in all three Vercel environments, move the demo images
+   into the bucket, and change `scripts/seed-portal.mjs` to write object keys
+   instead of `/demo/*.jpg` paths. Nothing else should need touching — that is
+   what the two modes in `lib/storage.ts` are for.
+2. **Browser upload**, replacing `scripts/seed-portal.mjs`. Still no upload UI.
+3. **Stripe** — `invoice.paid` should call the same `setListingLock()` the admin
+   button calls. Still needs Nick present; it touches his live invoicing.
+4. **MLS-size exports.** The button is now visibly disabled with an explanation
+   rather than pretending. It needs derivative generation, which belongs with
+   the upload pipeline, not with storage.
+5. **A real zip** for "Download All", if firing N downloads proves annoying in
+   practice. Worth waiting to see whether it actually does.
 
 Smaller, optional: on a phone the listings table scrolls sideways inside its
 own container, so the lock button sits off-screen. Stacking rows into cards
 under ~640px would fix it. Nick was told about it and did not ask for it yet.
 
----
+Also stale: `npm run lint` calls `next lint`, which Next 16 removed. It errors
+out. Either drop the script or point it at ESLint directly.
 
 ## Branches — one command still outstanding
 
@@ -132,6 +190,14 @@ so the width hint was overridden and the *height hint was not* — giving a
 empty header. **Any rule that sets an image's width must also set
 `height: auto`.** It was wrong in three places (`.admin-brand img`,
 `.plogin-logo`, `.pindex-logo`), i.e. everywhere the logo appears.
+
+**`NextResponse.redirect()` refuses relative URLs.** It throws `URL is
+malformed`, as a 500, only on the code path that actually redirects — so it
+survived a clean build and a clean typecheck and showed up only when the route
+was called for real. `lib/storage.ts` returns bare local paths when R2 is not
+configured, which is exactly such a URL. The route resolves them against the
+incoming request now. Worth remembering the general shape: a clean build says
+nothing about a route nobody has called.
 
 **Measure the page, do not reason about it.** The above was invisible to
 inspection and obvious in one `getBoundingClientRect()`. Same session, same

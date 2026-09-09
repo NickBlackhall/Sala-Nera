@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/admin';
 import { getAdminListings } from '@/lib/admin-queries';
 import { toggleLockAction } from './actions';
+import { isRemoteStorage } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,10 +107,20 @@ export default async function AdminDashboard({
         </div>
       )}
 
+      {/* Two different truths depending on where the bytes live, and the
+          difference matters enough to say out loud rather than average over. */}
       <p className="admin-note">
-        Locked means watermarked previews and no download buttons. Nothing on the
-        server enforces that yet — the files are still plain URLs until signed
-        downloads land, so treat the lock as presentation, not protection.
+        Locked means watermarked previews and no download buttons, and the
+        download route enforces it server-side — ownership and lock are both
+        re-checked there, so hiding the buttons is not what stops anyone.
+        {!isRemoteStorage() && (
+          <>
+            {' '}
+            <strong>But media is not on R2 yet.</strong> The files are still
+            plain URLs anyone can fetch without going through that route, so
+            the lock is not yet protection. Connect R2 before real clients.
+          </>
+        )}
       </p>
     </>
   );

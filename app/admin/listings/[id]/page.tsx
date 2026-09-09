@@ -5,6 +5,7 @@ import { getAdminListing, getClientOptions } from '@/lib/admin-queries';
 import DeleteListing from '../../DeleteListing';
 import ListingForm from '../../ListingForm';
 import { setCoverAction, updateListingAction } from '../../actions';
+import { previewUrl } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,7 +59,7 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
             {media.map((item) => (
               <li key={item.id}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.r2Key} alt="" loading="lazy" />
+                <img src={previewUrl(item.r2Key)} alt="" loading="lazy" />
                 <div>
                   <span className="admin-strong">{item.filename}</span>
                   <span className="admin-muted">
@@ -85,8 +86,8 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
         <h2>Download activity</h2>
         {activity.length === 0 ? (
           <p className="admin-empty">
-            Nothing recorded. This fills in once downloads go through a signed
-            route that can log them.
+            Nothing recorded yet. Every download through the portal writes a
+            row here, so this stays empty until a client actually takes files.
           </p>
         ) : (
           <ul className="admin-activity">
