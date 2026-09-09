@@ -296,6 +296,20 @@ configured, which is exactly such a URL. The route resolves them against the
 incoming request now. Worth remembering the general shape: a clean build says
 nothing about a route nobody has called.
 
+**A button that changes `type` between renders will submit the form.** The
+booking form's last nav button switches from `type="button"` (Continue) to
+`type="submit"` (Send). React reused the same DOM node and just flipped the
+attribute — and a browser evaluates a click's *default action* after the
+handlers have run, so the click that advanced to Review was performed against
+what had by then become a submit button. The form posted itself before the
+agent saw the review step. It reproduced on a plain mouse click, not just in
+automation.
+
+Two defences are in place and both should stay: distinct `key` props on the two
+buttons, so React unmounts one and mounts the other instead of mutating type in
+place, and a guard at the top of `submit()` refusing to send from any step but
+the last. Watch for this anywhere a conditional swaps one button for another.
+
 **Measure the page, do not reason about it.** The above was invisible to
 inspection and obvious in one `getBoundingClientRect()`. Same session, same
 method found the portal index overflowing an iPhone viewport by 86px because

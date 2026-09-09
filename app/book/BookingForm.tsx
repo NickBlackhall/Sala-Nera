@@ -83,6 +83,15 @@ export default function BookingForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Nothing may send from an earlier step. React reuses the DOM node when
+    // "Continue" becomes "Send booking request", so the click that advances to
+    // Review lands on a button that is, by the time the browser runs the
+    // default action, a submit button — and the form posts itself before the
+    // agent has reviewed anything. Distinct keys on the two buttons stop that
+    // happening; this guard means it cannot happen again by another route.
+    if (step !== STEPS.length - 1) return;
+
     for (let i = 0; i < STEPS.length; i += 1) {
       const problem = problemWith(i);
       if (problem) {
@@ -301,10 +310,16 @@ export default function BookingForm() {
         {step > 0 && (
           <button type="button" className="btn btn-outline" onClick={back}>← Back</button>
         )}
+        {/* The keys matter. Without them React reuses one DOM node and simply
+            flips type="button" to type="submit", so the click that lands on
+            Continue is treated as a submit by the time the browser runs the
+            default action. Distinct keys force a real unmount and mount. */}
         {step < STEPS.length - 1 ? (
-          <button type="button" className="btn btn-primary" onClick={next}>Continue →</button>
+          <button key="continue" type="button" className="btn btn-primary" onClick={next}>
+            Continue →
+          </button>
         ) : (
-          <button type="submit" className="btn btn-primary" disabled={state === 'sending'}>
+          <button key="send" type="submit" className="btn btn-primary" disabled={state === 'sending'}>
             {state === 'sending' ? 'Sending…' : 'Send booking request'}
           </button>
         )}
