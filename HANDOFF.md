@@ -17,18 +17,23 @@ tree clean. Last commit `8d41944`.
 2. ~~Confirm the booking form delivers.~~ **Done — it works.** See "The booking
    form delivers" below. One caveat left: Resend *accepted* both emails; nobody
    has yet confirmed they landed in the inbox rather than a spam folder.
-3. **One credentials sitting, three keys.** All three are the same shape of
+3. **Run the migration.** `rate_cards` does not exist in production yet.
+   `MIGRATE_TOKEN` is now set for Production (it previously existed only in the
+   dead `portal-build` preview — the landmine this file predicted). The command
+   is in "The rate card editor" below. Nothing is broken until then: the card
+   falls back to the one in `lib/rates.ts`.
+4. **One credentials sitting, three keys.** All three are the same shape of
    task and all three block finished code that is otherwise done and tested:
    **Google Maps** (appendix at the bottom — unblocks travel pricing, built
    this session), **a Google service account** for the calendar (Track B,
    Phase 3 of the plan), and **Cloudflare R2** (its own appendix). Doing them
    in one sitting costs one setup tax instead of three; the two Google ones
    share a project.
-4. **The scheduling build**, per the "Calendar, Distance & Stripe" plan
+5. **The scheduling build**, per the "Calendar, Distance & Stripe" plan
    published as an artifact. Next buildable piece is `lib/scheduling.ts` —
    but its duration model needs real shoot durations from Nick first (only
    one anchor exists: 3,329 sq ft = 90 min, from the Sep 10 Stovall shoot).
-5. Browser upload, then Stripe. Stripe is now scoped as pay-to-download on
+6. Browser upload, then Stripe. Stripe is now scoped as pay-to-download on
    the portal lock, **not** a booking-time charge — see the plan.
 
 **Do not re-investigate:** the three silent-discard bugs, the auto-submit bug,
@@ -372,6 +377,71 @@ session), all of it starts working with no other change.
 - An address Google can't geocode still gets a booking today, just with no
   travel line priced — worth a human glance if a booking ever arrives from
   somewhere that reads as intentionally malformed, but not urgent.
+
+---
+
+## The rate card editor — half built
+
+Nick chose this ahead of the calendar, because he expects to tune prices
+repeatedly rather than set them once, and because it takes rate changes off a
+dev session's desk entirely. Plan lives in the "Calendar, Distance & Stripe"
+artifact, Track D.
+
+**What is real:** `quote()` prices against a card handed to it, defaulting to
+the one in `lib/rates.ts`, so nothing changed behaviour when it landed.
+`lib/rate-card.ts` reads the newest `rate_cards` row and falls back to the
+built-in card on *anything* — no database, no table, nothing saved, a failed
+query. That fallback is why this was safe to deploy before the table existed,
+and it is also the reason validation has to happen before a write: a corrupt
+saved card would silently serve the built-in one instead of failing loudly.
+
+`lib/rate-card-validate.ts` is what TypeScript used to do for free. Two of its
+rules are worth knowing because both fail silently and cost money:
+
+- A size band or travel band that is open-ended anywhere but **last** swallows
+  everything above it, and every band after it prices nothing.
+- A **final** travel band with a ceiling means any distance past it is charged
+  as if it were nearer — a 500-mile job billed at the 75-mile rate.
+
+`check:rates` runs the same validator against the shipped card, so the editor's
+rules and the repo's rules cannot drift. Confirmed against nine deliberately
+broken cards; all nine caught.
+
+**Storage shape, and why:** one jsonb document per save, newest row live. No
+`active` flag — two rows both claiming to be active is a bug that cannot happen
+if newest-wins is the only rule. A whole-document save makes a half-updated
+card (services changed, travel bands not) structurally impossible. Restoring an
+old version saves it as a *new* version rather than deleting what came after.
+
+**Services retire, never delete.** Past bookings name the ids they were quoted
+under and `rates.md` bills by exact name, so deleting one breaks the record of
+work already done. `archived: true` hides it from the form only.
+
+### To create the table
+
+Blocked from the Codespace — the permission classifier refuses outbound calls
+to salanera.com. Nick runs this, or a future session with different permissions:
+
+```sh
+curl -X POST https://salanera.com/api/portal/migrate \
+  -H "Authorization: Bearer $MIGRATE_TOKEN"
+```
+
+The token is in Vercel under Production and Development; `npx vercel env pull`
+puts it in `.env.local`. Every statement is `IF NOT EXISTS`, so it is safe to
+re-run and safe to run now.
+
+### Left to build
+
+1. `/admin/rates` — read-only first (proves the loading path), then editing.
+2. **Bookings must snapshot their price.** Nick's decision: existing quotes keep
+   what they were quoted, new prices apply only to new quotes. A booking needs
+   to record its priced lines *and* the card version that produced them. This
+   has to land **before the first real price change**, not after — afterwards
+   there is nothing to reconstruct the old quote from.
+3. `rates.md` regenerating on save, or the invoicing automation will bill last
+   month's rate the first time a price changes from a browser.
+4. History and restore in the UI.
 
 ---
 
