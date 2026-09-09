@@ -28,7 +28,7 @@ export default function Footer({ compact = false }: { compact?: boolean }) {
           </div>
           <div>
             <h2>Collection</h2>
-            <ul><li><a href="/work">Selected Work</a></li><li><a href="/#services">Services</a></li><li><a href="/contact">Contact</a></li></ul>
+            <ul><li><a href="/work">Selected Work</a></li><li><a href="/films">Films</a></li><li><a href="/#services">Services</a></li><li><a href="/contact">Contact</a></li></ul>
           </div>
           <div>
             <h2>Connect</h2>
