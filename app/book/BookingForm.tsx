@@ -130,6 +130,10 @@ export default function BookingForm() {
       <div className="form-success show" tabIndex={-1} role="status">
         <h3>Booking request received.</h3>
         <p>
+          A copy is on its way to <strong>{f.email}</strong> — if it doesn&rsquo;t arrive in
+          a few minutes, check your spam folder.
+        </p>
+        <p>
           We&rsquo;ll confirm {f.desiredDate ? `${f.desiredDate} ` : 'your date '}
           or offer the nearest alternatives, usually within one business day. Nothing is
           locked in until you hear back from us.

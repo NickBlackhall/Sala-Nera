@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { sendEmail } from '@/lib/email';
 import { money, quote } from '@/lib/quote';
 import { RATES_ARE_PLACEHOLDER } from '@/lib/rates';
 
@@ -201,9 +202,86 @@ export async function POST(req: Request) {
       console.error('booking: resend rejected', r.status, await r.text());
       return json({ error: 'send_failed' }, 502);
     }
-    return json({ ok: true });
   } catch (err) {
     console.error('booking: send threw', err);
     return json({ error: 'send_failed' }, 502);
   }
+
+  /**
+   * The agent's own copy, sent second and on purpose.
+   *
+   * Nick's notification above is the one that must not fail — it is the lead.
+   * This one is reassurance. If it fails the booking is still real and still
+   * in his inbox, so it must never turn a successful booking into an error on
+   * screen. sendEmail() returns false rather than throwing for exactly this.
+   */
+  const confirmed = await sendEmail({
+    to: email,
+    replyTo: NOTIFY_EMAIL, // a reply reaches Nick, not the no-reply sender
+    subject: `We've got your booking request — ${address}`,
+    text: clientConfirmation({ name, address, desiredDate, priced }),
+  });
+
+  if (!confirmed) {
+    // Worth knowing about: the agent is now waiting on a confirmation that
+    // never arrived, even though Nick has the booking.
+    console.error('booking: client confirmation failed to send to', email);
+  }
+
+  return json({ ok: true });
+}
+
+/**
+ * What the person booking receives. Deliberately does not quote a total while
+ * the rate card is placeholders — telling an agent their shoot costs $1,998
+ * in writing, when that is an invented number, is how a made-up figure becomes
+ * an argument later.
+ */
+function clientConfirmation({
+  name, address, desiredDate, priced,
+}: {
+  name: string;
+  address: string;
+  desiredDate: string;
+  priced: ReturnType<typeof quote>;
+}): string {
+  const firstName = name.split(/\s+/)[0] || 'there';
+
+  return [
+    `Thanks ${firstName} — we've got your request for ${address}.`,
+    '',
+    'What you asked for:',
+    ...priced.lines.map((l) => `  - ${l.name}`),
+    '',
+    ...(desiredDate
+      ? [
+          `Requested date: ${desiredDate}`,
+          "This date is not confirmed yet. We'll come back to you within one",
+          'business day to confirm it, or offer the nearest alternatives.',
+        ]
+      : [
+          "You didn't give us a preferred date, so we'll suggest a few when we",
+          'reply — usually within one business day.',
+        ]),
+    '',
+    ...(RATES_ARE_PLACEHOLDER
+      ? [
+          'The figures shown on the site are placeholders while our rate card is',
+          "being finalised, so they are not a quote. We'll send real pricing for",
+          'this property with our reply.',
+        ]
+      : [
+          `Estimate: ${money(priced.total)}${
+            priced.hasQuotedItems ? ', plus the items marked "quoted after"' : ''
+          }`,
+          'This is an estimate from the details you gave us, not a final invoice.',
+        ]),
+    '',
+    'Nothing is booked until you hear back from us.',
+    '',
+    'Questions, or something to change? Just reply to this email.',
+    '',
+    '— Sala Nera',
+    '  A Blackhall Media Group collection · Dallas–Fort Worth',
+  ].join('\n');
 }

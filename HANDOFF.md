@@ -216,6 +216,29 @@ the site and wrong on an invoice. Do not edit `rates.md` by hand.
   of the five steps, and the live estimate computes correctly end to end
   ($350 photography at 3,200 sq ft + $175 aerial = $525, tier label right).
 
+### Two emails per booking
+
+A booking sends **two** emails, in this order and for different reasons:
+
+1. **Nick's notification** — the lead. If this fails the route answers 502 and
+   the agent is told, honestly, that it did not send.
+2. **The agent's confirmation** — reassurance. Sent second, through
+   `lib/email.ts`, which returns false rather than throwing. A failure here is
+   logged but must never turn a successful booking into an error on screen:
+   Nick already has the lead, and telling the agent it failed would make them
+   book someone else.
+
+The confirmation deliberately **does not quote a total while the rates are
+placeholders**. Putting "$1,998" in writing to an agent, when the number is
+invented, is how a made-up figure becomes an argument later. It lists what they
+chose and says pricing follows with the reply. Once `RATES_ARE_PLACEHOLDER` is
+false it includes the estimate.
+
+Worth knowing: a confirmation email means the form can be made to send mail to
+any address someone types. The honeypot, origin check and minimum-time gate are
+what stand between that and an email-bombing vector. There is no rate limiting.
+If the form is ever abused, that is where to add it.
+
 ### Still to do here
 
 - **Nick's real rates**, as above.
