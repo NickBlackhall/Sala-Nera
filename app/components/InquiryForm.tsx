@@ -59,9 +59,14 @@ export default function InquiryForm() {
         <label>Tell us about it<textarea name="details" placeholder="Timeline, what makes this property worth the collection…" /></label>
       </div>
 
-      {/* Honeypot: only a bot fills this in. */}
+      {/*
+        Honeypot: only a bot fills this in. Named meaninglessly and given no
+        label on purpose — as "company" with a "Company" label, browser autofill
+        filled it from the visitor's profile and their inquiry was silently
+        discarded as spam. See the fuller note in app/book/BookingForm.tsx.
+      */}
       <div className="hp" aria-hidden="true">
-        <label>Company<input type="text" name="company" tabIndex={-1} autoComplete="off" /></label>
+        <input type="text" name="hp_ref" tabIndex={-1} autoComplete="off" aria-hidden="true" />
       </div>
 
       <button type="submit" className="btn btn-primary" id="submitBtn" disabled={state === 'sending'}>

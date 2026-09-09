@@ -40,7 +40,7 @@ export default function BookingForm() {
   const [f, setF] = useState({
     name: '', email: '', phone: '', brokerage: '',
     address: '', sqft: '', accessNotes: '', desiredDate: '',
-    notes: '', company: '', // company is the honeypot
+    notes: '', hp_ref: '', // hp_ref is the honeypot — see the field below
   });
   const [services, setServices] = useState<string[]>([]);
 
@@ -275,9 +275,25 @@ export default function BookingForm() {
         </fieldset>
       )}
 
-      {/* Honeypot: only a bot fills this in. */}
+      {/*
+        Honeypot: only a bot fills this in — but the name and label matter more
+        than the hiding does. This field used to be named "company" with a
+        "Company" label, and browser autofill filled it from the visitor's saved
+        profile, so real people with a company on file were silently discarded as
+        bots. autoComplete="off" does not stop that; browsers largely ignore it.
+        A meaningless name with no human-readable label gives autofill nothing to
+        match on, while a bot that fills every field still trips it.
+      */}
       <div className="hp" aria-hidden="true">
-        <label>Company<input type="text" name="company" value={f.company} onChange={set('company')} tabIndex={-1} autoComplete="off" /></label>
+        <input
+          type="text"
+          name="hp_ref"
+          value={f.hp_ref}
+          onChange={set('hp_ref')}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+        />
       </div>
 
       {step >= 1 && (

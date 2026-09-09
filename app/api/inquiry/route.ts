@@ -43,7 +43,9 @@ export async function POST(req: Request) {
 
   // Honeypot: respond 200 so the bot believes it succeeded. Logged, because a
   // silent discard is indistinguishable from a lost lead without a trace.
-  if (clean(body.company, 50)) {
+  // Named `hp_ref`, not `company` — see the longer note in the booking route.
+  // Browser autofill was filling the old field and binning real inquiries.
+  if (clean(body.hp_ref, 50)) {
     console.warn('inquiry: discarded, honeypot filled');
     return json({ ok: true });
   }

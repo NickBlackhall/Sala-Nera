@@ -64,10 +64,19 @@ export async function POST(req: Request) {
     return json({ error: 'Invalid request body' }, 400);
   }
 
-  // Honeypot: answer 200 so the bot believes it succeeded and does not retry.
-  // Logged, because every silent discard is indistinguishable from a lost lead
-  // unless there is a trace of it somewhere.
-  if (clean(body.company, 50)) {
+  /**
+   * Honeypot: answer 200 so the bot believes it succeeded and does not retry.
+   * Logged, because every silent discard is indistinguishable from a lost lead
+   * unless there is a trace of it somewhere.
+   *
+   * The field is `hp_ref`, not `company`. It was `company`, and browser autofill
+   * filled it from the visitor's own saved profile — so a real agent with a
+   * brokerage on file was quietly binned as a bot. Nick lost his own first two
+   * bookings to it. Deliberately NOT still checking `company` as well: a page
+   * cached from before this change posts an autofilled `company` and must now
+   * sail through rather than be discarded.
+   */
+  if (clean(body.hp_ref, 50)) {
     console.warn('booking: discarded, honeypot filled');
     return json({ ok: true });
   }
