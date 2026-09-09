@@ -158,23 +158,37 @@ export const BASE_LOCATION: GeoPoint & { label: string } = {
 export type DistanceBand = {
   /** Inclusive upper bound in miles. null means "no ceiling". */
   maxMiles: number | null;
-  /** null means this band is quoted individually rather than priced. */
+  /** null means this band carries no price — see outOfArea for why. */
   surcharge: number | null;
+  /**
+   * True for the band past the edge of the service area. Distinct from a
+   * merely unpriced band: "we don't quote this from a form" and "this is
+   * further than we travel" are different things to tell someone, and only
+   * one of them is a reason to expect a no.
+   */
+  outOfArea?: boolean;
 };
 
 /**
- * $0 for the first band is real, already-stated policy, not a placeholder —
- * it is the exact 30-mile figure this file used to carry as a sentence with
- * nothing behind it. The $999 band is a placeholder, same as everywhere else
- * in this file, and reads that way on the boundary check because 0 and 999
- * are not the same number — this pair of bands has teeth already, before any
- * real numbers land.
+ * ⚠️ UNLIKE THE REST OF THIS FILE, THESE ARE NICK'S REAL NUMBERS. Given
+ * Sep 9 2026. Travel was priced before the shoot rates were, because a trip
+ * charge is mileage and mileage was already settled.
+ *
+ * The last band is the edge of the service area, not a price. A booking from
+ * beyond it is still accepted — a big enough listing may be worth the drive,
+ * and refusing the form outright would throw away a lead Nick might want —
+ * but everyone involved is told plainly, on the page and in both emails.
  */
 export const TRAVEL_BANDS: DistanceBand[] = [
-  { maxMiles: 30, surcharge: 0 },
-  { maxMiles: 60, surcharge: 999 },
-  { maxMiles: null, surcharge: null }, // 60+ miles is quoted after contact
+  { maxMiles: 20, surcharge: 0 },
+  { maxMiles: 50, surcharge: 65 },
+  { maxMiles: 75, surcharge: 100 },
+  { maxMiles: null, surcharge: null, outOfArea: true },
 ];
+
+/** The furthest the service area reaches, in miles — the last priced ceiling. */
+export const SERVICE_AREA_MILES: number =
+  [...TRAVEL_BANDS].reverse().find((b) => b.maxMiles !== null)?.maxMiles ?? 0;
 
 /** Turns TRAVEL_BANDS into the sentence RATE_NOTES shows, so the two cannot drift apart. */
 function describeTravelPolicy(): string {
@@ -195,6 +209,10 @@ function describeTravelPolicy(): string {
 
     if (from === null && band.surcharge === 0 && band.maxMiles !== null) {
       sentences.push(`Travel is included within ${band.maxMiles} miles of ${BASE_LOCATION.label}.`);
+    } else if (band.outOfArea) {
+      sentences.push(
+        `Beyond ${from ?? 0} miles is outside our usual service area — ask, and we will tell you if we can make it work.`,
+      );
     } else if (band.surcharge === null) {
       sentences.push(`Beyond ${from ?? 0} miles, travel is quoted before the shoot.`);
     } else if (band.maxMiles === null) {

@@ -3,7 +3,7 @@ import { milesBetween } from '@/lib/distance';
 import { sendEmail } from '@/lib/email';
 import { geocodeAddress, hasGeocoding } from '@/lib/geocode';
 import { chosenLines, money, quote } from '@/lib/quote';
-import { BASE_LOCATION, RATES_ARE_PLACEHOLDER } from '@/lib/rates';
+import { BASE_LOCATION, RATES_ARE_PLACEHOLDER, SERVICE_AREA_MILES } from '@/lib/rates';
 import { record } from '@/lib/telemetry';
 
 /**
@@ -218,8 +218,11 @@ export async function POST(req: Request) {
           '  Usually means the rate card changed while the form was open — worth a look.',
         ]
       : []),
+    ...(priced.lines.find((l) => l.id === 'travel')?.outOfArea
+      ? ['', `! OUTSIDE THE ${SERVICE_AREA_MILES}-MILE SERVICE AREA. They were told to ask rather than told no.`]
+      : []),
     ...(RATES_ARE_PLACEHOLDER
-      ? ['', '! RATES ARE STILL PLACEHOLDERS — this estimate is not your real pricing.']
+      ? ['', '! SHOOT RATES ARE STILL PLACEHOLDERS — travel above is real, the rest is not.']
       : []),
     '',
     'Access notes:',
@@ -319,9 +322,16 @@ function clientConfirmation({
     // the list above. It still gets said out loud when it is quoted separately
     // — a client far enough out to fall in that band should not first hear
     // about it on an invoice.
-    ...(travel && travel.amount === null
-      ? ['This address is outside our included travel radius, so travel is quoted', 'separately. That figure comes with our reply.', '']
-      : []),
+    ...(travel?.outOfArea
+      ? [
+          `This property is past the ${SERVICE_AREA_MILES} miles we usually travel, so we can't`,
+          "promise it from a form. We'll come back to you either way — often we can",
+          'make it work, and we would rather tell you ourselves than have you guess.',
+          '',
+        ]
+      : travel && travel.amount === null
+        ? ['This address is outside our included travel radius, so travel is quoted', 'separately. That figure comes with our reply.', '']
+        : []),
     ...(desiredDate
       ? [
           `Requested date: ${desiredDate}`,

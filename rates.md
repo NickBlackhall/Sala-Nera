@@ -4,10 +4,14 @@
      Source of truth is lib/rates.ts; regenerate with `npm run rates:doc`.
      Editing this file directly means the website and your invoices disagree. -->
 
-> ⚠️ **These are placeholder numbers, not Sala Nera's real pricing.**
+> ⚠️ **The shoot and add-on prices below are placeholders, not real pricing.**
 > Replace the values in `lib/rates.ts`, set `RATES_ARE_PLACEHOLDER` to
 > `false`, and regenerate this file. Until then the booking form shows a
 > visible "indicative only" notice and every booking email says so too.
+>
+> **The Travel section is exempt — those are Nick's real trip charges.**
+> Bill them as written. The placeholder flag is one global switch and does
+> not distinguish, which is why this note has to.
 
 Every price the site quotes and every invoice line comes from here.
 
@@ -91,13 +95,14 @@ Straight-line distance from downtown Dallas.
 
 | Distance | Surcharge |
 |---|---|
-| Up to 30 miles | Included |
-| Over 30, up to 60 miles | $999 |
-| Over 60 miles | Quoted after contact |
+| Up to 20 miles | Included |
+| Over 20, up to 50 miles | $65 |
+| Over 50, up to 75 miles | $100 |
+| Over 75 miles | Outside the service area — ask |
 
 ## Rules
 
-- Travel is included within 30 miles of downtown Dallas. Over 30 and up to 60 miles adds $999. Beyond 60 miles, travel is quoted before the shoot.
+- Travel is included within 20 miles of downtown Dallas. Over 20 and up to 50 miles adds $65. Over 50 and up to 75 miles adds $100. Beyond 75 miles is outside our usual service area — ask, and we will tell you if we can make it work.
 - Properties over 7,500 sq ft are quoted after a short walkthrough call.
 - Estimates assume one visit. A twilight session is a second visit and is priced as such.
 

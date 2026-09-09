@@ -60,8 +60,13 @@ function travelRows() {
         : band.maxMiles === null
           ? `Over ${previousCeiling} miles`
           : `Over ${previousCeiling}, up to ${band.maxMiles} miles`;
-    const price =
-      band.surcharge === null ? 'Quoted after contact' : band.surcharge === 0 ? 'Included' : money(band.surcharge);
+    const price = band.outOfArea
+      ? 'Outside the service area — ask'
+      : band.surcharge === null
+        ? 'Quoted after contact'
+        : band.surcharge === 0
+          ? 'Included'
+          : money(band.surcharge);
     lines.push(`| ${range} | ${price} |`);
     if (band.maxMiles !== null) previousCeiling = band.maxMiles;
   }
@@ -77,10 +82,14 @@ const doc = [
   '',
   ...(RATES_ARE_PLACEHOLDER
     ? [
-        '> ⚠️ **These are placeholder numbers, not Sala Nera\'s real pricing.**',
+        '> ⚠️ **The shoot and add-on prices below are placeholders, not real pricing.**',
         '> Replace the values in `lib/rates.ts`, set `RATES_ARE_PLACEHOLDER` to',
         '> `false`, and regenerate this file. Until then the booking form shows a',
         '> visible "indicative only" notice and every booking email says so too.',
+        '>',
+        "> **The Travel section is exempt — those are Nick's real trip charges.**",
+        '> Bill them as written. The placeholder flag is one global switch and does',
+        '> not distinguish, which is why this note has to.',
         '',
       ]
     : []),

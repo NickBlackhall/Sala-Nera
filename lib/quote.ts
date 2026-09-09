@@ -23,6 +23,8 @@ export type QuoteLine = {
    * nobody asks for travel. Anything that totals money still counts them.
    */
   automatic?: boolean;
+  /** True when this line reports a property past the edge of the service area. */
+  outOfArea?: boolean;
 };
 
 /** The lines a customer actually chose — for any list captioned as their selection. */
@@ -100,8 +102,15 @@ export function travelLine(miles: number | null): QuoteLine | null {
     id: 'travel',
     name: 'Travel',
     amount: band.surcharge,
-    note: band.surcharge === null ? 'Quoted after contact' : band.surcharge === 0 ? 'Included' : undefined,
+    note: band.outOfArea
+      ? 'Outside our usual service area'
+      : band.surcharge === null
+        ? 'Quoted after contact'
+        : band.surcharge === 0
+          ? 'Included'
+          : undefined,
     automatic: true,
+    outOfArea: band.outOfArea === true,
   };
 }
 

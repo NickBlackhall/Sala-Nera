@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { money, quote } from '@/lib/quote';
-import { RATES_ARE_PLACEHOLDER, RATE_NOTES, SERVICES } from '@/lib/rates';
+import { RATES_ARE_PLACEHOLDER, RATE_NOTES, SERVICE_AREA_MILES, SERVICES } from '@/lib/rates';
 
 /**
  * Five steps, because a single long form is where bookings go to be abandoned.
@@ -122,6 +122,9 @@ export default function BookingForm() {
 
     const line = estimate.lines.find((l) => l.id === 'travel');
     if (!line) return null;
+    if (line.outOfArea) {
+      return `That's past our usual ${SERVICE_AREA_MILES}-mile service area — send the request anyway and we'll tell you if we can make it work.`;
+    }
     if (line.amount === 0) return 'Within our included travel radius.';
     if (line.amount === null) return `Travel — ${line.note ?? 'quoted after contact'}.`;
     return `Adds ${money(line.amount)} for travel.`;
@@ -386,9 +389,10 @@ export default function BookingForm() {
 
       {RATES_ARE_PLACEHOLDER && (
         <p className="bk-placeholder" role="note">
-          <strong>Placeholder pricing — not our rates.</strong> Every figure on this page is a
-          stand-in while the rate card is being finalised, which is why they are all the same
-          number. Nothing here is a quote. Send the form and we&rsquo;ll come back with real
+          <strong>Placeholder shoot pricing — not our rates.</strong> The figures against each
+          service are stand-ins while the rate card is being finalised, which is why they are all
+          the same number, and none of them is a quote. <strong>Travel is real</strong> — that
+          part is our actual trip charge. Send the form and we&rsquo;ll come back with real
           pricing for the property.
         </p>
       )}

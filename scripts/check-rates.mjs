@@ -11,7 +11,7 @@
  */
 
 import { chosenLines, quote, travelLine } from '../lib/quote.ts';
-import { SERVICES, TRAVEL_BANDS } from '../lib/rates.ts';
+import { SERVICES, SERVICE_AREA_MILES, TRAVEL_BANDS } from '../lib/rates.ts';
 
 let failures = 0;
 
@@ -123,6 +123,12 @@ const junkWithTravel = quote(3000, ['not-a-service'], 40);
 check('junk ids + a real address still price something', junkWithTravel.lines.length, 1);
 check('...but nothing the customer chose', chosenLines(junkWithTravel).length, 0);
 check('travel is marked automatic', travelLine(40)?.automatic, true);
+
+// The service-area edge is a boundary, not a price. These two must not drift:
+// SERVICE_AREA_MILES is what the form and both emails quote at people.
+check('inside the service area', travelLine(SERVICE_AREA_MILES)?.outOfArea, false);
+check('past the service area', travelLine(SERVICE_AREA_MILES + 1)?.outOfArea, true);
+check('out of area carries no price', travelLine(SERVICE_AREA_MILES + 1)?.amount, null);
 check('services are not', quote(3000, [flat.id]).lines[0].automatic, undefined);
 
 /**
