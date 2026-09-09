@@ -261,6 +261,21 @@ Production and Development before cleaning up.
 
 ---
 
+## What links to what
+
+Worth knowing before adding a page, because two have already been built with no
+way in:
+
+- **`/book`** — the nav CTA, on every page.
+- **`/portal`** — "Client Login" in the footer, both the full and the compact
+  variant, so it is reachable from any page. Logged-out visitors get a 307 to
+  `/portal/login`, which is the right landing.
+- **`/films` is orphaned.** It builds, it renders, and nothing anywhere links to
+  it. Either add it to the footer's Collection column next to Selected Work, or
+  delete it — but it should not stay as it is. Nick has not been asked which yet.
+
+---
+
 ## Gotchas — things that cost real time, do not rediscover them
 
 **The `<img>` width/height trap.** This one produced a 1103px-tall header that

@@ -6,7 +6,10 @@ export default function Footer({ compact = false }: { compact?: boolean }) {
       <footer className="foot foot--compact">
         <div className="wrap foot-bottom">
           <span>&copy; {new Date().getFullYear()} Sala Nera. A Blackhall Media Group collection.</span>
-          <span><a href="/privacy">Privacy</a> &nbsp; Dallas–Fort Worth, TX</span>
+          {/* Client Login rides in the compact footer too — a returning client
+              looking for their gallery should find it from any page, not only
+              from the pages that happen to carry the full footer. */}
+          <span><a href="/portal">Client Login</a> &nbsp; <a href="/privacy">Privacy</a> &nbsp; Dallas–Fort Worth, TX</span>
         </div>
       </footer>
     );
@@ -29,7 +32,7 @@ export default function Footer({ compact = false }: { compact?: boolean }) {
           </div>
           <div>
             <h2>Connect</h2>
-            <ul><li><a href="mailto:nblackhall@blackhallmediagroup.com">Email</a></li><li><a href="https://www.blackhallmediagroup.com" target="_blank" rel="noopener">Blackhall Media Group</a></li></ul>
+            <ul><li><a href="mailto:nblackhall@blackhallmediagroup.com">Email</a></li><li><a href="https://www.blackhallmediagroup.com" target="_blank" rel="noopener">Blackhall Media Group</a></li><li><a href="/portal">Client Login</a></li></ul>
           </div>
         </div>
         <div className="foot-bottom">
