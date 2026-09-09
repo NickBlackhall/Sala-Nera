@@ -10,7 +10,7 @@
  *   npm run check:rates
  */
 
-import { quote, travelLine } from '../lib/quote.ts';
+import { chosenLines, quote, travelLine } from '../lib/quote.ts';
 import { SERVICES, TRAVEL_BANDS } from '../lib/rates.ts';
 
 let failures = 0;
@@ -111,6 +111,19 @@ check(
   SERVICES.some((s) => s.id === 'travel'),
   false,
 );
+
+/**
+ * The booking route refuses a submission that names no real service, so a
+ * booking for nothing cannot arrive priced at zero. Travel broke that once:
+ * it is appended from the address, so a payload naming only junk ids still
+ * produced one line and satisfied a plain lines.length check. chosenLines()
+ * is what that guard must count, and this is the case that proves it.
+ */
+const junkWithTravel = quote(3000, ['not-a-service'], 40);
+check('junk ids + a real address still price something', junkWithTravel.lines.length, 1);
+check('...but nothing the customer chose', chosenLines(junkWithTravel).length, 0);
+check('travel is marked automatic', travelLine(40)?.automatic, true);
+check('services are not', quote(3000, [flat.id]).lines[0].automatic, undefined);
 
 /**
  * A boundary check can only catch a bug when the two bands either side of the

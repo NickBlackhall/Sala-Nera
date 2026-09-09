@@ -16,7 +16,17 @@ export type QuoteLine = {
   /** null when the item is real but cannot be priced from a form. */
   amount: number | null;
   note?: string;
+  /**
+   * True for lines the server derives rather than the customer choosing —
+   * travel, today. Three places render `lines` as "what you asked for", and
+   * an automatic line listed among someone's own choices reads as a mistake:
+   * nobody asks for travel. Anything that totals money still counts them.
+   */
+  automatic?: boolean;
 };
+
+/** The lines a customer actually chose — for any list captioned as their selection. */
+export const chosenLines = (q: Quote): QuoteLine[] => q.lines.filter((l) => !l.automatic);
 
 export type Quote = {
   lines: QuoteLine[];
@@ -91,6 +101,7 @@ export function travelLine(miles: number | null): QuoteLine | null {
     name: 'Travel',
     amount: band.surcharge,
     note: band.surcharge === null ? 'Quoted after contact' : band.surcharge === 0 ? 'Included' : undefined,
+    automatic: true,
   };
 }
 

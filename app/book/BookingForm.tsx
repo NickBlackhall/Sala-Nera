@@ -335,7 +335,10 @@ export default function BookingForm() {
             <Row k="Anything else" v={f.notes} />
           </dl>
 
-          <p className="bk-group-label">Selected</p>
+          {/* "Your estimate", not "Selected" — travel is priced from the
+              address rather than chosen, so it belongs in a list of what the
+              shoot costs, not a list of what was ticked. */}
+          <p className="bk-group-label">Your estimate</p>
           <ul className="bk-lines">
             {estimate.lines.map((l) => (
               <li key={l.id}>

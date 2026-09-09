@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { milesBetween } from '@/lib/distance';
 import { sendEmail } from '@/lib/email';
 import { geocodeAddress, hasGeocoding } from '@/lib/geocode';
-import { money, quote } from '@/lib/quote';
+import { chosenLines, money, quote } from '@/lib/quote';
 import { BASE_LOCATION, RATES_ARE_PLACEHOLDER } from '@/lib/rates';
 import { record } from '@/lib/telemetry';
 
@@ -163,7 +163,11 @@ export async function POST(req: Request) {
   // Checked against the *priced* lines rather than the submitted array: a
   // payload naming only ids that do not exist would otherwise pass a
   // length check and arrive as a booking for nothing, estimated at zero.
-  if (priced.lines.length === 0) {
+  //
+  // chosenLines(), not priced.lines: travel is appended automatically from the
+  // address, so once it existed a submission naming no real service at all
+  // still had one line and walked straight through this guard.
+  if (chosenLines(priced).length === 0) {
     await record({ kind: 'booking', outcome: 'rejected', reason: 'no_valid_services',
       detail: `Submitted service ids: ${services.join(', ') || '(none)'}`,
       email, requestId: reqId });
@@ -279,7 +283,7 @@ export async function POST(req: Request) {
     outcome: confirmed ? 'ok' : 'failed',
     reason: confirmed ? 'sent' : 'confirmation_failed',
     detail: confirmed
-      ? `${address} — ${priced.lines.length} service(s), ${money(priced.total)}. Both emails sent.`
+      ? `${address} — ${chosenLines(priced).length} service(s), ${money(priced.total)}. Both emails sent.`
       : `${address} — the lead reached Nick, but the client's confirmation did not send.`,
     email,
     requestId: reqId,
@@ -303,13 +307,21 @@ function clientConfirmation({
   priced: ReturnType<typeof quote>;
 }): string {
   const firstName = name.split(/\s+/)[0] || 'there';
+  const travel = priced.lines.find((l) => l.id === 'travel');
 
   return [
     `Thanks ${firstName} — we've got your request for ${address}.`,
     '',
     'What you asked for:',
-    ...priced.lines.map((l) => `  - ${l.name}`),
+    ...chosenLines(priced).map((l) => `  - ${l.name}`),
     '',
+    // Travel is derived from the address, not chosen, so it does not belong in
+    // the list above. It still gets said out loud when it is quoted separately
+    // — a client far enough out to fall in that band should not first hear
+    // about it on an invoice.
+    ...(travel && travel.amount === null
+      ? ['This address is outside our included travel radius, so travel is quoted', 'separately. That figure comes with our reply.', '']
+      : []),
     ...(desiredDate
       ? [
           `Requested date: ${desiredDate}`,
