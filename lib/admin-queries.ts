@@ -98,6 +98,16 @@ export async function getClientById(id: number): Promise<Client | null> {
   return row ?? null;
 }
 
+/** For the delete-client warning: how many listings would be left without an owner. */
+export async function countListingsForClient(id: number): Promise<number> {
+  const db = getDatabase();
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(listings)
+    .where(eq(listings.clientId, id));
+  return row?.n ?? 0;
+}
+
 /** Just id/email/company, for the owner dropdown on the listing form. */
 export async function getClientOptions(): Promise<Pick<Client, 'id' | 'email' | 'company' | 'name'>[]> {
   const db = getDatabase();
@@ -164,6 +174,12 @@ export async function setListingCover(id: number, coverKey: string): Promise<voi
 export async function deleteListingRow(id: number): Promise<void> {
   const db = getDatabase();
   await db.delete(listings).where(eq(listings.id, id));
+}
+
+/** Their listings and bookings are not deleted — clientId on each just becomes null. */
+export async function deleteClientRow(id: number): Promise<void> {
+  const db = getDatabase();
+  await db.delete(clients).where(eq(clients.id, id));
 }
 
 /** True when a slug is free, ignoring the listing being edited. */

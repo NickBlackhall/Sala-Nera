@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { DETAIL_QUESTIONS, cleanDetails } from '@/lib/booking-details';
 import { ensureClient, saveBooking, type ClientAccount } from '@/lib/bookings';
+import { isAdminEmail } from '@/lib/session';
 import { milesBetween } from '@/lib/distance';
 import { sendEmail } from '@/lib/email';
 import { geocodeAddress, hasGeocoding } from '@/lib/geocode';
@@ -277,12 +278,17 @@ export async function POST(req: Request) {
    * The client account and the saved booking each fail on their own, into
    * telemetry — a booking that emailed but did not save is still a booking.
    */
+  // An admin address booking (testing, usually) must not become a client —
+  // signing in with it goes to /admin regardless, so the account would be
+  // dead weight that only confuses the client list.
   let account: ClientAccount | null = null;
-  try {
-    account = await ensureClient({ email, name, phone, company: brokerage });
-  } catch (error) {
-    await record({ kind: 'booking', outcome: 'failed', reason: 'client_not_saved',
-      detail: String(error).slice(0, 300), email, requestId: reqId });
+  if (!isAdminEmail(email)) {
+    try {
+      account = await ensureClient({ email, name, phone, company: brokerage });
+    } catch (error) {
+      await record({ kind: 'booking', outcome: 'failed', reason: 'client_not_saved',
+        detail: String(error).slice(0, 300), email, requestId: reqId });
+    }
   }
 
   try {

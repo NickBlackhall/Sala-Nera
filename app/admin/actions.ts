@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/admin';
 import {
+  deleteClientRow,
   deleteListingRow,
   emailIsTaken,
   insertClient,
@@ -113,6 +114,18 @@ export async function updateClientAction(
   if ('error' in parsed) return parsed;
 
   await updateClientRow(id, parsed.input);
+  revalidatePath('/admin/clients');
+  redirect('/admin/clients');
+}
+
+/** Listings and bookings this client had are kept; each one's clientId just becomes null. */
+export async function deleteClientAction(form: FormData): Promise<void> {
+  await requireAdmin();
+
+  const id = Number(form.get('id'));
+  if (!Number.isInteger(id)) return;
+
+  await deleteClientRow(id);
   revalidatePath('/admin/clients');
   redirect('/admin/clients');
 }

@@ -83,6 +83,24 @@ harness lived in the session scratchpad and is not in the repo.
 client accounts, or Neon, the database the portal already used. Worth a
 line; the wording is his call.
 
+**Found by Nick's own test booking: booking with an admin email creates a
+client account under it.** Harmless — admin status wins at sign-in either
+way — but confusing to leave sitting in the client list, and it happened on
+the first real test. Fixed two ways: `ensureClient()` is no longer called
+when the email is one of `ADMIN_EMAILS` (`app/api/booking/route.ts`), and
+`/admin/clients/[id]` now warns in place on any client whose email is an
+admin address, in case one exists already or gets added by hand. Also added:
+deleting a client (`deleteClientRow` / `deleteClientAction` /
+`DeleteClient.tsx`), same shape as deleting a listing — their bookings and
+listings are kept, just with no owner. There was no way to remove a client
+at all before this.
+
+**The stray row from Nick's test is still in production** —
+`nblackhall@blackhallmediagroup.com`, client id 4 — because deleting it is a
+real production write and the classifier holds those for a person to
+confirm, not a script. Delete it from `/admin/clients` whenever; the warning
+banner there points at the same button.
+
 **Next, one step at a time** (Nick's preference — plan, confirm, then
 build): the terms/signature step. The calendar step is still blocked on the
 Google service account and Nick's shoot durations and hours.
