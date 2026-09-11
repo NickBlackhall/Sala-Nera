@@ -1,43 +1,113 @@
-# Sala Nera — Handoff (Sep 9 2026)
+# Sala Nera — Handoff (Sep 11 2026)
 
-## Start here — state at the end of the Sep 9 session
+## Start here — state at the end of the Sep 11 session
 
-Everything below is committed, pushed and deployed to salanera.com. Working
-tree clean. Last commit `8d41944`.
+**No code changed this session** — it was a scan-and-plan session after the
+codespace slept, plus a direction-setting conversation with Nick. Working
+tree clean, `main` matches `origin/main`, last commit still `6493c6e`. If you
+are picking this up, the Sep 9 work below is still exactly where it was;
+what's new is two things now confirmed done that the old list called open,
+and a real scope decision on the booking rebuild.
 
-**Open, in priority order:**
+**Corrections to the Sep 9 list — verified directly against production:**
 
-1. **Nick's real rates.** Every price in `lib/rates.ts` is `999`. Replace them,
-   set `RATES_ARE_PLACEHOLDER = false`, run `npm run rates:doc`. The on-page
-   "placeholder pricing" notice and the warning line in booking emails both
-   disappear on their own. The tier-boundary checks in `npm run check:rates`
-   are vacuous until this happens, and the script says so on every run.
-   **Nick has said this needs real research and will take a while — do not
-   wait on it.** Everything else is built to work either side of that switch.
-2. ~~Confirm the booking form delivers.~~ **Done — it works.** See "The booking
-   form delivers" below. One caveat left: Resend *accepted* both emails; nobody
-   has yet confirmed they landed in the inbox rather than a spam folder.
-3. **Run the migration.** `rate_cards` does not exist in production yet.
-   `MIGRATE_TOKEN` is now set for Production (it previously existed only in the
-   dead `portal-build` preview — the landmine this file predicted). The command
-   is in "The rate card editor" below. Nothing is broken until then: the card
-   falls back to the one in `lib/rates.ts`.
-4. **One credentials sitting, three keys.** All three are the same shape of
-   task and all three block finished code that is otherwise done and tested:
-   **Google Maps** (appendix at the bottom — unblocks travel pricing, built
-   this session), **a Google service account** for the calendar (Track B,
-   Phase 3 of the plan), and **Cloudflare R2** (its own appendix). Doing them
-   in one sitting costs one setup tax instead of three; the two Google ones
-   share a project.
+- ~~Run the migration.~~ **Done.** `rate_cards` exists (`0002_rate_cards`
+  applied 2026-09-09 22:29 UTC — five minutes after the Sep 9 handoff was
+  written, so it never got marked). Table is empty, so the site still runs
+  on the built-in card in `lib/rates.ts`, as designed.
+- ~~Google Maps key.~~ **Done and confirmed working.** Live in Vercel
+  Production since 21:24 UTC Sep 9, the current production deploy was built
+  after that. Tested with a real geocode call this session — works.
+
+**Open, in priority order — updated:**
+
+1. **Nick's real rates.** Still `999` everywhere, still deliberately parked —
+   Nick confirmed again this session it can wait. **New: his actual current
+   rates already exist**, on his live Spiro booking page
+   (`book.blackhallmediagroup.com/order/bmg/residential` — Silver $250 / Gold
+   $400 / Platinum $820 packages, plus a full à la carte list). Don't port
+   them without Nick asking, but when he's ready this is a five-minute look,
+   not a research project.
+2. **The booking rebuild — new decision, not started.** See "Booking
+   direction, decided this session" below. Nick wants the form's step
+   structure and how services/packages are offered rebuilt closer to how
+   Spiro's real flow works (Packages → Listing Details → Additional Services
+   → Contact Info → Questions → Schedule Appointment → Confirmation), and
+   booking to go instantly onto his real calendar rather than emailing him a
+   request — but the current site's **visual design should not change**.
+   I asked Nick to confirm I've scoped that right; his answer wasn't captured
+   before he stepped away, so **read the live conversation, don't assume**.
+3. **Cloudflare R2.** Nick is doing this himself right now, using the
+   appendix below. Don't duplicate the work — check with him before touching
+   `lib/storage.ts` or `scripts/seed-portal.mjs`.
+4. **A Google service account for the calendar** (Track B, Phase 3 of the
+   plan) — same Google Cloud project as the Maps key. Blocks the scheduling
+   build below.
 5. **The scheduling build**, per the "Calendar, Distance & Stripe" plan
-   published as an artifact. Next buildable piece is `lib/scheduling.ts` —
-   but its duration model needs real shoot durations from Nick first (only
-   one anchor exists: 3,329 sq ft = 90 min, from the Sep 10 Stovall shoot).
-6. Browser upload, then Stripe. Stripe is now scoped as pay-to-download on
-   the portal lock, **not** a booking-time charge — see the plan.
+   published as an artifact. Next buildable piece is `lib/scheduling.ts`, and
+   it needs real numbers from Nick before it can be written, not just the
+   credential above: real shoot durations by sqft (only one anchor exists:
+   3,329 sq ft = 90 min), his working days/hours, and whether he wants a
+   fixed buffer between shoots on top of the travel-time buffer
+   (`lib/distance.ts`, already built).
+6. **Dropbox delivery pipeline — new, scoped, not started.** Creating a
+   listing in `/admin` should auto-create a matching Dropbox folder pair,
+   **Raw** and **Finished**, via the Dropbox API. Only **Finished**
+   auto-imports to the site (through R2, once connected); **Raw** is
+   handoff-to-editor only and never touches the delivery site. Folder name
+   matches the address format already used for invoice memos. Needs a
+   Dropbox app credential (Nick's step, not set up) and depends on R2 being
+   connected first — there's nowhere for imported files to land otherwise.
+7. Browser upload UI, then Stripe. Stripe is scoped as pay-to-download on the
+   portal lock, **not** a booking-time charge — see the plan. Browser upload
+   may end up superseded by the Dropbox pipeline above rather than needed as
+   the primary path — worth deciding once Dropbox is real, not before.
 
 **Do not re-investigate:** the three silent-discard bugs, the auto-submit bug,
 or why local email fails. All diagnosed, fixed and written up below.
+
+---
+
+## Booking direction, decided this session (Sep 11) — nothing built yet
+
+Nick opened with wanting to "rethink the booking portal." Two reference
+sites came up and they answer different questions — don't conflate them:
+
+- **jacobguthrie.com/book** — a competitor's booking page. It's a
+  client-rendered app; a plain fetch only shows step 1 (service picker,
+  sqft-driven price, "Step 1 of 7"). Steps 2–7 aren't visible without
+  actually clicking through it in a browser, which wasn't done.
+- **Spiro (spiro.media)** — the software actually running Nick's own current
+  live booking page, `book.blackhallmediagroup.com/order/bmg/residential`.
+  This one *was* inspected properly, with a headless Chromium (Playwright —
+  already installed in this codespace from earlier admin-testing work, just
+  needed symlinking into `node_modules/` to `require()` it; see the Gotchas
+  section for the exact commands, remove the symlinks after). Its real flow:
+  **Packages → Listing Details → Additional Services → Contact Info →
+  Questions → Schedule Appointment → Order Confirmation**, with a running
+  price sidebar throughout. It also offers "pay at close" ($0 due until the
+  listing sells) as a payment option on every line — Nick has not asked for
+  that, don't build it unprompted.
+
+**What Nick actually asked for, put together:** keep Sala Nera's `/book`
+looking and performing exactly as it does now — he likes it. Rebuild the
+**step structure and how services/packages are presented** to work more like
+Spiro's real flow above (package-first, add-ons, running total) rather than
+today's custom step-by-step. Make the **booking mechanics** — a real
+calendar, instant confirmation straight onto Nick's calendar, no
+approve-by-hand step — work like Spiro does today. This was confirmed
+explicitly earlier in the session: instant booking, not request-then-approve.
+
+**What wasn't confirmed:** I reflected this understanding back to Nick and
+asked whether pulling in Spiro's step structure (rather than sticking to
+Guthrie's, which is what he literally named) was the right call, and whether
+I'd overreached. He stepped away before answering — **check the
+conversation for his reply before starting any of this build.**
+
+None of this is buildable yet regardless of that answer: it needs the
+Google Calendar credential and the duration/hours numbers listed above, and
+it's behind R2 and the rates decision in practical priority since Nick is
+mid-task on R2 right now.
 
 ---
 
