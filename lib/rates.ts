@@ -57,6 +57,8 @@ export type Service = {
    * already done. Retiring stops it being offered without rewriting history.
    */
   archived?: boolean;
+  /** Add-ons only: offered, and priced, only while one of these core services is chosen. */
+  appliesTo?: string[];
 };
 
 export const SERVICES: Service[] = [
@@ -90,6 +92,56 @@ export const SERVICES: Service[] = [
       ],
     },
   },
+  // The three below borrow the film's band edges; set real ones with the real prices.
+  {
+    id: 'social-reel-basic',
+    name: 'Basic social reel',
+    blurb: 'A vertical walkthrough reel, cut for social. No agent on camera.',
+    group: 'core',
+    pricing: {
+      kind: 'tiered',
+      tiers: [
+        { maxSqft: 3499, price: 999 },
+        { maxSqft: 6999, price: 999 },
+        { maxSqft: null, price: null },
+      ],
+    },
+  },
+  {
+    id: 'social-reel-luxury',
+    name: 'Luxury social reel',
+    blurb: 'A cinematic vertical reel with the agent on camera and lifestyle scenes.',
+    group: 'core',
+    pricing: {
+      kind: 'tiered',
+      tiers: [
+        { maxSqft: 3499, price: 999 },
+        { maxSqft: 6999, price: 999 },
+        { maxSqft: null, price: null },
+      ],
+    },
+  },
+  {
+    id: 'property-video',
+    name: 'Basic property video',
+    blurb: 'A straightforward walkthrough video that covers the home room by room.',
+    group: 'core',
+    pricing: {
+      kind: 'tiered',
+      tiers: [
+        { maxSqft: 3499, price: 999 },
+        { maxSqft: 6999, price: 999 },
+        { maxSqft: null, price: null },
+      ],
+    },
+  },
+  {
+    id: 'custom',
+    name: 'Something else',
+    blurb: 'Not a standard listing shoot? Choose this and tell us what you need in the notes.',
+    group: 'core',
+    pricing: { kind: 'quoted', note: 'Quoted once we know what you need.' },
+  },
   {
     id: 'drone-stills',
     name: 'Aerial stills',
@@ -109,6 +161,23 @@ export const SERVICES: Service[] = [
     name: 'Twilight session',
     blurb: 'A second visit at dusk — the shot that sells the listing.',
     group: 'addon',
+    appliesTo: ['photography'],
+    pricing: { kind: 'flat', price: 999 },
+  },
+  {
+    id: 'verticals',
+    name: 'Verticals & vignettes',
+    blurb: 'Portrait-format frames and detail vignettes, for print and social.',
+    group: 'addon',
+    appliesTo: ['photography'],
+    pricing: { kind: 'flat', price: 999 },
+  },
+  {
+    id: 'ai-twilight',
+    name: 'AI twilight',
+    blurb: 'Daytime exteriors turned to dusk in the edit — no second visit.',
+    group: 'addon',
+    appliesTo: ['photography'],
     pricing: { kind: 'flat', price: 999 },
   },
   {
@@ -137,6 +206,7 @@ export const SERVICES: Service[] = [
     name: 'Virtual staging',
     blurb: 'Furnished digitally, per image.',
     group: 'addon',
+    appliesTo: ['photography'],
     // Per-image work: the count is not known until the shoot exists, so the
     // form must not pretend to price it. The guide is explicit about this.
     pricing: { kind: 'quoted', note: 'Priced per image once the set is chosen.' },

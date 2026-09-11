@@ -1,5 +1,59 @@
 # Sala Nera — Handoff (Sep 11 2026)
 
+## Latest — Sep 11, afternoon: Guthrie's menu is on /book
+
+Nick sent screenshots of all seven steps of jacobguthrie.com/book, now in
+`reference/guthrie-screenshots/`. That settles the question the next section
+leaves open: **Guthrie for the form's structure and menu, Spiro for the booking
+mechanics** (real calendar slots, instant confirmation). The look of `/book`
+does not change.
+
+Built — the menu only, every price still `999`:
+
+- Four new core services: Basic social reel, Luxury social reel, Basic
+  property video, and "Something else" (quoted; tells them to use the notes).
+- Two new photography add-ons: Verticals & vignettes, AI twilight.
+- **Add-ons can belong to a service** (`appliesTo` in `lib/rates.ts`).
+  Twilight, verticals, AI twilight and virtual staging appear under an
+  "Interior & exterior photography add-ons" heading only once Photography is
+  ticked; everything else is under "Extras". `quote()` enforces it, not just
+  the form — an add-on sent without its service is dropped, never charged —
+  and unticking Photography clears its add-ons.
+- The validator rejects a bad `appliesTo`: on a core service, pointing at
+  something that isn't a core service, empty, or every core it needs retired.
+
+Verified: typecheck; `check:rates`, whose new checks were confirmed to fail
+with the rule removed; the validator against five broken cards; and a
+headless-browser run of the Services step at 1280px and 390px — 23 checks,
+stopped at Review without submitting.
+
+Choices made along the way: Twilight used to be offered with anything; it is
+now photography-only, matching Guthrie. Drone stills/video stayed in Extras.
+The three new video services borrow the film's sqft bands — invented, like
+the prices.
+
+**Roadmap, not now: a CMS page for services and prices.** Nick asked for it.
+It is the unbuilt `/admin/rates` screen in "The rate card editor" below — the
+table, loader and validator already exist. It will need a way to set
+`appliesTo`.
+
+**Also built: a Details step** (Contact → Property → Details → Services →
+Notes → Review). Guthrie's six property questions — status, listing type,
+off-market, which way the front faces, view home, homeowner home — as
+one-tap answers, plus access notes, moved here from Property. All optional,
+so an agent who doesn't know the facing can still book. The questions and
+their allowed answers live in `lib/booking-details.ts`; the booking route
+keeps only answers from that list, and Nick's email gets a "Property
+details:" block. Steps are now checked by name, not index, so inserting the
+next one can't shift the others. Verified in a headless browser at 1280px
+and 390px, with the final send intercepted so nothing was emailed or stored.
+
+**Next, one step at a time** (Nick's preference — plan, confirm, then
+build): save each booking to the database and create the client's portal
+account from it, so a returning email files the new shoot under the account
+it already has. Then the terms/signature step. The calendar step is still
+blocked on the Google service account and Nick's shoot durations and hours.
+
 ## Start here — state at the end of the Sep 11 session
 
 **No code changed this session** — it was a scan-and-plan session after the

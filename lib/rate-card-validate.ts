@@ -133,6 +133,32 @@ function checkTravelBands(bands: DistanceBand[], problems: Problem[]): void {
   });
 }
 
+function checkAppliesTo(service: Service, cores: Service[], problems: Problem[]): void {
+  if (service.appliesTo === undefined) return;
+  const where = service.name?.trim() || service.id;
+
+  if (service.group !== 'addon') {
+    problems.push({ where, message: 'Only an add-on can be tied to another service.' });
+  }
+  if (!Array.isArray(service.appliesTo) || service.appliesTo.length === 0) {
+    problems.push({ where, message: 'Pick at least one service it goes with, or make it always available.' });
+    return;
+  }
+
+  const unknown = service.appliesTo.filter((id) => !cores.some((c) => c.id === id));
+  for (const id of unknown) {
+    problems.push({ where, message: `Tied to "${id}", which is not a core service.` });
+  }
+  // Every core it needs being retired hides it from the form with no error anywhere.
+  if (
+    unknown.length === 0 &&
+    !service.archived &&
+    service.appliesTo.every((id) => cores.find((c) => c.id === id)?.archived)
+  ) {
+    problems.push({ where, message: 'Every service it goes with is retired, so it can never be offered.' });
+  }
+}
+
 export function validateRateCard(card: RateCard): Problem[] {
   const problems: Problem[] = [];
 
@@ -144,6 +170,7 @@ export function validateRateCard(card: RateCard): Problem[] {
       problems.push({ where: 'Services', message: 'Everything is retired — the booking form would have nothing to offer.' });
     }
 
+    const cores = card.services.filter((s) => s.group === 'core');
     const seen = new Set<string>();
     card.services.forEach((service, i) => {
       if (seen.has(service.id)) {
@@ -151,6 +178,7 @@ export function validateRateCard(card: RateCard): Problem[] {
       }
       seen.add(service.id);
       checkService(service, i, problems);
+      checkAppliesTo(service, cores, problems);
     });
   }
 

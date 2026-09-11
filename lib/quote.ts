@@ -119,6 +119,11 @@ export function travelLine(
   };
 }
 
+/** False for an add-on whose core service isn't among these ids. */
+export function isOffered(service: Service, serviceIds: string[]): boolean {
+  return !service.appliesTo || service.appliesTo.some((id) => serviceIds.includes(id));
+}
+
 export function quote(
   sqft: number | null,
   serviceIds: string[],
@@ -127,8 +132,9 @@ export function quote(
 ): Quote {
   // Iterate SERVICES rather than serviceIds so the order on an invoice always
   // matches the order on the form, and unknown ids submitted by hand are
-  // dropped instead of trusted.
-  const chosen = card.services.filter((s) => serviceIds.includes(s.id));
+  // dropped instead of trusted. An add-on whose core service isn't chosen is
+  // dropped too: it wasn't on screen, so it can't be charged.
+  const chosen = card.services.filter((s) => serviceIds.includes(s.id) && isOffered(s, serviceIds));
   const lines = chosen.map((s) => priceOne(s, sqft));
 
   const travel = travelLine(distanceMiles, card.travelBands);

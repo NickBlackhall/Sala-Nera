@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { money, quote } from '@/lib/quote';
-import { RATES_ARE_PLACEHOLDER, RATE_NOTES, SERVICE_AREA_MILES, SERVICES } from '@/lib/rates';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { DETAIL_QUESTIONS, EMPTY_DETAILS, type DetailQuestion, type Details } from '@/lib/booking-details';
+import { isOffered, money, quote } from '@/lib/quote';
+import { RATES_ARE_PLACEHOLDER, RATE_NOTES, SERVICE_AREA_MILES, SERVICES, type Service } from '@/lib/rates';
 
 /**
- * Five steps, because a single long form is where bookings go to be abandoned.
+ * Six steps, because a single long form is where bookings go to be abandoned.
  * The running estimate is visible from the moment it can say anything true —
  * showing a price is the whole point of the form, and it is what filters out
  * the agents who were never going to pay it.
@@ -18,11 +19,12 @@ type State = 'idle' | 'sending' | 'sent' | 'error';
 
 type TravelState = { status: 'idle' | 'checking' | 'ready' | 'unavailable'; miles: number | null };
 
-const STEPS = ['Contact', 'Property', 'Services', 'Notes', 'Review'] as const;
+const STEPS = ['Contact', 'Property', 'Details', 'Services', 'Notes', 'Review'] as const;
 
 const LIVE = SERVICES.filter((s) => !s.archived);
 const CORE = LIVE.filter((s) => s.group === 'core');
-const ADDONS = LIVE.filter((s) => s.group === 'addon');
+const TIED = LIVE.filter((s) => s.group === 'addon' && s.appliesTo);
+const EXTRAS = LIVE.filter((s) => s.group === 'addon' && !s.appliesTo);
 
 /** Today in the local timezone, as the date input wants it. */
 function today(): string {
@@ -46,6 +48,8 @@ export default function BookingForm() {
     notes: '', hp_ref: '', // hp_ref is the honeypot — see the field below
   });
   const [services, setServices] = useState<string[]>([]);
+  const [details, setDetails] = useState<Details>(EMPTY_DETAILS);
+  const current = STEPS[step];
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setF((prev) => ({ ...prev, [k]: e.target.value }));
@@ -131,18 +135,43 @@ export default function BookingForm() {
     return `Adds ${money(line.amount)} for travel.`;
   }, [travel.status, estimate.lines]);
 
+  /** Each chosen core service's own add-ons; one tied to several cores shows under the first. */
+  const addonGroups = useMemo(() => {
+    const placed = new Set<string>();
+    return CORE.filter((core) => services.includes(core.id))
+      .map((core) => {
+        const items = TIED.filter((s) => s.appliesTo?.includes(core.id) && !placed.has(s.id));
+        items.forEach((s) => placed.add(s.id));
+        return { core, items };
+      })
+      .filter((g) => g.items.length > 0);
+  }, [services]);
+
   function toggle(id: string) {
-    setServices((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
+    setServices((prev) => {
+      const next = prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id];
+      // Unticking a core drops its add-ons, or they'd come back pre-ticked with it.
+      return next.filter((sid) => {
+        const s = SERVICES.find((x) => x.id === sid);
+        return !s || isOffered(s, next);
+      });
+    });
   }
+
+  const card = (s: Service) => (
+    <ServiceCard key={s.id} id={s.id} name={s.name} blurb={s.blurb}
+      price={priceLabel(s.id, estimate)} on={services.includes(s.id)} onToggle={() => toggle(s.id)} />
+  );
 
   /** Each step names what it needs, so nobody reaches Review missing an email. */
   function problemWith(index: number): string | null {
-    if (index === 0) {
+    const at = STEPS[index];
+    if (at === 'Contact') {
       if (!f.name.trim()) return 'Your name, so we know who we are talking to.';
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.trim())) return 'A valid email address.';
     }
-    if (index === 1 && !f.address.trim()) return 'The property address.';
-    if (index === 2 && services.length === 0) return 'At least one service.';
+    if (at === 'Property' && !f.address.trim()) return 'The property address.';
+    if (at === 'Services' && services.length === 0) return 'At least one service.';
     return null;
   }
 
@@ -188,6 +217,7 @@ export default function BookingForm() {
           ...f,
           sqft: sqftNumber,
           services,
+          details,
           estimate: estimate.total,
           startedAt,
           requestId,
@@ -234,7 +264,7 @@ export default function BookingForm() {
         ))}
       </ol>
 
-      {step === 0 && (
+      {current === 'Contact' && (
         <fieldset className="bk-panel">
           <legend className="bk-legend">Who are we working with?</legend>
           <div className="field">
@@ -252,7 +282,7 @@ export default function BookingForm() {
         </fieldset>
       )}
 
-      {step === 1 && (
+      {current === 'Property' && (
         <fieldset className="bk-panel">
           <legend className="bk-legend">The property</legend>
           <div className="field">
@@ -276,34 +306,42 @@ export default function BookingForm() {
               with the date or the nearest alternatives.
             </p>
           </div>
+        </fieldset>
+      )}
+
+      {current === 'Details' && (
+        <fieldset className="bk-panel">
+          <legend className="bk-legend">Tell us about the home</legend>
+          {DETAIL_QUESTIONS.map((q) => (
+            <Choice key={q.key} q={q} value={details[q.key]}
+              onChange={(v) => setDetails((prev) => ({ ...prev, [q.key]: v }))} />
+          ))}
           <div className="field">
             <label>
               Access notes
               <textarea value={f.accessNotes} onChange={set('accessNotes')} placeholder="Lockbox, gate code, tenant occupied, pets, parking…" />
             </label>
           </div>
+          <p className="field-hint">All optional — skip anything you don&rsquo;t know yet.</p>
         </fieldset>
       )}
 
-      {step === 2 && (
+      {current === 'Services' && (
         <fieldset className="bk-panel">
           <legend className="bk-legend">What should we shoot?</legend>
 
           <p className="bk-group-label">The shoot</p>
-          <div className="bk-cards">
-            {CORE.map((s) => (
-              <ServiceCard key={s.id} id={s.id} name={s.name} blurb={s.blurb}
-                price={priceLabel(s.id, estimate)} on={services.includes(s.id)} onToggle={() => toggle(s.id)} />
-            ))}
-          </div>
+          <div className="bk-cards">{CORE.map(card)}</div>
 
-          <p className="bk-group-label">Add-ons</p>
-          <div className="bk-cards">
-            {ADDONS.map((s) => (
-              <ServiceCard key={s.id} id={s.id} name={s.name} blurb={s.blurb}
-                price={priceLabel(s.id, estimate)} on={services.includes(s.id)} onToggle={() => toggle(s.id)} />
-            ))}
-          </div>
+          {addonGroups.map(({ core, items }) => (
+            <Fragment key={core.id}>
+              <p className="bk-group-label">{core.name} add-ons</p>
+              <div className="bk-cards">{items.map(card)}</div>
+            </Fragment>
+          ))}
+
+          <p className="bk-group-label">Extras</p>
+          <div className="bk-cards">{EXTRAS.map(card)}</div>
 
           <ul className="bk-notes">
             {RATE_NOTES.map((n) => <li key={n}>{n}</li>)}
@@ -311,7 +349,7 @@ export default function BookingForm() {
         </fieldset>
       )}
 
-      {step === 3 && (
+      {current === 'Notes' && (
         <fieldset className="bk-panel">
           <legend className="bk-legend">Anything else?</legend>
           <div className="field">
@@ -324,7 +362,7 @@ export default function BookingForm() {
         </fieldset>
       )}
 
-      {step === 4 && (
+      {current === 'Review' && (
         <fieldset className="bk-panel">
           <legend className="bk-legend">Look it over</legend>
           <dl className="bk-review">
@@ -335,6 +373,7 @@ export default function BookingForm() {
             <Row k="Address" v={f.address} />
             <Row k="Square footage" v={sqftNumber ? sqftNumber.toLocaleString('en-US') : ''} />
             <Row k="Preferred date" v={f.desiredDate ? `${f.desiredDate} — requested, not confirmed` : ''} />
+            {DETAIL_QUESTIONS.map((q) => <Row key={q.key} k={q.short} v={details[q.key]} />)}
             <Row k="Access notes" v={f.accessNotes} />
             <Row k="Anything else" v={f.notes} />
           </dl>
@@ -462,6 +501,23 @@ function ServiceCard({
       </span>
       <span className="bk-card-price">{price}</span>
     </label>
+  );
+}
+
+function Choice({ q, value, onChange }: { q: DetailQuestion; value: string; onChange: (v: string) => void }) {
+  return (
+    <fieldset className="bk-choice">
+      <legend className="bk-choice-label">{q.label}</legend>
+      <div className="bk-pills">
+        {q.options.map((o) => (
+          <label key={o} className={`bk-pill${value === o ? ' is-on' : ''}`}>
+            <input type="radio" name={q.key} value={o} checked={value === o} onChange={() => onChange(o)} />
+            {o}
+          </label>
+        ))}
+      </div>
+      {q.hint && <p className="field-hint">{q.hint}</p>}
+    </fieldset>
   );
 }
 

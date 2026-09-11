@@ -39,6 +39,42 @@ A 60–90 second film, scored and colour graded.
 | 3,500–6,999 sq ft | $999 |
 | 7,000+ sq ft | Quoted after a walkthrough |
 
+### Basic social reel
+
+A vertical walkthrough reel, cut for social. No agent on camera.
+
+| Property size | Price |
+|---|---|
+| 0–3,499 sq ft | $999 |
+| 3,500–6,999 sq ft | $999 |
+| 7,000+ sq ft | Quoted after a walkthrough |
+
+### Luxury social reel
+
+A cinematic vertical reel with the agent on camera and lifestyle scenes.
+
+| Property size | Price |
+|---|---|
+| 0–3,499 sq ft | $999 |
+| 3,500–6,999 sq ft | $999 |
+| 7,000+ sq ft | Quoted after a walkthrough |
+
+### Basic property video
+
+A straightforward walkthrough video that covers the home room by room.
+
+| Property size | Price |
+|---|---|
+| 0–3,499 sq ft | $999 |
+| 3,500–6,999 sq ft | $999 |
+| 7,000+ sq ft | Quoted after a walkthrough |
+
+### Something else
+
+Not a standard listing shoot? Choose this and tell us what you need in the notes.
+
+**Quoted after.** Quoted once we know what you need.
+
 ## Add-ons
 
 ### Aerial stills
@@ -56,6 +92,24 @@ Moving aerial footage, cut into the film or delivered on its own.
 ### Twilight session
 
 A second visit at dusk — the shot that sells the listing.
+
+Only offered with: Interior & exterior photography.
+
+**$999**, flat.
+
+### Verticals & vignettes
+
+Portrait-format frames and detail vignettes, for print and social.
+
+Only offered with: Interior & exterior photography.
+
+**$999**, flat.
+
+### AI twilight
+
+Daytime exteriors turned to dusk in the edit — no second visit.
+
+Only offered with: Interior & exterior photography.
 
 **$999**, flat.
 
@@ -80,6 +134,8 @@ The neighbourhood, amenities, and what living there looks like.
 ### Virtual staging
 
 Furnished digitally, per image.
+
+Only offered with: Interior & exterior photography.
 
 **Quoted after.** Priced per image once the set is chosen.
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { DETAIL_QUESTIONS, cleanDetails } from '@/lib/booking-details';
 import { milesBetween } from '@/lib/distance';
 import { sendEmail } from '@/lib/email';
 import { geocodeAddress, hasGeocoding } from '@/lib/geocode';
@@ -130,6 +131,7 @@ export async function POST(req: Request) {
   const accessNotes = clean(body.accessNotes, MAX.accessNotes);
   const notes = clean(body.notes, MAX.notes);
   const desiredDate = cleanInline(body.desiredDate, MAX.date);
+  const details = cleanDetails(body.details);
   const requestId = reqId;
 
   const sqftRaw = Number(body.sqft);
@@ -201,6 +203,9 @@ export async function POST(req: Request) {
     `Email:        ${email}`,
     `Phone:        ${phone || '—'}`,
     `Brokerage:    ${brokerage || '—'}`,
+    '',
+    'Property details:',
+    ...DETAIL_QUESTIONS.map((q) => `  ${`${q.short}:`.padEnd(16)}${details[q.key] || '—'}`),
     '',
     'Services:',
     ...priced.lines.map(

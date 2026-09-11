@@ -285,6 +285,15 @@ section{position:relative;border-top:1px solid var(--line)}
 .bk-card-blurb{font-size:12px;color:var(--muted);line-height:1.45}
 .bk-card-price{flex:none;font-size:12px;color:var(--ember);letter-spacing:.02em;white-space:nowrap;padding-top:1px}
 
+.bk-choice{border:0;min-inline-size:0;margin-bottom:24px}
+.bk-choice-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding:0}
+.bk-pills{display:flex;flex-wrap:wrap;gap:8px}
+.bk-pill{position:relative;padding:10px 16px;border:1px solid var(--line);background:var(--ink-soft);font-size:13px;line-height:1.2;cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.bk-pill:hover{border-color:#4A443C}
+.bk-pill.is-on{border-color:var(--ember);background:rgba(212,85,47,.07)}
+.bk-pill:has(input:focus-visible){outline:2px solid var(--ember);outline-offset:3px}
+.bk-pill input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+
 .bk-notes{list-style:none;margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}
 .bk-notes li{font-size:12px;color:var(--muted);padding-left:14px;position:relative;margin-bottom:7px}
 .bk-notes li::before{content:"—";position:absolute;left:0}

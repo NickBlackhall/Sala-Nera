@@ -30,8 +30,14 @@ function tierRows(tiers) {
   return lines;
 }
 
+const nameOf = (id) => SERVICES.find((s) => s.id === id)?.name ?? id;
+
 function section(service) {
   const out = [`### ${service.name}`, '', service.blurb, ''];
+
+  if (service.appliesTo?.length) {
+    out.push(`Only offered with: ${service.appliesTo.map(nameOf).join(', ')}.`, '');
+  }
 
   if (service.pricing.kind === 'flat') {
     out.push(`**${money(service.pricing.price)}**, flat.`, '');

@@ -24,7 +24,11 @@ function check(label, actual, expected) {
   failures += 1;
 }
 
-const amountFor = (sqft, id) => quote(sqft, [id]).lines[0]?.amount ?? null;
+// An add-on tied to a core service is only priced alongside it, so quote it with one.
+const amountFor = (sqft, id) => {
+  const core = SERVICES.find((s) => s.id === id)?.appliesTo?.[0];
+  return quote(sqft, core ? [core, id] : [id]).lines.find((l) => l.id === id)?.amount ?? null;
+};
 
 for (const service of SERVICES) {
   if (service.pricing.kind !== 'tiered') continue;
@@ -68,9 +72,23 @@ for (const service of SERVICES) {
   }
 }
 
+// A tied add-on submitted without its core service must not be charged, or
+// count as a booking on its own — it was never on screen to be chosen.
+for (const service of SERVICES) {
+  if (!service.appliesTo) continue;
+  check(`${service.id} alone is dropped`, quote(3000, [service.id]).lines.length, 0);
+  for (const core of service.appliesTo) {
+    check(
+      `${service.id} with ${core} is priced`,
+      quote(3000, [core, service.id]).lines.some((l) => l.id === service.id),
+      true,
+    );
+  }
+}
+
 // Totals exclude quoted-after items rather than treating them as free.
-const quotedId = SERVICES.find((s) => s.pricing.kind === 'quoted')?.id;
-const flat = SERVICES.find((s) => s.pricing.kind === 'flat');
+const quotedId = SERVICES.find((s) => s.pricing.kind === 'quoted' && !s.appliesTo)?.id;
+const flat = SERVICES.find((s) => s.pricing.kind === 'flat' && !s.appliesTo);
 if (quotedId && flat) {
   const q = quote(3000, [flat.id, quotedId]);
   check('total ignores quoted items', q.total, flat.pricing.price);
