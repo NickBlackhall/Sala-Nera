@@ -1,5 +1,316 @@
 # Sala Nera — Handoff (Sep 11 2026)
 
+## Latest — Sep 11, evening: the whole client journey, mapped end to end
+
+Nick stepped away after this session's booking-form work and asked for three
+things before he went: (1) delete the stray admin-email client row — done,
+see the previous entry, confirmed by re-querying the row is gone and its one
+booking now shows `client_id: null`; (2) a full walk of the client journey
+from clicking "Book a Shoot" to downloading finished photos, marking what's
+real versus what's a gap; (3) a first sketch of the rates CMS. All three are
+below. Nothing in this entry changes code — it's the map, not a build.
+
+**Two small facts from Nick, not yet acted on:**
+
+- **A shoot-duration anchor, for the eventual calendar work:** roughly 4
+  hours for 2,500 sq ft, photography + drone + video together. He does not
+  have more granularity than that yet, and said so plainly. **Flag: this
+  does not agree with the anchor already on file** (3,329 sq ft = 90 minutes,
+  a few sections down) — 4 hours for 2,500 sq ft is over 3× the rate per
+  square foot that number implies. Don't average them or guess which is
+  right. Ask Nick directly which one describes the real day before
+  `lib/scheduling.ts` is written — a wrong duration double-books him, which
+  is worse than a wrong price.
+- **The booking form's terms/signature step (Guthrie's step 7) is wanted.**
+  Nick has a real terms-of-service page already, but said to use a
+  placeholder for now and he'll supply the real text later — same shape as
+  `RATES_ARE_PLACEHOLDER`, a stand-in that is obviously a stand-in, not a
+  guess dressed up as real. Not built yet; next on the list below.
+
+---
+
+### The client journey, start to finish
+
+Each stage says what's real, what's still a gap, and where the code lives.
+"✅ Real" means tested and live in production right now, not just written.
+
+**1. An agent lands on `/book` and fills out the form.**
+✅ Real: six steps (Contact → Property → Details → Services → Notes →
+Review), live pricing as they type, Guthrie's service/add-on menu, honeypot
+and timing checks, server-side re-pricing so the browser's number is never
+trusted. `app/book/BookingForm.tsx`, `app/api/booking/route.ts`.
+⬜ Gap: no terms/signature step yet (see above). No real calendar — "desired
+date" is a request, not a slot.
+
+**2. They submit.**
+✅ Real: Nick gets an emailed lead with every field, including the new
+Property Details block. The agent gets a confirmation email that does not
+quote a price while rates are placeholders. The booking is saved to the
+`bookings` table with the exact prices it was quoted — a later rate change
+can never rewrite it. A client account is created or reused automatically
+from the email address (skipped for Nick's own admin addresses). Every
+outcome — sent, discarded as a bot, rejected, or failed — is written to
+`/admin/activity`.
+⬜ Gap: nothing books a hold on Nick's actual calendar. Nothing drafts a
+Stripe invoice, even though the guide describes that as an automation.
+
+**3. Nick reviews the lead and replies to confirm the date and real price.**
+✅ Real: `/admin/bookings` lists every saved booking with what was quoted;
+`/admin/activity` shows delivery status; `/admin/clients` now shows the
+account the booking created, including a warning if it's ever an admin
+address, and can delete one.
+⬜ Gap: this whole step is Nick, by hand, in his email client — nothing
+automates the back-and-forth yet. This is the piece "instant booking" is
+meant to remove.
+
+**4. Nick creates the listing in `/admin`.**
+✅ Real: `/admin/listings/new` — address, slug, assign to a client (the
+dropdown already includes anyone the booking form created), shoot date,
+lock state. Deliberately still a manual step, on purpose: a booking does not
+create a listing by itself, so a junk or test booking can't spawn a gallery,
+and later, can't spawn a Dropbox folder pair either.
+⬜ Gap: nothing links a saved booking row to the listing it becomes — Nick
+re-types the address by hand. Small, but worth a "create listing from this
+booking" button on `/admin/bookings` once the rest settles.
+
+**5. Nick shoots it, edits, and gets the finished files onto the site.**
+⬜ **This is the biggest gap in the whole journey: there is no upload
+path that isn't a developer's terminal.** Today, getting media onto a
+listing means either running `scripts/seed-portal.mjs` (which only knows
+about the two demo listings) or manually dragging files into the Cloudflare
+R2 dashboard once R2 exists, then hand-editing that script's file keys.
+There is no admin "upload files to this listing" button. This was already
+known and is item 2 in the signed-downloads section further down, but it's
+worth naming plainly here: **it's the one gap that blocks every real listing
+from having real photos on it, and nothing after this step matters until
+it's closed.**
+⬜ Also gap: the Dropbox Raw/Finished pipeline that Nick described — creating
+a listing auto-creates the two Dropbox folders, and only Finished ever
+reaches the site — is designed (see the booking-direction memory) but not
+started, and depends on R2 existing first.
+
+**6. The client signs in.**
+✅ Real, completely. Email in, a magic link out, no password. Whether it's
+a booking-created account or one Nick made by hand makes no difference.
+`lib/session.ts`, `/portal/login`.
+
+**7. The client sees their gallery.**
+✅ Real: `/portal` lists every listing they (or their team) own; `/portal/[slug]`
+shows the gallery. Locked listings show watermarked previews and no working
+download button; unlocked ones don't. Ownership is checked server-side,
+team-sharing included, and a listing that isn't theirs 404s rather than 403s
+so a stranger can't use the error itself to learn anything.
+⬜ Gap: none, for what exists. This step works today for any listing that
+actually has media on it (see step 5).
+
+**8. The client pays to unlock.**
+⬜ **This does not exist yet, in any form.** `downloadLocked` is flipped by
+Nick clicking a button in `/admin`. There is no checkout, no invoice, no
+Stripe integration anywhere in the code — `invoices` is a table shape in the
+schema and nothing else. The plan (see "Calendar, Distance & Stripe" below)
+is pay-to-download at the portal lock, not a charge at booking time, and
+that `invoice.paid` should call the exact same `setListingLock()` the admin
+button already calls — so Stripe, whenever it lands, slots into a mechanism
+that's already built and tested, rather than needing its own.
+
+**9. The client downloads.**
+✅ Real and tested: `GET /api/portal/download/[id]` and
+`POST /api/portal/download` check the session, ownership, and the lock
+before minting anything, and log every download. The lightbox and gallery
+buttons go through this route, not straight at a file.
+⚠️ **Real, but currently pointless: the files themselves are not protected.**
+Media rows point at `/demo/*.jpg` under `public/`, which anyone can fetch
+directly, lock or no lock. The enforcement is real; the thing it's
+enforcing access to isn't private yet. This is entirely the R2 gap — the
+moment R2 is connected (Nick is mid-setup), this step goes from "correctly
+wired to nothing" to "actually the whole point of the portal," with no code
+change required.
+⬜ Smaller gaps here: "Download All" fires one request per file rather than
+a real zip (fine until it isn't); MLS-size derivatives don't exist (the
+button says so rather than pretending); an activity click-through from
+"who downloaded what" back to `/admin/bookings` doesn't exist yet.
+
+---
+
+### Every gap, gathered in one place
+
+In the order they'd unblock the most:
+
+1. **No upload path for real media** (step 5). Blocks every real listing.
+2. **Cloudflare R2 not connected** (step 9, and step 5's Dropbox plan).
+   Nick's own task, in progress. Blocks real file protection and blocks
+   Dropbox, since there's nowhere for Finished files to land.
+3. **No instant calendar booking** (steps 1–3). Blocked on the Google
+   Calendar service account (not started) and real duration/hours numbers
+   (partially given tonight, but conflicting with an earlier anchor — see
+   above).
+4. **No Stripe / no way to actually pay** (step 8). Needs Nick present;
+   scoped as pay-to-download, slots into `setListingLock()`.
+5. **No Dropbox Raw/Finished pipeline** (step 5). Depends on #2.
+6. **No terms/signature step on `/book`.** Placeholder text approved
+   tonight, not yet built.
+7. **Real shoot rates.** Deliberately parked by Nick; his real numbers
+   already exist on his live Spiro page whenever he's ready — a five-minute
+   look, not a research project.
+8. **No CMS for services/prices.** Brainstormed below; not started. The
+   database table, loader and validator it would sit on top of already
+   exist.
+9. **No "create listing from this booking" link** (step 4). Small.
+10. **No MLS-size exports, no real zip for batch downloads** (step 9).
+    Both explicitly deferred already; revisit if either turns out to matter
+    in practice.
+11. **Privacy page is stale.** Still describes only "inquiries" via Vercel
+    and Resend — doesn't mention saved bookings, client accounts, or Neon
+    (the database). Nick's wording call, not touched.
+
+### Recommended order, given what's already true
+
+R2 is Nick's own task and already in progress, so it isn't "next" for a
+session to pick up — but everything downstream of it (real protection,
+Dropbox) waits on him finishing it regardless of what else gets built.
+With that in mind, in the order a session should actually work through them:
+
+1. **The terms/signature step on `/book`.** Small, self-contained, fully
+   unblocked now that Nick's said to use a placeholder. Natural next step
+   after tonight's Details step.
+2. **Resolve the duration conflict with Nick, then build `lib/scheduling.ts`
+   and instant calendar booking**, once the Google Calendar service account
+   exists. This is the actual centerpiece of "get the booking portal
+   figured out" — everything else in the booking form has been leading here.
+3. **A real upload path**, once Nick's decided (per his own earlier
+   direction) whether it's a browser upload UI or superseded entirely by
+   the Dropbox pipeline. Don't build both.
+4. **The rates CMS**, whenever Nick wants to stop parking pricing — see the
+   brainstorm below. Foundation already exists; this is real but not urgent.
+5. **Stripe**, needs Nick present for the business decisions (pricing,
+   what "paid" means, refunds). Mechanically simple once decided.
+
+---
+
+### Brainstorm: what the rates CMS could look like
+
+Nick asked for a page where he changes services and prices without a
+developer. Here's a first sketch — not built, not committed to.
+
+**What already exists to build on:** `rate_cards` (a versioned table — one
+jsonb document per save, newest wins, nothing is ever overwritten), the
+validator in `lib/rate-card-validate.ts` (catches gapped size bands, a final
+band that isn't open-ended, an add-on tied to a retired service, and more —
+already proven against nine deliberately broken cards), and `lib/rate-card.ts`
+(falls back to the built-in card on anything unreadable, so a bad save can
+never take pricing down). The editor's whole job is to be a form in front of
+data that already knows how to validate and version itself.
+
+**Phase 1 — read-only**, proving the loading path before anything is
+editable:
+
+```
+/admin/rates
+┌─────────────────────────────────────────────────────────┐
+│ Rate card                              Version: built-in │
+│                                    (no saves yet)         │
+├─────────────────────────────────────────────────────────┤
+│ THE SHOOT                                                │
+│  Interior & exterior photography     tiered, 5 bands     │
+│  Cinematic property film             tiered, 3 bands     │
+│  Basic social reel                   tiered, 3 bands     │
+│  ...                                                     │
+│ ADD-ONS                                                  │
+│  Twilight session          $999   → only with Photography│
+│  Verticals & vignettes     $999   → only with Photography│
+│  Floor plan                $999                          │
+│  ...                                                     │
+│ TRAVEL                                                   │
+│  0–20 mi: included · 20–50: $65 · 50–75: $100 · 75+: ask │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Phase 2 — editing.** Each service becomes a small editable card:
+
+```
+┌─ Twilight session ──────────────────────── [Retire] ─┐
+│ Name        [Twilight session___________]            │
+│ Blurb       [A second visit at dusk...___]            │
+│ Group       ( ) Core   (•) Add-on                     │
+│ Only with   [x] Photography  [ ] Cinematic film  ...  │
+│ Pricing     (•) Flat  ( ) Tiered  ( ) Quoted after    │
+│             $ [999____]                               │
+└────────────────────────────────────────────────────────┘
+[+ Add a service]
+```
+
+A tiered service's pricing block expands into its bands instead of one
+dollar field:
+
+```
+│ Pricing     ( ) Flat  (•) Tiered  ( ) Quoted after    │
+│             Up to  [1999_] sq ft →  $[999__]          │
+│             Up to  [3499_] sq ft →  $[999__]          │
+│             Up to  [4999_] sq ft →  $[999__]          │
+│             Up to  [7499_] sq ft →  $[999__]          │
+│             Above that            →  ( ) Quoted after │
+│             [+ Add a band]                            │
+```
+
+**Saving** runs the exact same `validateRateCard()` the codebase already
+ships, before anything is written — a bad save is refused with the same
+plain-English problem list the validator already produces (e.g. "Twilight
+session: Every service it goes with is retired, so it can never be
+offered."), not a stack trace. A successful save writes a **new** row —
+never edits an old one — with a short required note ("what changed, in your
+words") and Nick's email, matching how `rate_cards` already works.
+
+**History**, a second tab or a section below:
+
+```
+┌─ History ──────────────────────────────────────────────┐
+│ Sep 15, 2:14pm  "real photography prices"     [Restore]│
+│ Sep 12, 9:03am  "added drone bundle discount" [Restore]│
+│ (built-in card — the one shipped in code)              │
+└──────────────────────────────────────────────────────────┘
+```
+Restoring an old version saves it again as a **new** version, per the
+existing design — the history itself is never rewritten, so what was live
+and when is always honest.
+
+**One real architectural question this raises, worth deciding before
+building it:** `rates.md` — the file the invoicing automation reads — is
+currently *generated from the TypeScript file* by a script Nick runs by
+hand (`npm run rates:doc`), then committed. Once prices live in the
+database and change from a browser with no deploy, a committed file goes
+stale the moment someone edits a price. Two ways to fix it:
+
+- **(A) Render it on request instead of generating a file.** An endpoint
+  (e.g. `/api/rates-doc`, or an admin page) reads whatever the *live* rate
+  card is right now and renders the same markdown format on the fly — so
+  the invoicing automation always sees the current price, never a stale
+  commit. No file, no `npm run rates:doc` step, ever, once this exists.
+- **(B) Regenerate and re-commit `rates.md` on every CMS save.** Possible,
+  but means the editor needs write access to the git repo from a Vercel
+  serverless function, which is a strange amount of power to hand a form
+  that changes a phone number — and it reintroduces exactly the "did
+  someone remember to run the generator" risk the generator was built to
+  remove.
+
+**(A) is the better fit** — it keeps "one source of truth" the same
+principle that already governs `lib/rates.ts` vs. `rates.md` today, just
+moves the source of truth from a file to the database row `lib/rate-card.ts`
+already reads. Worth deciding with Nick before `/admin/rates` is built,
+since it changes what "the invoicing automation reads rates.md" means going
+forward — probably "reads this URL" instead.
+
+```mermaid
+flowchart LR
+    A["/admin/rates — Nick edits"] -->|validateRateCard| B{Valid?}
+    B -->|No| A
+    B -->|Yes, new row| C[("rate_cards table\n(versioned, newest wins)")]
+    C --> D["lib/rate-card.ts\n(falls back to built-in)"]
+    D --> E["/book — live pricing"]
+    D --> F["app/api/booking — server re-pricing"]
+    D --> G["/api/rates-doc (proposed)\nrenders current card as text"]
+    G --> H["Invoicing automation reads this,\nnever a committed file"]
+```
+
 ## Latest — Sep 11, afternoon: Guthrie's menu is on /book
 
 Nick sent screenshots of all seven steps of jacobguthrie.com/book, now in
