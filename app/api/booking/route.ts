@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { DETAIL_QUESTIONS, cleanDetails } from '@/lib/booking-details';
+import { ensureClient, saveBooking, type ClientAccount } from '@/lib/bookings';
 import { milesBetween } from '@/lib/distance';
 import { sendEmail } from '@/lib/email';
 import { geocodeAddress, hasGeocoding } from '@/lib/geocode';
@@ -272,6 +273,39 @@ export async function POST(req: Request) {
   }
 
   /**
+   * The lead is in Nick's inbox, so nothing below may turn this into an error.
+   * The client account and the saved booking each fail on their own, into
+   * telemetry — a booking that emailed but did not save is still a booking.
+   */
+  let account: ClientAccount | null = null;
+  try {
+    account = await ensureClient({ email, name, phone, company: brokerage });
+  } catch (error) {
+    await record({ kind: 'booking', outcome: 'failed', reason: 'client_not_saved',
+      detail: String(error).slice(0, 300), email, requestId: reqId });
+  }
+
+  try {
+    await saveBooking({
+      clientId: account?.id ?? null,
+      email, name, address, sqft, details,
+      phone: phone || null,
+      brokerage: brokerage || null,
+      desiredDate: desiredDate || null,
+      accessNotes: accessNotes || null,
+      notes: notes || null,
+      lines: priced.lines,
+      total: priced.total,
+      ratesArePlaceholder: RATES_ARE_PLACEHOLDER,
+      rateCardVersion: null, // quote() above prices from the built-in card
+      requestId: requestId || null,
+    });
+  } catch (error) {
+    await record({ kind: 'booking', outcome: 'failed', reason: 'booking_not_saved',
+      detail: String(error).slice(0, 300), email, requestId: reqId });
+  }
+
+  /**
    * The agent's own copy, sent second and on purpose.
    *
    * Nick's notification above is the one that must not fail — it is the lead.
@@ -283,7 +317,10 @@ export async function POST(req: Request) {
     to: email,
     replyTo: NOTIFY_EMAIL, // a reply reaches Nick, not the no-reply sender
     subject: `We've got your booking request — ${address}`,
-    text: clientConfirmation({ name, address, desiredDate, priced }),
+    text: clientConfirmation({
+      name, address, desiredDate, priced,
+      portalLogin: account ? `${process.env.PORTAL_URL ?? new URL(req.url).origin}/portal/login` : null,
+    }),
   });
 
   await record({
@@ -291,7 +328,9 @@ export async function POST(req: Request) {
     outcome: confirmed ? 'ok' : 'failed',
     reason: confirmed ? 'sent' : 'confirmation_failed',
     detail: confirmed
-      ? `${address} — ${chosenLines(priced).length} service(s), ${money(priced.total)}. Both emails sent.`
+      ? `${address} — ${chosenLines(priced).length} service(s), ${money(priced.total)}. Both emails sent.${
+          account ? (account.created ? ' New client account.' : ' Existing client.') : ''
+        }`
       : `${address} — the lead reached Nick, but the client's confirmation did not send.`,
     email,
     requestId: reqId,
@@ -307,12 +346,14 @@ export async function POST(req: Request) {
  * an argument later.
  */
 function clientConfirmation({
-  name, address, desiredDate, priced,
+  name, address, desiredDate, priced, portalLogin,
 }: {
   name: string;
   address: string;
   desiredDate: string;
   priced: ReturnType<typeof quote>;
+  /** Only when the account really exists — never promise a sign-in that won't work. */
+  portalLogin: string | null;
 }): string {
   const firstName = name.split(/\s+/)[0] || 'there';
   const travel = priced.lines.find((l) => l.id === 'travel');
@@ -361,6 +402,15 @@ function clientConfirmation({
           'This is an estimate from the details you gave us, not a final invoice.',
         ]),
     '',
+    ...(portalLogin
+      ? [
+          'Your galleries will be delivered to your Sala Nera client account for this',
+          "email address. There's no password — sign in any time here and we'll email",
+          'you a link:',
+          portalLogin,
+          '',
+        ]
+      : []),
     'Nothing is booked until you hear back from us.',
     '',
     'Questions, or something to change? Just reply to this email.',

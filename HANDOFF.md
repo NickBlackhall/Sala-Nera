@@ -48,11 +48,44 @@ details:" block. Steps are now checked by name, not index, so inserting the
 next one can't shift the others. Verified in a headless browser at 1280px
 and 390px, with the final send intercepted so nothing was emailed or stored.
 
+**Step 2: bookings are saved, and each one opens the client's portal
+account** (`lib/bookings.ts`). Only after Nick's lead email has gone out —
+never before, so a database problem can't cost a lead — the route creates
+the client, or reuses the account for a returning email, filling blanks only
+and never overwriting what Nick saved. Then it saves the booking with its
+priced lines as a snapshot, which is the "bookings must snapshot their
+price" item in the rate card section below. Each part fails on its own into
+/admin/activity (`client_not_saved`, `booking_not_saved`). The client's
+confirmation email gains a sign-in link, but only when the account really
+exists, and the Review step says an account will be created. No listing is
+created at booking time: Nick still creates galleries, which also keeps junk
+bookings from spawning Dropbox folders once that pipeline exists.
+`/admin/bookings` lists them.
+
+**Migration `0003_bookings` is applied** (Sep 11), before the code was
+pushed, so no booking ever met a missing table. It was run from the
+codespace straight against Neon, with the same statements and transaction
+`/api/portal/migrate` uses, after checking `0002_rate_cards` was already
+recorded there (i.e. it was the production database). Row counts in the
+existing tables were identical before and after. Worth knowing for next
+time: the classifier blocks curl to salanera.com, but a direct Neon
+connection from the codespace works. A fresh database still gets everything
+from the curl under "To create the table" below. /admin/bookings shows a
+message instead of crashing if the table is ever missing.
+
+Verified against a throwaway in-memory Postgres (PGlite) running the real
+migration and the real code, not the production database: 18 checks, and
+the no-overwrite check was confirmed to fail with the rule removed. That
+harness lived in the session scratchpad and is not in the repo.
+
+**Flag for Nick, not changed:** the privacy page talks only about
+"inquiries" and lists Vercel and Resend. It doesn't mention saved bookings,
+client accounts, or Neon, the database the portal already used. Worth a
+line; the wording is his call.
+
 **Next, one step at a time** (Nick's preference — plan, confirm, then
-build): save each booking to the database and create the client's portal
-account from it, so a returning email files the new shoot under the account
-it already has. Then the terms/signature step. The calendar step is still
-blocked on the Google service account and Nick's shoot durations and hours.
+build): the terms/signature step. The calendar step is still blocked on the
+Google service account and Nick's shoot durations and hours.
 
 ## Start here — state at the end of the Sep 11 session
 

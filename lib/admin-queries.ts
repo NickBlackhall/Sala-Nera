@@ -2,8 +2,8 @@ import 'server-only';
 
 import { asc, count, desc, eq, gte, sql } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
-import { clients, downloads, events, listings, media } from '@/lib/schema';
-import type { Event } from '@/lib/schema';
+import { bookings, clients, downloads, events, listings, media } from '@/lib/schema';
+import type { Booking, Event } from '@/lib/schema';
 import type { Client, Listing, Media } from '@/lib/schema';
 
 /**
@@ -208,4 +208,17 @@ export async function getEventSummary(hours = 24): Promise<
     .from(events)
     .where(gte(events.at, since))
     .groupBy(events.outcome, events.kind);
+}
+
+export type AdminBookingRow = { booking: Booking; client: Client | null };
+
+/** Newest bookings first, with the client account each one landed in. */
+export async function getRecentBookings(limit = 200): Promise<AdminBookingRow[]> {
+  const db = getDatabase();
+  return db
+    .select({ booking: bookings, client: clients })
+    .from(bookings)
+    .leftJoin(clients, eq(bookings.clientId, clients.id))
+    .orderBy(desc(bookings.createdAt), desc(bookings.id))
+    .limit(limit);
 }

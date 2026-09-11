@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0002_rate_cards';
+export const PORTAL_MIGRATION_ID = '0003_bookings';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -108,4 +108,32 @@ export const PORTAL_MIGRATION_STATEMENTS = [
     "created_at" timestamp with time zone DEFAULT now() NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS "rate_cards_created_idx" ON "rate_cards" USING btree ("created_at")`,
+  // Bookings keep the priced lines they were quoted, so a later rate change
+  // never rewrites an old quote. request_id is unique so a retry lands once.
+  `CREATE TABLE IF NOT EXISTS "bookings" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "client_id" integer,
+    "email" text NOT NULL,
+    "name" text NOT NULL,
+    "phone" text,
+    "brokerage" text,
+    "address" text NOT NULL,
+    "sqft" integer,
+    "desired_date" text,
+    "details" jsonb NOT NULL,
+    "access_notes" text,
+    "notes" text,
+    "lines" jsonb NOT NULL,
+    "total" integer NOT NULL,
+    "rates_are_placeholder" boolean NOT NULL,
+    "rate_card_version" integer,
+    "request_id" text,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT "bookings_client_id_clients_id_fk"
+      FOREIGN KEY ("client_id") REFERENCES "public"."clients"("id")
+      ON DELETE set null ON UPDATE no action
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "bookings_request_id_key" ON "bookings" USING btree ("request_id")`,
+  `CREATE INDEX IF NOT EXISTS "bookings_client_idx" ON "bookings" USING btree ("client_id")`,
+  `CREATE INDEX IF NOT EXISTS "bookings_created_idx" ON "bookings" USING btree ("created_at")`,
 ] as const;

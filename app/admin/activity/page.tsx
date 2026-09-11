@@ -36,6 +36,8 @@ const REASON_LABEL: Record<string, string> = {
   resend_rejected: 'The email provider refused it',
   send_threw: 'The email request itself failed',
   confirmation_failed: 'Lead delivered, client confirmation failed',
+  client_not_saved: 'Lead delivered, client account not created',
+  booking_not_saved: 'Lead delivered, booking not saved',
   locked: 'Gallery is locked',
   missing: 'Not found, or not theirs',
   single: 'One file',

@@ -1,6 +1,8 @@
 import {
   pgTable, serial, text, integer, bigint, boolean, timestamp, index, uniqueIndex, jsonb,
 } from 'drizzle-orm/pg-core';
+import type { Details } from '@/lib/booking-details';
+import type { QuoteLine } from '@/lib/quote';
 
 /**
  * Five tables, per the portal spec.
@@ -157,8 +159,44 @@ export const rateCards = pgTable(
   (t) => [index('rate_cards_created_idx').on(t.createdAt)],
 );
 
+/**
+ * Every booking the form delivered. `lines` and `total` are a snapshot of the
+ * quote, not a pointer to the rate card: a later price change must never
+ * rewrite what someone was quoted. A null rate_card_version is the built-in card.
+ */
+export const bookings = pgTable(
+  'bookings',
+  {
+    id: serial('id').primaryKey(),
+    clientId: integer('client_id').references(() => clients.id, { onDelete: 'set null' }),
+    email: text('email').notNull(),
+    name: text('name').notNull(),
+    phone: text('phone'),
+    brokerage: text('brokerage'),
+    address: text('address').notNull(),
+    sqft: integer('sqft'),
+    desiredDate: text('desired_date'),
+    details: jsonb('details').$type<Details>().notNull(),
+    accessNotes: text('access_notes'),
+    notes: text('notes'),
+    lines: jsonb('lines').$type<QuoteLine[]>().notNull(),
+    total: integer('total').notNull(),
+    ratesArePlaceholder: boolean('rates_are_placeholder').notNull(),
+    rateCardVersion: integer('rate_card_version'),
+    // Unique, so a retried submission from the same open form lands once.
+    requestId: text('request_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('bookings_request_id_key').on(t.requestId),
+    index('bookings_client_idx').on(t.clientId),
+    index('bookings_created_idx').on(t.createdAt),
+  ],
+);
+
 export type Client = typeof clients.$inferSelect;
 export type Listing = typeof listings.$inferSelect;
 export type Media = typeof media.$inferSelect;
 export type Event = typeof events.$inferSelect;
 export type RateCardRow = typeof rateCards.$inferSelect;
+export type Booking = typeof bookings.$inferSelect;

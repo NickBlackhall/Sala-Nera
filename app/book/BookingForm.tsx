@@ -392,6 +392,11 @@ export default function BookingForm() {
               </li>
             ))}
           </ul>
+
+          <p className="field-hint">
+            Sending this also sets up your Sala Nera client account for <strong>{f.email}</strong> — no
+            password. Your galleries are delivered there, and every shoot you book stays in the same account.
+          </p>
         </fieldset>
       )}
 

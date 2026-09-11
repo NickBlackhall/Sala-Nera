@@ -30,6 +30,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </Link>
           <nav className="admin-nav">
             <Link href="/admin">Listings</Link>
+            <Link href="/admin/bookings">Bookings</Link>
             <Link href="/admin/clients">Clients</Link>
             <Link href="/admin/activity">Activity</Link>
             <Link href="/portal">Client view</Link>
