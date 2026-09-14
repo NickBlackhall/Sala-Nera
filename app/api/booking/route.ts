@@ -7,6 +7,7 @@ import { sendEmail } from '@/lib/email';
 import { geocodeAddress, hasGeocoding } from '@/lib/geocode';
 import { chosenLines, money, quote } from '@/lib/quote';
 import { BASE_LOCATION, RATES_ARE_PLACEHOLDER, SERVICE_AREA_MILES } from '@/lib/rates';
+import { TERMS_ARE_PLACEHOLDER } from '@/lib/terms';
 import { record } from '@/lib/telemetry';
 
 /**
@@ -134,6 +135,7 @@ export async function POST(req: Request) {
   const notes = clean(body.notes, MAX.notes);
   const desiredDate = cleanInline(body.desiredDate, MAX.date);
   const details = cleanDetails(body.details);
+  const signatureName = cleanInline(body.signatureName, MAX.name);
   const requestId = reqId;
 
   const sqftRaw = Number(body.sqft);
@@ -153,6 +155,11 @@ export async function POST(req: Request) {
     await record({ kind: 'booking', outcome: 'rejected', reason: 'missing_address',
       email, requestId: reqId });
     return json({ error: 'A property address is required.' }, 400);
+  }
+  if (signatureName.length < 2) {
+    await record({ kind: 'booking', outcome: 'rejected', reason: 'missing_signature',
+      email, requestId: reqId });
+    return json({ error: 'A typed signature is required to submit.' }, 400);
   }
   // The address is re-geocoded here rather than trusted from the browser's
   // travel-estimate call, same reasoning as sqft and services: a number that
@@ -218,6 +225,8 @@ export async function POST(req: Request) {
     ),
     '',
     `Estimate:     ${money(priced.total)}${priced.hasQuotedItems ? ' + items quoted after' : ''}`,
+    '',
+    `Signed:       ${signatureName}${TERMS_ARE_PLACEHOLDER ? '  [PLACEHOLDER TERMS — not the real agreement yet]' : ''}`,
     ...(disagrees
       ? [
           '',

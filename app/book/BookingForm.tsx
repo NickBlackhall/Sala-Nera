@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { DETAIL_QUESTIONS, EMPTY_DETAILS, type DetailQuestion, type Details } from '@/lib/booking-details';
 import { isOffered, money, quote } from '@/lib/quote';
 import { RATES_ARE_PLACEHOLDER, RATE_NOTES, SERVICE_AREA_MILES, SERVICES, type Service } from '@/lib/rates';
+import { TERMS_ARE_PLACEHOLDER, TERMS_HEADING, TERMS_TEXT } from '@/lib/terms';
 
 /**
  * Six steps, because a single long form is where bookings go to be abandoned.
@@ -19,7 +20,7 @@ type State = 'idle' | 'sending' | 'sent' | 'error';
 
 type TravelState = { status: 'idle' | 'checking' | 'ready' | 'unavailable'; miles: number | null };
 
-const STEPS = ['Contact', 'Property', 'Details', 'Services', 'Notes', 'Review'] as const;
+const STEPS = ['Contact', 'Property', 'Details', 'Services', 'Notes', 'Review', 'Terms'] as const;
 
 const LIVE = SERVICES.filter((s) => !s.archived);
 const CORE = LIVE.filter((s) => s.group === 'core');
@@ -49,6 +50,7 @@ export default function BookingForm() {
   });
   const [services, setServices] = useState<string[]>([]);
   const [details, setDetails] = useState<Details>(EMPTY_DETAILS);
+  const [signatureName, setSignatureName] = useState('');
   const current = STEPS[step];
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -172,6 +174,7 @@ export default function BookingForm() {
     }
     if (at === 'Property' && !f.address.trim()) return 'The property address.';
     if (at === 'Services' && services.length === 0) return 'At least one service.';
+    if (at === 'Terms' && signatureName.trim().length < 2) return 'Your typed signature above.';
     return null;
   }
 
@@ -218,6 +221,7 @@ export default function BookingForm() {
           sqft: sqftNumber,
           services,
           details,
+          signatureName,
           estimate: estimate.total,
           startedAt,
           requestId,
@@ -397,6 +401,39 @@ export default function BookingForm() {
             Sending this also sets up your Sala Nera client account for <strong>{f.email}</strong> — no
             password. Your galleries are delivered there, and every shoot you book stays in the same account.
           </p>
+        </fieldset>
+      )}
+
+      {current === 'Terms' && (
+        <fieldset className="bk-panel">
+          <legend className="bk-legend">Please review and sign</legend>
+          <div className="bk-terms">
+            <h3>{TERMS_HEADING}</h3>
+            <p className="bk-terms-body">{TERMS_TEXT}</p>
+          </div>
+          <div className="bk-sign field">
+            <label>
+              Sign — type your full legal name
+              <input
+                type="text"
+                value={signatureName}
+                onChange={(e) => setSignatureName(e.target.value)}
+                autoComplete="name"
+                placeholder="Full name"
+              />
+            </label>
+            <p className="field-hint">
+              Typing your name above serves as your electronic signature and, once we send real
+              terms, will mean you accept them.
+            </p>
+          </div>
+          {TERMS_ARE_PLACEHOLDER && (
+            <p className="bk-placeholder" role="note">
+              <strong>Placeholder terms — not our real agreement.</strong> The text above is a
+              stand-in while Sala Nera&rsquo;s shoot terms are being finalised. Nothing here is
+              binding yet; we&rsquo;ll send the real agreement with our reply.
+            </p>
+          )}
         </fieldset>
       )}
 
