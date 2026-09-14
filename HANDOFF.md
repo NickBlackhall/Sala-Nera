@@ -1,4 +1,23 @@
-# Sala Nera — Handoff (Sep 11 2026)
+# Sala Nera — Handoff (Sep 14 2026)
+
+## Latest — Sep 14: the terms/signature step is built
+
+Closes out item 1 from the Sep 11 recommended order below. `/book` now has a
+seventh step, modeled on Guthrie's step 7: an "Agreement" panel with
+placeholder shoot terms (`lib/terms.ts`), where typing a full legal name
+serves as the e-signature. Same shape as `RATES_ARE_PLACEHOLDER` — obviously a
+stand-in, not a guess dressed up as real; Nick will supply real terms text
+later. The server route (`app/api/booking/route.ts`) rejects a submission
+with no signature and includes it, plus a placeholder-terms warning, in
+Nick's lead email.
+
+Verified: typecheck, production build, and a real-browser walkthrough at
+1280px and 390px — reachable, blocks Send without a signature, no horizontal
+overflow. Committed as `d641900`.
+
+**Nothing else changed since the Sep 11 evening entry below** — the client
+journey map, the rates CMS sketch, and every open item there are still
+exactly as described, minus this one line item now being done.
 
 ## Latest — Sep 11, evening: the whole client journey, mapped end to end
 
@@ -21,11 +40,8 @@ below. Nothing in this entry changes code — it's the map, not a build.
   right. Ask Nick directly which one describes the real day before
   `lib/scheduling.ts` is written — a wrong duration double-books him, which
   is worse than a wrong price.
-- **The booking form's terms/signature step (Guthrie's step 7) is wanted.**
-  Nick has a real terms-of-service page already, but said to use a
-  placeholder for now and he'll supply the real text later — same shape as
-  `RATES_ARE_PLACEHOLDER`, a stand-in that is obviously a stand-in, not a
-  guess dressed up as real. Not built yet; next on the list below.
+- ~~The booking form's terms/signature step (Guthrie's step 7) is wanted.~~
+  **Built Sep 14** — see the entry at the top of this file.
 
 ---
 
@@ -35,12 +51,12 @@ Each stage says what's real, what's still a gap, and where the code lives.
 "✅ Real" means tested and live in production right now, not just written.
 
 **1. An agent lands on `/book` and fills out the form.**
-✅ Real: six steps (Contact → Property → Details → Services → Notes →
-Review), live pricing as they type, Guthrie's service/add-on menu, honeypot
-and timing checks, server-side re-pricing so the browser's number is never
-trusted. `app/book/BookingForm.tsx`, `app/api/booking/route.ts`.
-⬜ Gap: no terms/signature step yet (see above). No real calendar — "desired
-date" is a request, not a slot.
+✅ Real: seven steps (Contact → Property → Details → Services → Notes →
+Agreement → Review), live pricing as they type, Guthrie's service/add-on
+menu, a terms/signature step, honeypot and timing checks, server-side
+re-pricing so the browser's number is never trusted.
+`app/book/BookingForm.tsx`, `app/api/booking/route.ts`.
+⬜ Gap: no real calendar yet — "desired date" is a request, not a slot.
 
 **2. They submit.**
 ✅ Real: Nick gets an emailed lead with every field, including the new
@@ -147,8 +163,7 @@ In the order they'd unblock the most:
 4. **No Stripe / no way to actually pay** (step 8). Needs Nick present;
    scoped as pay-to-download, slots into `setListingLock()`.
 5. **No Dropbox Raw/Finished pipeline** (step 5). Depends on #2.
-6. **No terms/signature step on `/book`.** Placeholder text approved
-   tonight, not yet built.
+6. ~~No terms/signature step on `/book`.~~ **Built Sep 14.**
 7. **Real shoot rates.** Deliberately parked by Nick; his real numbers
    already exist on his live Spiro page whenever he's ready — a five-minute
    look, not a research project.
@@ -170,13 +185,12 @@ session to pick up — but everything downstream of it (real protection,
 Dropbox) waits on him finishing it regardless of what else gets built.
 With that in mind, in the order a session should actually work through them:
 
-1. **The terms/signature step on `/book`.** Small, self-contained, fully
-   unblocked now that Nick's said to use a placeholder. Natural next step
-   after tonight's Details step.
+1. ~~The terms/signature step on `/book`.~~ **Built Sep 14.**
 2. **Resolve the duration conflict with Nick, then build `lib/scheduling.ts`
    and instant calendar booking**, once the Google Calendar service account
    exists. This is the actual centerpiece of "get the booking portal
    figured out" — everything else in the booking form has been leading here.
+   Next up now that item 1 is done.
 3. **A real upload path**, once Nick's decided (per his own earlier
    direction) whether it's a browser upload UI or superseded entirely by
    the Dropbox pipeline. Don't build both.
@@ -415,6 +429,8 @@ banner there points at the same button.
 **Next, one step at a time** (Nick's preference — plan, confirm, then
 build): the terms/signature step. The calendar step is still blocked on the
 Google service account and Nick's shoot durations and hours.
+*(Update, Sep 14: the terms/signature step is now built — see the top of
+this file.)*
 
 ## Start here — state at the end of the Sep 11 session
 
