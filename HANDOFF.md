@@ -97,17 +97,13 @@ real authenticated requests against `/admin/listings/1`; and `max(sort)`
 confirmed against the real database to come back as a number, not the string
 `count()` returns — see the note in `nextMediaSort`.
 
-**Not yet verified: an actual file landing in a real bucket.** That needs
-Nick's four R2 values, and is the next check once he has them.
+**Not yet verified: an actual file landing in a real bucket.** See the test
+still owed, below.
 
-### Cloudflare setup — in progress, paused mid-session, Nick may be away
+### Cloudflare setup — done, walked through live with Nick
 
-Walked live, step by step, in this same session. **Not yet done: pasting the
-four values into Vercel** — Nick was mid-way through that when he had to
-step away, so if you're picking this up, check Vercel before assuming
-nothing landed.
-
-Done, confirmed directly against what Nick was seeing on screen:
+Every step below was walked live, step by step, in this same session, and
+the resulting values are confirmed present in Vercel Production:
 - Bucket created (R2 **Object Storage**, not R2 Data Catalog — a different,
   unrelated product that also shows up in the sidebar).
 - Public access confirmed **disabled** — that's the correct default state,
@@ -118,9 +114,8 @@ Done, confirmed directly against what Nick was seeing on screen:
   Google Maps key below: Vercel's servers don't have a fixed IP, so an IP
   restriction would make the token fail intermittently rather than protect
   it.
-- Account ID, bucket name, access key, and secret key were walked through
-  where to find each, but **not confirmed copied** — check with Nick rather
-  than assuming he has all four before asking him to paste them.
+- All four values entered into Vercel as **Production only**, type Secret,
+  and confirmed present with `vercel env ls production`.
 
 **One deliberate deviation from the R2 appendix below, worth not
 "fixing":** the appendix says all four variables go in Production, Preview,
@@ -133,42 +128,36 @@ against the live site, the same way a real booking submission was verified
 against production earlier in this project. If local testing is wanted
 later, add Development then; don't add it by default.
 
-**All four values are in Vercel Production**, confirmed by `vercel env ls`
-— `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
-all four, Production only per the decision above. The code is committed and
-pushed, so a production deploy carries both the credentials and the upload
-button for the first time.
+**Committed, pushed and deployed** — `cae8d29` (the feature) and `e88e078`
+(this file), live at salanera.com as of Sep 16, 21:54 UTC. That deploy is
+the first one carrying both the R2 credentials and the upload button, so
+`isRemoteStorage()` is true in production for the first time and the admin
+"media is not on R2 yet" notice should now be gone.
 
 ### ⬜ THE TEST STILL OWED — run this first, next session
 
-**Nobody has yet put a real file into the real bucket.** Everything below
-was built and checked without a bucket existing, so this is the first
-contact between the two. Nick asked for it to be marked as outstanding:
+**Nobody has yet put a real file into the real bucket.** The feature was
+built and checked before any bucket existed, so this is the first contact
+between the two, and a typo in a pasted value (the bucket name especially)
+would only show up here. Nick asked for it to be marked outstanding — he
+wants to run it together rather than have it done for him:
 
-1. **Check the CSP header actually picked up the R2 host.** Do this before
-   touching the upload button, because if it didn't, the upload will fail in
-   a way that looks like a Cloudflare problem and isn't:
+1. ~~Check the CSP header picked up the R2 host.~~ **Done, and it passed.**
+   Checked against the live site immediately after this deploy: `img-src`,
+   `media-src` and `connect-src` each now name
+   `https://<account-id>.r2.cloudflarestorage.com`, where the same header
+   named none of them before the deploy (that baseline was captured first,
+   so the comparison is real). **This also settles a genuine open question:
+   Vercel Secret-type variables *are* available at build time** — the CSP is
+   built from `R2_ACCOUNT_ID` in `next.config.mjs`, which is type Secret, and
+   it came through. No need to change it to Config. Re-run the check any time
+   with:
 
    ```sh
    curl -sSD - -o /dev/null https://salanera.com/ | grep -i content-security
    ```
 
-   The `img-src`, `media-src` and `connect-src` directives should each name
-   `https://<account-id>.r2.cloudflarestorage.com`. Before this deploy they
-   did not (verified — that was the baseline).
-
-   **If the R2 host is missing, the likely cause is known:** the CSP is
-   built from `R2_ACCOUNT_ID` at *build* time (`next.config.mjs`), and that
-   variable was created as Vercel type **Secret**. If Secret-type variables
-   aren't exposed to the build, the host silently comes out empty. The fix
-   is easy and loses nothing: **change `R2_ACCOUNT_ID` to type `Config` and
-   redeploy.** An account id is not a secret — it is the hostname of every
-   presigned URL the browser already receives, visible in any network tab.
-   (Marking it Secret was over-cautious advice given live in the setup
-   walkthrough.) Leave the other three as Secret; the access key and secret
-   genuinely are credentials.
-
-2. **Then upload one photo and one video** through
+2. ⬜ **Upload one photo and one video** through
    `/admin/listings/<id>` on the live site, and confirm: the row appears in
    the media grid, the thumbnail renders (that proves `img-src` and a
    working presigned GET), and the file is visible in the Cloudflare
