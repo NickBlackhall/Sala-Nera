@@ -240,6 +240,10 @@ section{position:relative;border-top:1px solid var(--line)}
 .admin-media button{font:inherit;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:none;border:0;padding:4px 0 0;cursor:pointer;text-align:left}
 .admin-media button:hover{color:var(--ember)}
 .admin-cover-flag{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ember);padding-top:4px}
+.admin-upload{margin-bottom:26px}
+.admin-upload-rows{list-style:none;font-size:.88rem;margin-top:14px;max-width:520px}
+.admin-upload-row{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid var(--line)}
+.admin-upload-error .admin-muted{color:var(--ember)}
 .admin-activity{list-style:none;font-size:.9rem}
 .admin-activity li{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
 .admin-danger{margin-top:64px;border:1px solid var(--line);border-left:2px solid var(--oxblood);padding:24px}

@@ -65,12 +65,14 @@ export function presign(input: {
   secretAccessKey: string;
   region: string;
   expiresIn: number;
+  /** GET for a download/preview URL, PUT for a direct-upload URL. Defaults to GET. */
+  method?: 'GET' | 'PUT';
   extraParams?: Record<string, string>;
   now?: Date;
 }): string {
   const {
     host, canonicalUri, accessKeyId, secretAccessKey, region,
-    expiresIn, extraParams = {}, now = new Date(),
+    expiresIn, method = 'GET', extraParams = {}, now = new Date(),
   } = input;
 
   const amzDate = now.toISOString().replace(/[-:]|\.\d{3}/g, ''); // 20260909T101530Z
@@ -92,7 +94,7 @@ export function presign(input: {
     .join('&');
 
   const canonicalRequest = [
-    'GET',
+    method,
     canonicalUri,
     canonicalQuery,
     `host:${host}\n`, // canonical headers block ends with its own newline

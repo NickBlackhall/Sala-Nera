@@ -170,6 +170,37 @@ export async function setListingCover(id: number, coverKey: string): Promise<voi
   await db.update(listings).set({ coverKey }).where(eq(listings.id, id));
 }
 
+export type MediaInput = {
+  listingId: number;
+  kind: 'photo' | 'video';
+  r2Key: string;
+  filename: string;
+  bytes: number | null;
+  width: number | null;
+  height: number | null;
+};
+
+/**
+ * New uploads sort after everything already there. The ::int cast matches the
+ * count() calls above: this driver hands back some aggregates as strings, and
+ * a string here would make the next sort "51" instead of 6.
+ */
+export async function nextMediaSort(listingId: number): Promise<number> {
+  const db = getDatabase();
+  const [row] = await db
+    .select({ max: sql<number | null>`max(${media.sort})::int` })
+    .from(media)
+    .where(eq(media.listingId, listingId));
+  return (row?.max ?? -1) + 1;
+}
+
+export async function insertMediaRow(input: MediaInput): Promise<Media> {
+  const db = getDatabase();
+  const sort = await nextMediaSort(input.listingId);
+  const [row] = await db.insert(media).values({ ...input, sort }).returning();
+  return row;
+}
+
 /** Media rows cascade; so do this listing's download records. */
 export async function deleteListingRow(id: number): Promise<void> {
   const db = getDatabase();
@@ -180,6 +211,13 @@ export async function deleteListingRow(id: number): Promise<void> {
 export async function deleteClientRow(id: number): Promise<void> {
   const db = getDatabase();
   await db.delete(clients).where(eq(clients.id, id));
+}
+
+/** Just the slug, for building an upload's object key. Null if the listing is gone. */
+export async function getListingSlug(id: number): Promise<string | null> {
+  const db = getDatabase();
+  const [row] = await db.select({ slug: listings.slug }).from(listings).where(eq(listings.id, id)).limit(1);
+  return row?.slug ?? null;
 }
 
 /** True when a slug is free, ignoring the listing being edited. */

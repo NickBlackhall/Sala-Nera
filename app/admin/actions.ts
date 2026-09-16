@@ -1,5 +1,6 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/admin';
@@ -7,14 +8,17 @@ import {
   deleteClientRow,
   deleteListingRow,
   emailIsTaken,
+  getListingSlug,
   insertClient,
   insertListing,
+  insertMediaRow,
   setListingCover,
   setListingLock,
   slugIsTaken,
   updateClientRow,
   updateListingRow,
 } from '@/lib/admin-queries';
+import { uploadUrl } from '@/lib/storage';
 
 /**
  * Every action starts with requireAdmin(). A server action is a POST endpoint
@@ -226,4 +230,76 @@ export async function deleteListingAction(form: FormData): Promise<void> {
   await deleteListingRow(id);
   revalidatePath('/admin');
   redirect('/admin');
+}
+
+// -------------------------------------------------------------------- media
+
+/** Keeps an object key readable in the R2 dashboard, and safe as a URL segment. */
+function safeFilename(name: string): string {
+  const cleaned = name.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/-+/g, '-').slice(-120);
+  return cleaned || 'file';
+}
+
+export type UploadUrlResult = { key: string; url: string } | { error: string };
+
+/**
+ * Step 1 of a browser upload: mint a presigned PUT for one file, called
+ * directly from the client component (not a <form> — this returns data, not
+ * a redirect). The bytes themselves never pass through this server; see
+ * lib/storage.ts's uploadUrl for why.
+ */
+export async function createUploadUrlAction(input: {
+  listingId: number;
+  filename: string;
+  contentType: string;
+}): Promise<UploadUrlResult> {
+  await requireAdmin();
+
+  if (!Number.isInteger(input.listingId)) return { error: 'That listing no longer exists.' };
+  if (!/^(image|video)\//.test(input.contentType)) {
+    return { error: `${input.filename}: not a photo or video file.` };
+  }
+
+  const slug = await getListingSlug(input.listingId);
+  if (!slug) return { error: 'That listing no longer exists.' };
+
+  const key = `listings/${slug}/${randomUUID()}-${safeFilename(input.filename)}`;
+  const url = uploadUrl(key);
+  if (!url) return { error: 'Cloudflare storage is not connected yet, so there is nowhere to upload to.' };
+
+  return { key, url };
+}
+
+export type AddMediaResult = { error?: string };
+
+/**
+ * Step 2, called once the browser has PUT the bytes to the URL step 1 handed
+ * back: record the row so the gallery and admin grid pick it up.
+ */
+export async function addMediaAction(input: {
+  listingId: number;
+  r2Key: string;
+  filename: string;
+  contentType: string;
+  bytes: number;
+  width: number | null;
+  height: number | null;
+}): Promise<AddMediaResult> {
+  await requireAdmin();
+
+  if (!Number.isInteger(input.listingId) || !input.r2Key) return { error: 'That upload did not complete.' };
+
+  await insertMediaRow({
+    listingId: input.listingId,
+    kind: input.contentType.startsWith('image/') ? 'photo' : 'video',
+    r2Key: input.r2Key,
+    filename: safeFilename(input.filename),
+    bytes: Number.isFinite(input.bytes) ? input.bytes : null,
+    width: input.width,
+    height: input.height,
+  });
+
+  revalidatePath(`/admin/listings/${input.listingId}`);
+  revalidatePath('/admin');
+  return {};
 }

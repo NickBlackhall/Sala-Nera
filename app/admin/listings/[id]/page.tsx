@@ -5,7 +5,8 @@ import { getAdminListing, getClientOptions } from '@/lib/admin-queries';
 import DeleteListing from '../../DeleteListing';
 import ListingForm from '../../ListingForm';
 import { setCoverAction, updateListingAction } from '../../actions';
-import { previewUrl } from '@/lib/storage';
+import { isRemoteStorage, previewUrl } from '@/lib/storage';
+import UploadMedia from '../../UploadMedia';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,11 +50,17 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
 
       <section className="admin-section">
         <h2>Media ({media.length})</h2>
-        {media.length === 0 ? (
+        {isRemoteStorage() ? (
+          <UploadMedia listingId={listing.id} />
+        ) : (
           <p className="admin-empty">
-            No media yet. These rows come from the upload script, not from this
-            page — there is no browser upload until R2 is wired up.
+            Uploads are built but Cloudflare storage isn&apos;t connected yet, so
+            there&apos;s nowhere for the files to go. This message disappears and
+            the upload button appears the moment it is.
           </p>
+        )}
+        {media.length === 0 ? (
+          <p className="admin-empty">No media yet.</p>
         ) : (
           <ul className="admin-media">
             {media.map((item) => (
