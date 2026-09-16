@@ -1,4 +1,193 @@
-# Sala Nera — Handoff (Sep 14 2026)
+# Sala Nera — Handoff (Sep 16 2026)
+
+## Latest — Sep 16: the upload button is built; two direction questions resolved
+
+Session opened with a scan against production (nothing had changed since the
+Sep 14 entry below — `GOOGLE_MAPS_API_KEY` is still the only credential set,
+no R2, no Calendar service account), then a plain-language walk of the whole
+client journey with Nick and three decisions:
+
+1. **Instant, calendar-backed booking is reconfirmed** — asked directly again
+   given the numbers are still incomplete, Nick chose fully instant over a
+   manual-confirm fallback. No code changed here; still blocked on the Google
+   Calendar service account and his working days/hours.
+2. **The shoot-duration conflict is resolved: ~4 hours for 2,500 sq ft is the
+   real number.** The older "3,329 sq ft = 90 min" anchor is superseded — do
+   not use it. `lib/scheduling.ts` still needs working hours/days and a
+   buffer decision before it can be written.
+3. **The real upload path is a manual button in `/admin`, not a Dropbox
+   pipeline.** Nick's actual workflow: shoot → raw to Dropbox → editor
+   delivers to a Dropbox "Finished" folder → his QC pass → today, upload to
+   Spiro for the client gallery. Spiro is his current delivery product, not
+   just booking. The new button replaces only that last step. Confirmed
+   along the way: yes, `/portal` is deliberately a Pixieset-style gallery he
+   owns instead of renting.
+
+**Built and verified:** the admin upload button itself (item 1 in the gap
+list below, the biggest blocker in the whole journey). Same shape as every
+other "one credential away" feature here (Google Maps, R2 downloads) — real,
+tested code that does nothing useful until Cloudflare R2 lands, which Nick
+was mid-setup on this same session.
+
+- `lib/sigv4.ts` — `presign()` now takes a `method`, defaulting to `GET` so
+  every existing caller is untouched. `PUT` is what an upload needs.
+  `npm run check:sigv4` still passes against the AWS reference vector — that
+  vector only ever exercised GET, and the crypto path a PUT takes is
+  identical apart from that one string, so this is low-risk, not unverified.
+- `lib/storage.ts` — `uploadUrl(key)`, a presigned PUT, `null` when R2 isn't
+  configured. Files go straight from the browser to R2, never through a
+  Vercel function — the same reasoning as why downloads 302 instead of
+  proxying: a serverless function billing for every gigabyte of a property
+  film is the wrong shape.
+- Two new server actions in `app/admin/actions.ts`, called directly from a
+  client component rather than through a `<form>`, since they return data:
+  `createUploadUrlAction` (mints the presigned URL, checks the file is
+  actually a photo or video, 404s a listing that doesn't exist) and
+  `addMediaAction` (records the row once the browser confirms the bytes
+  landed). `lib/admin-queries.ts` gained `insertMediaRow`, `nextMediaSort`,
+  `getListingSlug`.
+- `app/admin/UploadMedia.tsx` — the button. Multi-file, shows per-file
+  progress/errors, reads width/height for photos client-side before upload
+  (video is left null — no cheap way to read it in the browser). Wired into
+  `app/admin/listings/[id]/page.tsx`, replacing the old "no browser upload
+  until R2 is wired up" message — that message now only shows when R2 really
+  isn't connected, checked with the same `isRemoteStorage()` the rest of the
+  codebase already trusts.
+
+**Two things the browser blocks that have nothing to do with credentials.**
+Both were caught in review, before any of this ran against a real bucket.
+Both fail in ways that look exactly like "R2 is misconfigured", which is why
+they are written down here rather than left to be rediscovered at 11pm:
+
+1. **The site's own CSP had to be taught about R2** (`next.config.mjs`).
+   `connect-src 'self'` would have blocked the upload's PUT outright — the
+   button could never have worked, with or without a correct bucket. Worse,
+   `img-src`/`media-src` were equally narrow, so the *whole portal gallery*
+   would have gone blank the moment media moved to R2, since every preview
+   becomes a signed cross-origin URL. Fixed by naming the exact R2 host
+   (built from `R2_ACCOUNT_ID`) in those three directives — not a wildcard,
+   so it permits Nick's bucket and no one else's. When `R2_ACCOUNT_ID` is
+   unset the header is byte-for-byte what it was before, verified both ways.
+   **A newly added env var needs a redeploy before this header changes.**
+
+2. **The bucket needs a CORS policy**, which the R2 appendix below predates.
+   Uploads go straight from the browser to R2's own domain, and a presigned
+   URL does not bypass CORS — it only satisfies the bucket's access rules.
+   `content-type` must be in the allowed headers or the preflight fails:
+
+   ```json
+   [
+     {
+       "AllowedOrigins": ["https://salanera.com", "http://localhost:3000"],
+       "AllowedMethods": ["PUT", "GET"],
+       "AllowedHeaders": ["content-type"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+
+Verified: `npm run typecheck`; `npm run check:sigv4` (still matches the AWS
+vector); `npm run build` (clean, 27 routes); the CSP header inspected live
+both with and without R2 configured; the presigned **PUT** checked against an
+independently written implementation of the canonical request, confirming the
+method is genuinely signed rather than ignored (the AWS vector only ever
+covered GET); the upload button confirmed to appear with R2 configured and
+to be replaced by the honest "not connected" message without it, both as
+real authenticated requests against `/admin/listings/1`; and `max(sort)`
+confirmed against the real database to come back as a number, not the string
+`count()` returns — see the note in `nextMediaSort`.
+
+**Not yet verified: an actual file landing in a real bucket.** That needs
+Nick's four R2 values, and is the next check once he has them.
+
+### Cloudflare setup — in progress, paused mid-session, Nick may be away
+
+Walked live, step by step, in this same session. **Not yet done: pasting the
+four values into Vercel** — Nick was mid-way through that when he had to
+step away, so if you're picking this up, check Vercel before assuming
+nothing landed.
+
+Done, confirmed directly against what Nick was seeing on screen:
+- Bucket created (R2 **Object Storage**, not R2 Data Catalog — a different,
+  unrelated product that also shows up in the sidebar).
+- Public access confirmed **disabled** — that's the correct default state,
+  nothing had to be changed.
+- CORS policy entered (the JSON block above).
+- API token created: **Object Read & Write**, scoped to just this bucket,
+  **no client IP filtering** — deliberately skipped, same reasoning as the
+  Google Maps key below: Vercel's servers don't have a fixed IP, so an IP
+  restriction would make the token fail intermittently rather than protect
+  it.
+- Account ID, bucket name, access key, and secret key were walked through
+  where to find each, but **not confirmed copied** — check with Nick rather
+  than assuming he has all four before asking him to paste them.
+
+**One deliberate deviation from the R2 appendix below, worth not
+"fixing":** the appendix says all four variables go in Production, Preview,
+*and* Development. Talked through with Nick and simplified to **Production
+only** — he only ever deploys from `main` (Preview is genuinely pointless,
+same conclusion the Google Maps key appendix already reached), and
+Development just means "usable from `npm run dev` in this Codespace,"
+which isn't needed to verify a real upload — that can be done directly
+against the live site, the same way a real booking submission was verified
+against production earlier in this project. If local testing is wanted
+later, add Development then; don't add it by default.
+
+**All four values are in Vercel Production**, confirmed by `vercel env ls`
+— `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+all four, Production only per the decision above. The code is committed and
+pushed, so a production deploy carries both the credentials and the upload
+button for the first time.
+
+### ⬜ THE TEST STILL OWED — run this first, next session
+
+**Nobody has yet put a real file into the real bucket.** Everything below
+was built and checked without a bucket existing, so this is the first
+contact between the two. Nick asked for it to be marked as outstanding:
+
+1. **Check the CSP header actually picked up the R2 host.** Do this before
+   touching the upload button, because if it didn't, the upload will fail in
+   a way that looks like a Cloudflare problem and isn't:
+
+   ```sh
+   curl -sSD - -o /dev/null https://salanera.com/ | grep -i content-security
+   ```
+
+   The `img-src`, `media-src` and `connect-src` directives should each name
+   `https://<account-id>.r2.cloudflarestorage.com`. Before this deploy they
+   did not (verified — that was the baseline).
+
+   **If the R2 host is missing, the likely cause is known:** the CSP is
+   built from `R2_ACCOUNT_ID` at *build* time (`next.config.mjs`), and that
+   variable was created as Vercel type **Secret**. If Secret-type variables
+   aren't exposed to the build, the host silently comes out empty. The fix
+   is easy and loses nothing: **change `R2_ACCOUNT_ID` to type `Config` and
+   redeploy.** An account id is not a secret — it is the hostname of every
+   presigned URL the browser already receives, visible in any network tab.
+   (Marking it Secret was over-cautious advice given live in the setup
+   walkthrough.) Leave the other three as Secret; the access key and secret
+   genuinely are credentials.
+
+2. **Then upload one photo and one video** through
+   `/admin/listings/<id>` on the live site, and confirm: the row appears in
+   the media grid, the thumbnail renders (that proves `img-src` and a
+   working presigned GET), and the file is visible in the Cloudflare
+   dashboard under `listings/<slug>/`.
+
+3. **Then open the listing in `/portal/<slug>` as the client** and confirm
+   the gallery renders the new media, locked and unlocked.
+
+If an upload fails, read the CORS and CSP notes above *before* suspecting
+the credentials — both fail silently in the browser console rather than as
+a 403 from R2, which is exactly what makes them look like a key problem.
+
+**After the test passes**, the "Media bytes — still world-readable local
+paths" row in the Verified state table below finally becomes false, and the
+portal can honestly be described as protecting files. Not before.
+
+**Then** the two remaining booking blockers from Sep 14 are unchanged: the
+Google Calendar service account, and Nick's working days/hours for
+`lib/scheduling.ts`.
 
 ## Latest — Sep 14: the terms/signature step is built
 
@@ -90,20 +279,16 @@ re-types the address by hand. Small, but worth a "create listing from this
 booking" button on `/admin/bookings` once the rest settles.
 
 **5. Nick shoots it, edits, and gets the finished files onto the site.**
-⬜ **This is the biggest gap in the whole journey: there is no upload
-path that isn't a developer's terminal.** Today, getting media onto a
-listing means either running `scripts/seed-portal.mjs` (which only knows
-about the two demo listings) or manually dragging files into the Cloudflare
-R2 dashboard once R2 exists, then hand-editing that script's file keys.
-There is no admin "upload files to this listing" button. This was already
-known and is item 2 in the signed-downloads section further down, but it's
-worth naming plainly here: **it's the one gap that blocks every real listing
-from having real photos on it, and nothing after this step matters until
-it's closed.**
-⬜ Also gap: the Dropbox Raw/Finished pipeline that Nick described — creating
-a listing auto-creates the two Dropbox folders, and only Finished ever
-reaches the site — is designed (see the booking-direction memory) but not
-started, and depends on R2 existing first.
+✅ Real, as of Sep 16, once R2 lands: `/admin/listings/[id]` has an upload
+button — pick photos or video, they go straight from the browser to R2, and
+the gallery picks them up immediately. Nick's real workflow stays the same
+up to this point (Dropbox with his editor, his own QC pass); this button
+replaces only the final "upload to Spiro" step. Decided explicitly against a
+Dropbox-folder pipeline — see the booking-direction memory.
+⬜ Gap: the button can't actually store anything until Cloudflare R2 (below)
+is connected — the admin page shows an honest "not connected yet" message
+in its place until then, same shape as every other "one credential away"
+feature in this codebase.
 
 **6. The client signs in.**
 ✅ Real, completely. Email in, a magic link out, no password. Whether it's
@@ -152,17 +337,19 @@ button says so rather than pretending); an activity click-through from
 
 In the order they'd unblock the most:
 
-1. **No upload path for real media** (step 5). Blocks every real listing.
-2. **Cloudflare R2 not connected** (step 9, and step 5's Dropbox plan).
-   Nick's own task, in progress. Blocks real file protection and blocks
-   Dropbox, since there's nowhere for Finished files to land.
+1. ~~No upload path for real media~~ (step 5). **Built Sep 16** — an admin
+   upload button, real and tested, waiting only on R2 (item 2) to actually
+   store anything. See the Sep 16 entry at the top of this file.
+2. **Cloudflare R2 not connected** (step 9, and the upload button above).
+   Nick's own task, in progress. Blocks real file protection and blocks the
+   upload button from doing anything yet.
 3. **No instant calendar booking** (steps 1–3). Blocked on the Google
-   Calendar service account (not started) and real duration/hours numbers
-   (partially given tonight, but conflicting with an earlier anchor — see
-   above).
+   Calendar service account (not started) and working days/hours — the
+   duration-per-sqft number itself is resolved, see the Sep 16 entry.
 4. **No Stripe / no way to actually pay** (step 8). Needs Nick present;
    scoped as pay-to-download, slots into `setListingLock()`.
-5. **No Dropbox Raw/Finished pipeline** (step 5). Depends on #2.
+5. ~~No Dropbox Raw/Finished pipeline~~ (step 5). **Decided against, Sep 16**
+   — Nick chose the manual upload button instead. Not being built.
 6. ~~No terms/signature step on `/book`.~~ **Built Sep 14.**
 7. **Real shoot rates.** Deliberately parked by Nick; his real numbers
    already exist on his live Spiro page whenever he's ready — a five-minute
@@ -186,14 +373,14 @@ Dropbox) waits on him finishing it regardless of what else gets built.
 With that in mind, in the order a session should actually work through them:
 
 1. ~~The terms/signature step on `/book`.~~ **Built Sep 14.**
-2. **Resolve the duration conflict with Nick, then build `lib/scheduling.ts`
+2. ~~A real upload path.~~ **Decided (manual button, not Dropbox) and built
+   Sep 16.** Confirm one real upload end-to-end once Nick has R2 connected —
+   see the Sep 16 entry at the top of this file.
+3. **Resolve working days/hours with Nick, then build `lib/scheduling.ts`
    and instant calendar booking**, once the Google Calendar service account
-   exists. This is the actual centerpiece of "get the booking portal
-   figured out" — everything else in the booking form has been leading here.
-   Next up now that item 1 is done.
-3. **A real upload path**, once Nick's decided (per his own earlier
-   direction) whether it's a browser upload UI or superseded entirely by
-   the Dropbox pipeline. Don't build both.
+   exists. The duration-per-sqft number is resolved (~4 hrs / 2,500 sq ft);
+   this is the actual centerpiece of "get the booking portal figured out" —
+   everything else in the booking form has been leading here.
 4. **The rates CMS**, whenever Nick wants to stop parking pricing — see the
    brainstorm below. Foundation already exists; this is real but not urgent.
 5. **Stripe**, needs Nick present for the business decisions (pricing,
@@ -393,8 +580,11 @@ codespace straight against Neon, with the same statements and transaction
 `/api/portal/migrate` uses, after checking `0002_rate_cards` was already
 recorded there (i.e. it was the production database). Row counts in the
 existing tables were identical before and after. Worth knowing for next
-time: the classifier blocks curl to salanera.com, but a direct Neon
-connection from the codespace works. A fresh database still gets everything
+time: the classifier blocked curl to salanera.com then, and a direct Neon
+connection from the codespace works. (**Stale as of Sep 16** — curl to
+salanera.com succeeds from this Codespace now; it was retested directly.
+Don't skip a verification on the assumption it's still blocked.) A fresh
+database still gets everything
 from the curl under "To create the table" below. /admin/bookings shows a
 message instead of crashing if the table is ever missing.
 
@@ -482,18 +672,12 @@ and a real scope decision on the booking rebuild.
    3,329 sq ft = 90 min), his working days/hours, and whether he wants a
    fixed buffer between shoots on top of the travel-time buffer
    (`lib/distance.ts`, already built).
-6. **Dropbox delivery pipeline — new, scoped, not started.** Creating a
-   listing in `/admin` should auto-create a matching Dropbox folder pair,
-   **Raw** and **Finished**, via the Dropbox API. Only **Finished**
-   auto-imports to the site (through R2, once connected); **Raw** is
-   handoff-to-editor only and never touches the delivery site. Folder name
-   matches the address format already used for invoice memos. Needs a
-   Dropbox app credential (Nick's step, not set up) and depends on R2 being
-   connected first — there's nowhere for imported files to land otherwise.
-7. Browser upload UI, then Stripe. Stripe is scoped as pay-to-download on the
-   portal lock, **not** a booking-time charge — see the plan. Browser upload
-   may end up superseded by the Dropbox pipeline above rather than needed as
-   the primary path — worth deciding once Dropbox is real, not before.
+6. ~~Dropbox delivery pipeline.~~ **Decided against, Sep 16** — Nick chose a
+   manual upload button instead. See the Sep 16 entry at the top of this
+   file; not being built.
+7. ~~Browser upload UI~~, then Stripe. **Upload built Sep 16**, waiting on R2
+   to actually store anything. Stripe is scoped as pay-to-download on the
+   portal lock, **not** a booking-time charge — see the plan.
 
 **Do not re-investigate:** the three silent-discard bugs, the auto-submit bug,
 or why local email fails. All diagnosed, fixed and written up below.
@@ -706,7 +890,9 @@ The probe rows were deleted afterwards; the database is back to seed state
 
 1. **Cloudflare R2** — still needs Nick present, still a real billing signup.
    Step-by-step instructions are in the appendix at the bottom of this file.
-2. **Browser upload**, replacing `scripts/seed-portal.mjs`. Still no upload UI.
+2. ~~Browser upload~~, replacing `scripts/seed-portal.mjs` for real listings.
+   **Built Sep 16** — see the entry at the top of this file. `scripts/seed-portal.mjs`
+   still exists for reseeding the two demo listings, unchanged.
 3. **Stripe** — `invoice.paid` should call the same `setListingLock()` the admin
    button calls. Still needs Nick present; it touches his live invoicing.
 4. **MLS-size exports.** The button is now visibly disabled with an explanation
@@ -1044,6 +1230,16 @@ way in:
 
 ## Gotchas — things that cost real time, do not rediscover them
 
+**The CSP in `next.config.mjs` governs anything R2 serves, and it fails
+silently in the console rather than on the network.** `connect-src`,
+`img-src` and `media-src` all have to name the R2 host or the browser refuses
+the request with nothing that looks like an error from R2 — no 403, no
+timeout, just a blocked request and a blank image. The host is composed from
+`R2_ACCOUNT_ID` at build time, so **adding that variable requires a redeploy
+before the header changes.** If uploads or previews fail while the
+credentials are known-good, read the CSP header before suspecting Cloudflare:
+`curl -sD - -o /dev/null https://salanera.com/book | grep -i content-security`.
+
 **The `<img>` width/height trap.** This one produced a 1103px-tall header that
 looked like a design choice rather than a bug. The logo `<img>` carries
 `width="1669" height="1070"` for its intrinsic size. Those attributes are
@@ -1212,6 +1408,23 @@ if you lose them, delete the token and make another — you cannot re-read one.
    route would still check the lock, and anyone with a plain URL would still
    walk straight past it. Private is the point.
 
+   **Then set the bucket's CORS policy** — Settings → CORS policy on the
+   bucket. Without it the admin upload button fails in the browser, because
+   the file goes straight from the browser to R2's domain and a presigned URL
+   does not bypass CORS. `content-type` must be allowed or the preflight
+   fails:
+
+   ```json
+   [
+     {
+       "AllowedOrigins": ["https://salanera.com", "http://localhost:3000"],
+       "AllowedMethods": ["PUT", "GET"],
+       "AllowedHeaders": ["content-type"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+
 3. **Create an API token.** In R2, find API / "Manage R2 API Tokens" and create
    one with **Object Read & Write** permission, scoped to just this bucket
    rather than the whole account. Copy the Access Key ID and Secret Access Key.
@@ -1220,17 +1433,22 @@ if you lose them, delete the token and make another — you cannot re-read one.
    `https://<32 hex chars>.r2.cloudflarestorage.com`. That hex string is
    `R2_ACCOUNT_ID` — not the bucket name, and not the token id.
 
-5. **Put all four into Vercel**, in **all three environments** (Production,
-   Preview, Development). Either the dashboard, or:
+5. **Put all four into Vercel.** Revised Sep 16: **Production only** is
+   enough — Nick only ever deploys from `main`, so Preview is as pointless
+   here as it already is for the Google Maps key below, and Development only
+   matters for testing from `npm run dev` in the Codespace, which isn't
+   needed to verify a real upload (that can be done directly against the
+   live site). Add Development later if local testing turns out to matter.
+   Either the dashboard, or:
 
    ```sh
    npx vercel env add R2_ACCOUNT_ID production
-   # …repeat per variable per environment, or paste them in the dashboard
+   # …repeat per variable, or paste them in the dashboard
    ```
 
    Remember `lib/storage.ts` treats a *partial* config as no config, on purpose.
    Three of four set means the app quietly keeps serving unsigned local paths
-   rather than half-working — so check all four landed.
+   rather than half-working — so check all four landed in Production.
 
 6. **Pull them locally** so dev matches: `npx vercel env pull`. (See the
    `.env.local` gotcha above — it is a snapshot, not a live link.)
