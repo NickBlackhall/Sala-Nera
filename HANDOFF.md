@@ -1,6 +1,6 @@
 # Sala Nera — Handoff (Sep 16 2026)
 
-## Latest — Sep 16: the upload button is built; two direction questions resolved
+## Latest — Sep 16: R2 is connected and the upload button is live
 
 Session opened with a scan against production (nothing had changed since the
 Sep 14 entry below — `GOOGLE_MAPS_API_KEY` is still the only credential set,
@@ -23,17 +23,20 @@ client journey with Nick and three decisions:
    along the way: yes, `/portal` is deliberately a Pixieset-style gallery he
    owns instead of renting.
 
-**Built and verified:** the admin upload button itself (item 1 in the gap
-list below, the biggest blocker in the whole journey). Same shape as every
-other "one credential away" feature here (Google Maps, R2 downloads) — real,
-tested code that does nothing useful until Cloudflare R2 lands, which Nick
-was mid-setup on this same session.
+**Built, deployed, and no longer waiting on anything:** the admin upload
+button (item 1 in the gap list below, the biggest blocker in the whole
+journey). It was written in the usual "one credential away" shape, and then
+**Nick connected Cloudflare R2 in the same session**, so unlike Google Maps
+before it, this one did not sit dormant — it is live with real credentials
+behind it. The single thing left is putting a real file through it; see
+"the test still owed" below.
 
 - `lib/sigv4.ts` — `presign()` now takes a `method`, defaulting to `GET` so
   every existing caller is untouched. `PUT` is what an upload needs.
-  `npm run check:sigv4` still passes against the AWS reference vector — that
-  vector only ever exercised GET, and the crypto path a PUT takes is
-  identical apart from that one string, so this is low-risk, not unverified.
+  `npm run check:sigv4` still passes against the AWS reference vector, and
+  since that vector only ever exercised GET, the PUT was additionally checked
+  against an independently written implementation of the canonical request —
+  confirming the method is genuinely signed rather than silently ignored.
 - `lib/storage.ts` — `uploadUrl(key)`, a presigned PUT, `null` when R2 isn't
   configured. Files go straight from the browser to R2, never through a
   Vercel function — the same reasoning as why downloads 302 instead of
@@ -42,7 +45,8 @@ was mid-setup on this same session.
 - Two new server actions in `app/admin/actions.ts`, called directly from a
   client component rather than through a `<form>`, since they return data:
   `createUploadUrlAction` (mints the presigned URL, checks the file is
-  actually a photo or video, 404s a listing that doesn't exist) and
+  actually a photo or video, and refuses with a plain-English message if the
+  listing is gone or R2 isn't configured) and
   `addMediaAction` (records the row once the browser confirms the bytes
   landed). `lib/admin-queries.ts` gained `insertMediaRow`, `nextMediaSort`,
   `getListingSlug`.
@@ -311,10 +315,13 @@ buttons go through this route, not straight at a file.
 ⚠️ **Real, but currently pointless: the files themselves are not protected.**
 Media rows point at `/demo/*.jpg` under `public/`, which anyone can fetch
 directly, lock or no lock. The enforcement is real; the thing it's
-enforcing access to isn't private yet. This is entirely the R2 gap — the
-moment R2 is connected (Nick is mid-setup), this step goes from "correctly
-wired to nothing" to "actually the whole point of the portal," with no code
-change required.
+enforcing access to isn't private yet. **Updated Sep 16: R2 is now
+connected**, so the plumbing is finally there — but this step only becomes
+real for media that actually lives in the bucket. The seeded demo rows still
+point at `/demo/*.jpg` under `public/`, so they remain fetchable by anyone
+with the path. Upload real media through the new admin button and that
+listing genuinely is protected; the demo ones stay unprotected until they
+are replaced or deleted.
 ⬜ Smaller gaps here: "Download All" fires one request per file rather than
 a real zip (fine until it isn't); MLS-size derivatives don't exist (the
 button says so rather than pretending); an activity click-through from
@@ -326,12 +333,16 @@ button says so rather than pretending); an activity click-through from
 
 In the order they'd unblock the most:
 
-1. ~~No upload path for real media~~ (step 5). **Built Sep 16** — an admin
-   upload button, real and tested, waiting only on R2 (item 2) to actually
-   store anything. See the Sep 16 entry at the top of this file.
-2. **Cloudflare R2 not connected** (step 9, and the upload button above).
-   Nick's own task, in progress. Blocks real file protection and blocks the
-   upload button from doing anything yet.
+1. ~~No upload path for real media~~ (step 5). **Built and deployed Sep 16**
+   — an admin upload button, live with real R2 credentials behind it. One
+   test still owed: see the Sep 16 entry at the top of this file.
+2. ~~Cloudflare R2 not connected~~ (step 9). **Connected Sep 16**, walked
+   through live with Nick: bucket created and private, CORS policy set, API
+   token scoped to the bucket, all four values in Vercel Production. The
+   remaining caveat is not configuration but content — **no real file has
+   been put in the bucket yet**, and the existing demo media rows still
+   point at local `/demo/*.jpg` paths, so nothing is actually protected
+   until real media is uploaded to replace them.
 3. **No instant calendar booking** (steps 1–3). Blocked on the Google
    Calendar service account (not started) and working days/hours — the
    duration-per-sqft number itself is resolved, see the Sep 16 entry.
@@ -648,9 +659,8 @@ and a real scope decision on the booking rebuild.
    request — but the current site's **visual design should not change**.
    I asked Nick to confirm I've scoped that right; his answer wasn't captured
    before he stepped away, so **read the live conversation, don't assume**.
-3. **Cloudflare R2.** Nick is doing this himself right now, using the
-   appendix below. Don't duplicate the work — check with him before touching
-   `lib/storage.ts` or `scripts/seed-portal.mjs`.
+3. ~~**Cloudflare R2.**~~ **Done Sep 16** — connected, credentials in Vercel
+   Production. See the entry at the top of this file.
 4. **A Google service account for the calendar** (Track B, Phase 3 of the
    plan) — same Google Cloud project as the Maps key. Blocks the scheduling
    build below.
@@ -664,9 +674,9 @@ and a real scope decision on the booking rebuild.
 6. ~~Dropbox delivery pipeline.~~ **Decided against, Sep 16** — Nick chose a
    manual upload button instead. See the Sep 16 entry at the top of this
    file; not being built.
-7. ~~Browser upload UI~~, then Stripe. **Upload built Sep 16**, waiting on R2
-   to actually store anything. Stripe is scoped as pay-to-download on the
-   portal lock, **not** a booking-time charge — see the plan.
+7. ~~Browser upload UI~~, then Stripe. **Upload built and live Sep 16**, with
+   R2 connected behind it. Stripe is scoped as pay-to-download on the portal
+   lock, **not** a booking-time charge — see the plan.
 
 **Do not re-investigate:** the three silent-discard bugs, the auto-submit bug,
 or why local email fails. All diagnosed, fixed and written up below.
@@ -777,14 +787,16 @@ everything was ported and verified, see "Branches" below.
 | Owner admin `/admin` | Live in production | Committed `37e7f90`, deployed |
 | `ADMIN_EMAILS` / `NOTIFY_EMAIL` on Vercel | `nblackhall@…`, correct in all 3 environments | `vercel env pull` |
 | `DATABASE_URL` on Vercel | Set for Production, Preview, Development | `vercel env ls` |
-| Production build | Clean, 22 routes | `npm run build` |
+| Production build | Clean, 27 routes | `npm run build` |
 | Mobile layout | All 7 portal/admin pages fit 390px, no sideways scroll | Playwright measurement |
 | Download authorisation | Enforced server-side, 8 cases probed | Live requests, see below |
-| Media bytes | Still world-readable local paths | Not yet on R2 |
-| Booking form `/book` | Built; 5 steps, live estimate | Measured at 390px and 1280px |
+| Cloudflare R2 | **Connected** Sep 16, all four vars in Production | `vercel env ls`, and the live CSP header naming the bucket host |
+| Media bytes | Existing demo rows are **still world-readable local paths**; R2 is ready for new uploads | Nothing has been uploaded to the bucket yet |
+| Admin media upload | Built and deployed; **one real upload still untested** | `cae8d29`, live; button confirmed to render with R2 configured |
+| Booking form `/book` | Built; 7 steps, live estimate | Measured at 390px and 1280px |
 | Booking rates | **Placeholders**, flag still true | `lib/rates.ts` |
 | Booking email, end to end | **Delivered**, both emails | Real production submission, read from `events` |
-| Distance-based travel pricing | Built, waiting on a Google Maps key | `npm run typecheck` + `npm run build` clean, `check:rates` passes |
+| Distance-based travel pricing | Built, key live since Sep 9 | `npm run typecheck` + `npm run build` clean, `check:rates` passes |
 | Booking validation | 9 rejection paths probed | Live requests |
 
 The two seeded listings are `/portal/preston-hollow-lane` (locked) and
@@ -813,9 +825,10 @@ below because its half-done state is easy to misread.
 
 ---
 
-## Signed downloads — server side done, storage not yet swapped
+## Signed downloads — server side done, bucket now connected
 
-**Read this carefully, the state is genuinely half-and-half.**
+**Read this carefully, the state is genuinely half-and-half** (and was
+written before R2 existed — see the Sep 16 correction two paragraphs down).
 
 What is now real: every download goes through a route that checks the session,
 checks team-aware ownership, checks the payment lock, and writes a `downloads`
@@ -823,11 +836,16 @@ row. `lib/downloads.ts` is the only place any of those decisions are made —
 routes must not re-check ownership themselves, because the rules are subtle and
 a second implementation is a second chance to get one wrong.
 
-What is still not real: **the bytes are still world-readable.** Media rows point
-at `/demo/*.jpg` under `public/`, so anyone with a path can fetch a file without
-passing the route at all. The route is the enforcement point, and it works, but
-it only starts protecting anything once the files move behind a private bucket.
-Until then, do not describe the portal as protecting files.
+What is still not real, **for the seeded demo listings only**: their media rows
+point at `/demo/*.jpg` under `public/`, so anyone with a path can fetch those
+files without passing the route at all.
+
+**Updated Sep 16: the private bucket now exists**, so anything uploaded through
+the admin button lands in R2 and genuinely is protected by the route. The demo
+rows are the exception, not the rule, and they stay unprotected until they are
+replaced or deleted. So the honest phrasing is no longer "the portal doesn't
+protect files" but "the portal protects uploaded files; the two demo listings
+predate the bucket."
 
 ### What shipped
 
@@ -877,8 +895,8 @@ The probe rows were deleted afterwards; the database is back to seed state
 
 ### What is left
 
-1. **Cloudflare R2** — still needs Nick present, still a real billing signup.
-   Step-by-step instructions are in the appendix at the bottom of this file.
+1. ~~**Cloudflare R2**~~ — **done Sep 16.** The appendix at the bottom of this
+   file is what was followed, and has been corrected where it was wrong.
 2. ~~Browser upload~~, replacing `scripts/seed-portal.mjs` for real listings.
    **Built Sep 16** — see the entry at the top of this file. `scripts/seed-portal.mjs`
    still exists for reseeding the two demo listings, unchanged.
