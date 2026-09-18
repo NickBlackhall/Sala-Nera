@@ -204,14 +204,73 @@ way the booking form and R2 were tested. Don't assume the Maps key's
 "Production + Development" recipe transfers — that key is also type Secret,
 so whether its Development copy actually pulls is itself unverified.
 
-**Next real step: build `lib/scheduling.ts`.** Every input it needs now
-exists — duration (~4hrs/2,500 sqft), hours (Mon–Thu 8–5), buffer (flat 1hr),
-and a credential in place against the one calendar that matters. Phase 2
-from the plan artifact (duration/hours/buffer logic, pure code, no
-credentials touched) and Phase 3 (the free/busy check, adjusted for one
-calendar instead of two, plus the "[Sala Nera]" title-tagging requirement
-above) are both buildable now. Phase 2 is the safer place to start: it needs
-nothing from Google and is testable on its own.
+### ✅ BUILT — the availability engine (`0d3828e`)
+
+`lib/scheduling.ts` (pure rules) and `lib/calendar.ts` (the Google read) are
+in, with `npm run check:scheduling` covering them. Verified against the real
+calendar: 128 slots across 32 days, with Sep 23 (a BMG shoot) and Oct 8 (a
+personal appointment) correctly absent.
+
+**The duration model was replaced by a much simpler rule — Nick's call.**
+Asked for photos-only and per-sqft durations so a model could be built, he
+chose instead: **one Sala Nera booking a day, blocked at a flat six hours.**
+Reasoning, in his words, is that the brand points at larger luxury homes, and
+if a job turns out to be photos-only he would rather ring the client and
+shorten it himself than have the site guess short and strand him. Do not
+replace this with a sqft/service duration model without asking him again —
+it was a deliberate simplification, not a gap.
+
+The rest, all from him directly: **start times 8/9/10/11am** (a six-hour
+shoot cannot start later and still end by 5pm), **48 hours' minimum notice**,
+60-day horizon (that one is mine, and is trivially changeable).
+
+**Consequences worth knowing, flagged to Nick:**
+- A short mid-morning appointment costs a whole bookable day — a 9:30–10:30am
+  doctor's appointment leaves no start that fits six hours plus buffer before
+  5pm. Correct per his rules, but the thing to revisit first if he finds days
+  disappearing. The fixes would be later starts or shorter blocks for smaller
+  jobs; both change rules he set, so ask.
+- The buffer's exact edge: a commitment ending at 10am leaves an 11am start
+  standing, since that is precisely the hour owed. Pinned in the checks so a
+  future change cannot quietly erode it.
+
+**Two design choices in `lib/calendar.ts` that should survive future edits**,
+both documented at the top of that file:
+- It requests the **`calendar.freebusy` scope**, the narrowest Google offers
+  — verified sufficient. The credential therefore *cannot* read an event
+  title even if some later caller asks, which enforces the privacy boundary
+  in Google rather than by everyone remembering.
+- A failed lookup returns **null, never an empty array.** Empty means Nick is
+  free; null means nobody knows. Collapsing them would offer the whole
+  calendar as bookable during a Google outage, and instant booking would
+  confirm it. Callers must treat null as "offer nothing."
+
+**Not yet wired: the one-a-day rule's data source.** `availableSlots()` takes
+`takenDates` as an argument, and nothing passes it yet, because the
+`bookings` table cannot express a confirmed slot — `desired_date` is free
+text and every row is a request, not a confirmation. **This is the next
+chunk's first job**, and it needs a migration.
+
+### What's left for instant booking, in order
+
+1. **A confirmed-booking schema** — `bookings` needs a real start/end
+   timestamp and a status, so "one Sala Nera booking a day" has a source of
+   truth and so a slot can be *claimed* before the calendar is written.
+   Needs a migration (`MIGRATE_TOKEN` / `/api/portal/migrate`; calling
+   salanera.com from the Codespace is blocked, so it is a command Nick runs).
+2. **The slot picker on `/book`** — and the date field has to move: it
+   currently sits in the Property step, before services are chosen. Keep the
+   visual design exactly as it is; Nick likes it.
+3. **Writing the booking to the calendar**, titled `[Sala Nera] <address>`
+   (see the tagging requirement above), plus the `calendar.events` scope,
+   which is deliberately *not* requested today.
+4. **The double-booking race.** Two agents can hold the same slot open and
+   confirm within the same second. Google cannot arbitrate this — the
+   database has to, claiming the slot in one all-or-nothing write, with only
+   the winner's claim reaching the calendar.
+5. **Cancel and reschedule links** — signed, via `jose`, already a
+   dependency. Instant booking is not safe to call finished without this; a
+   booking nobody can undo is worse than one that needed approval.
 
 ## Latest — Sep 16: R2 is connected and the upload button is live
 
