@@ -1,88 +1,141 @@
 # Sala Nera — Handoff (Sep 18 2026)
 
-## Latest — Sep 18: mid-setup on the Google Calendar service account, paused
+## Latest — Sep 18: the Google Calendar credential is done. Every blocker for `lib/scheduling.ts` is now cleared
 
-Session resumed after the Codespace crashed. Nothing was lost — `git status`
-was clean and `main` matched `origin/main` at resume, so this entry is the
-only thing that needed reconstructing. Picked up exactly where Sep 16 left
-off: the two blockers for `lib/scheduling.ts` were working days/hours and the
-Google Calendar service account.
+Session resumed after the Codespace crashed (nothing was lost — `git status`
+was clean, `main` matched `origin/main`). Picked up where Sep 16 left off:
+the two blockers for `lib/scheduling.ts` were working days/hours and the
+Google Calendar service account. **Both are now resolved. This is the last
+credential-shaped gap in the whole booking build.**
 
-**Working days/hours/buffer — resolved, asked Nick directly this session:**
+**Working days/hours/buffer — resolved, asked Nick directly:**
 - Days: **Monday–Thursday only.** No Friday, no weekends.
 - Hours: **8am–5pm.**
 - Buffer between back-to-back bookings: **a flat 1 hour**, on top of (not
-  instead of) the drive-time buffer already in `lib/distance.ts`. This
-  supersedes the older "buffer scales with distance" idea in the Calendar,
-  Distance & Stripe plan artifact (drafted Sep 9, linked below) — that was a
-  guess made before Nick had weighed in; the flat-hour number is his real
-  answer, use it, not the artifact's.
+  instead of) the drive-time buffer already in `lib/distance.ts`. Supersedes
+  the older "buffer scales with distance" idea in the Calendar, Distance &
+  Stripe plan artifact (Sep 9) — that was a guess made before Nick weighed
+  in; use the flat-hour number, not the artifact's.
 
-Combined with the ~4hrs/2,500 sqft duration number from Sep 16, **this is
-every number `lib/scheduling.ts` needs from Nick.** The only remaining
-blocker for the whole instant-booking build is the Google Calendar service
-account itself — confirmed this session via `vercel env ls production` that
-nothing for it exists yet anywhere, local or prod (no `GOOGLE_CALENDAR_*` /
-`GOOGLE_SERVICE_ACCOUNT_*` vars at all).
+Combined with the ~4hrs/2,500 sqft duration number from Sep 16, this is
+every number `lib/scheduling.ts` needs from Nick.
 
-**Reread the "Calendar, Distance & Stripe" plan artifact this session**
-(https://claude.ai/artifact/WcnHjuTYdrQXKedqBTfdGZ, drafted Sep 9) — it
-already settled the shape of the service-account step (its Track B, Phase 3),
-don't re-derive this from scratch:
-- Two calendars matter: **"Appointments"** (Nick's real calendar, actual
-  fixed commitments) and **"Sala Nera Bookings"** (a separate calendar,
-  already created Sep 9, that Sala Nera writes its own holds onto — never
-  touches Spiro's operational calendar). **"Primary" is deliberately
-  excluded** — errands and lower-priority stuff that looks like conflicts
-  from outside but isn't, already checked, not assumed.
-- The service account gets shared onto **Appointments as free/busy only**
-  ("See only free/busy, hide details") — never event titles/descriptions —
-  and onto **Sala Nera Bookings with full edit access** ("Make changes to
-  events"), since the site needs to actually write real holds there.
-- Same Google Cloud project as the Maps key: **sala-nera**, under
-  `nblackhall@blackhallmediagroup.com`.
+**The calendar architecture changed from the Sep 9 plan — read this before
+touching `lib/scheduling.ts`.** The plan artifact
+(https://claude.ai/artifact/WcnHjuTYdrQXKedqBTfdGZ) describes a two-calendar
+design: a real-commitments calendar checked read-only (free/busy), and a
+separate "Sala Nera Bookings" calendar Sala Nera writes its own holds onto.
+**That's superseded.** Walking through it live with Nick surfaced two things
+the plan had wrong or hadn't accounted for:
 
-**⬜ IN PROGRESS — walking Nick through creating the service account, live,
-in chat.** Nick asked explicitly for far more detailed, click-by-click
-instructions than the usual plain-language summary — he's non-technical and
+1. **The real-commitments calendar is not named "Appointments."** It's
+   **"Blackhall Media Group Appointments."** Don't use the shorter name
+   anywhere — it doesn't exist and will send whoever's reading this hunting
+   for a calendar that isn't there.
+2. **Nick doesn't want two calendars.** "Blackhall Media Group Appointments"
+   is shared between BMG (his other brand) and Sala Nera — both are real
+   commitments for the same one photographer, and Nick would rather have one
+   true calendar than reconcile two. Confirmed the load-bearing fact first:
+   a manual block on that calendar already blocks the same time on Spiro
+   (BMG's booking tool), meaning Spiro just reads calendar conflicts rather
+   than doing anything special with the events themselves — so a
+   Sala-Nera-written event should behave exactly like a manual one and
+   protect both brands automatically.
+
+**Decided: one calendar, not two.** `lib/scheduling.ts` reads *and* writes
+directly to **"Blackhall Media Group Appointments."** Every Sala Nera
+booking must be clearly tagged in the event title on creation, e.g.
+**"[Sala Nera] 4200 Preston Hollow Ln"** — this is how Nick tells the two
+brands apart at a glance, so don't skip it when this gets built. The
+separate "Sala Nera Bookings" calendar from the Sep 9 session is **unused,
+not part of the design** — leave it alone, nothing reads or writes it.
+
+**The service account is fully set up, shared, and its credentials are live
+in Vercel Production**, confirmed via `vercel env ls production`:
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL`
+- `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
+- `GOOGLE_CALENDAR_ID` — the ID of "Blackhall Media Group Appointments"
+
+Same Google Cloud project as the Maps key: **sala-nera**, under
+`nblackhall@blackhallmediagroup.com`. Service account name
+`sala-nera-scheduler`. Shared onto "Blackhall Media Group Appointments" with
+permission **"Make changes (see private events as free/busy)"** — the
+closest match to the original privacy intent (Sala Nera can write its own
+events; other calendar entries it doesn't need full detail on stay as
+free/busy) even though the two-calendar isolation plan was dropped.
+
+**Two real Google/Workspace obstacles hit along the way — expect these again
+on any future service-account setup in this same Google account, they are
+not one-off flukes:**
+
+1. **New GCP projects now block service-account key downloads by default**
+   ("Secure by Default"). The fix is an Organization Policy override, and
+   Google's console makes this genuinely confusing:
+   - The constraint that matters is the **legacy** one, ID exactly
+     `iam.disableServiceAccountKeyCreation` — **not**
+     `iam.managed.disableServiceAccountKeyCreation` (a decoy with an almost
+     identical display name, "Disable service account key creation," and a
+     `Status: Not enforced` that makes it look like a red herring — it is
+     one) and **not** `iam-managed.disableServiceAccountApiKeyCreation`
+     ("Block service account API key bindings," a different feature
+     entirely). All three showed up while hunting for this in the console.
+     Search the constraint list for `disableServiceAccountKeyCreation` and
+     pick the one tagged **"Managed (Legacy)."**
+   - Fixing it needed a role Nick didn't have yet: **Organization Policy
+     Administrator**. Google's own "Fix access" flow on the permission-denied
+     screen let him grant it to himself in one click (target resource:
+     `blackhallmediagroup.com`) — safe here since he's the sole owner of the
+     whole account, but worth knowing this is an org-wide grant, not scoped
+     to one project.
+   - With that role, IAM & Admin → Organization Policies → the legacy
+     constraint → Manage policy → **Override parent's policy** → **Add a
+     rule** → enforcement **Off** → Set policy. This override is scoped to
+     just the `sala-nera` project, not the whole account.
+2. **Google Workspace blocks granting "Make changes" calendar access to
+   anything outside the domain, by default** — and a service account
+   (`@sala-nera.iam.gserviceaccount.com`) counts as outside
+   `blackhallmediagroup.com` even though Nick owns both. Symptom: the
+   "Make changes…" options are greyed out in the calendar's own sharing
+   dialog, with a small note "Some sharing options may have been turned off
+   for your organization by your administrator." Fix is in the **Workspace
+   Admin console**, a different system from Google Cloud:
+   `admin.google.com` → Apps → Google Workspace → Calendar → Sharing
+   settings → General settings → **"External sharing options for secondary
+   calendars"** (matters here because "Blackhall Media Group Appointments"
+   is a secondary calendar, not Nick's primary one) → change from "Share all
+   information, but outsiders cannot change calendars" to **"Share all
+   information, and outsiders can change calendars."** Takes a couple
+   minutes to propagate. Don't pick the "allow managing of calendars" tier
+   above it — that additionally lets the service account change sharing
+   permissions, which it never needs to do.
+
+**The downloaded JSON key file was handled without ever putting the private
+key into the chat transcript**, worth repeating for any future credential
+like this one: Nick dropped the file into `reference/` (already
+git-ignored, confirmed before use — "Confidential third-party course
+materials — never commit" in `.gitignore`), it was read directly and the
+`client_email` / `private_key` fields piped straight into
+`vercel env add ... production` via temp files in the session scratchpad,
+never printed to stdout or echoed back in chat. Both the scratchpad copies
+and the `reference/` copy were deleted immediately after confirming the
+Vercel variables landed. The calendar ID (not sensitive) came through chat
+directly and was used the same way. **Follow this same pattern next time a
+raw credential file needs to go from Nick's machine into Vercel — never ask
+him to paste a private key as text.**
+
+**Nick also asked for far more detailed, click-by-click instructions than
+the usual plain-language summary this session** — he's non-technical and
 wants every click and button label spelled out, not a summarized appendix.
-**Apply that same level of detail for the rest of this walkthrough, and
-remember it for future credential walkthroughs like this one** — it's a
-stronger version of the existing "explain plainly, don't dump jargon" rule.
+Apply that level of detail for any future console walkthrough like this one;
+it's a stronger version of the existing "explain plainly, don't dump jargon"
+rule.
 
-Six stops planned. **Only stop 1 has been given to him in full detail, and
-he had not yet confirmed it worked when he had to step away** — that's
-exactly where this paused:
-
-1. ⬜ **Turn on the Google Calendar API** in the sala-nera project. Exact
-   detailed steps already given to him in chat: sign in as
-   `nblackhall@blackhallmediagroup.com` → click the project-name button top
-   left of `console.cloud.google.com` → pick **sala-nera** (check the "ALL"
-   tab if it's not under "Recent") → ☰ menu (top-left) → **APIs & Services**
-   → **Library** → search **"Google Calendar API"** → click the one result →
-   **Enable** → wait for the usage-graphs page to appear (all zero — that's
-   the confirmation). **Next session: ask whether this worked before
-   re-explaining anything — don't repeat stop 1 from scratch if he already
-   did it.**
-2. ⬜ Create the service account (the "robot login") in the same project —
-   APIs & Services → Credentials → Create Credentials → Service Account.
-3. ⬜ Generate its JSON key file — the service account's Keys tab → Add Key
-   → Create new key → JSON. Treat the downloaded file like a password.
-4. ⬜ Share "Appointments" with the service account's email address —
-   free/busy only, per the plan above.
-5. ⬜ Share "Sala Nera Bookings" with it — full edit access, per the plan
-   above.
-6. ⬜ Grab both calendars' IDs (each calendar's Settings page → "Integrate
-   calendar" → Calendar ID) and put everything into Vercel. Exact env var
-   names not yet committed to code — working plan is
-   `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`,
-   `GOOGLE_CALENDAR_APPOINTMENTS_ID`, `GOOGLE_CALENDAR_BOOKINGS_ID` — open to
-   changing these once actual code gets written.
-
-**After the service account is live**, the real build is
-`lib/scheduling.ts` — Phase 2 from the plan artifact (duration/hours/buffer
-logic, pure code, buildable without Nick present) and Phase 3 (the free/busy
-check against it, using the credential from this walkthrough).
+**Next real step: build `lib/scheduling.ts`.** Every input it needs now
+exists — duration (~4hrs/2,500 sqft), hours (Mon–Thu 8–5), buffer (flat 1hr),
+and a live, working credential against the one calendar that matters. Phase
+2 from the plan artifact (duration/hours/buffer logic, pure code) and Phase
+3 (the free/busy check, adjusted for one calendar instead of two, plus the
+"[Sala Nera]" title-tagging requirement above) are both buildable now.
 
 ## Latest — Sep 16: R2 is connected and the upload button is live
 
