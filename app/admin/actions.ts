@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/admin';
 import { invalidateAvailability } from '@/lib/availability';
+import { deleteBookingEvent } from '@/lib/calendar';
 import {
   cancelBookingRow,
   deleteClientRow,
@@ -142,8 +143,31 @@ export async function cancelBookingAction(form: FormData): Promise<void> {
   const id = Number(form.get('id'));
   if (!Number.isInteger(id)) return;
 
-  await cancelBookingRow(id);
+  const cancelled = await cancelBookingRow(id);
+  // Null means it was not a confirmed booking — already cancelled, or never
+  // held a slot. Nothing to release and nothing to delete.
+  if (!cancelled) return;
+
   invalidateAvailability();
+
+  /**
+   * The day is already free regardless of what Google says next: the database
+   * released it the moment the status changed. Removing the event is Nick's
+   * view catching up. If it fails he is left with a phantom shoot on his
+   * calendar, which is worth finding in the logs — but not worth refusing the
+   * cancellation over, since leaving it confirmed would be the worse of the
+   * two wrong states.
+   */
+  if (cancelled.calendarEventId) {
+    const removed = await deleteBookingEvent(cancelled.calendarEventId);
+    if (!removed) {
+      console.error('admin: booking cancelled but its calendar event remains', {
+        bookingId: id,
+        eventId: cancelled.calendarEventId,
+      });
+    }
+  }
+
   revalidatePath('/admin/bookings');
 }
 

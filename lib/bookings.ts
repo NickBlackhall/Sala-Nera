@@ -111,3 +111,8 @@ export async function claimSlot(record: typeof bookings.$inferInsert): Promise<C
 
   return { claimed: false };
 }
+
+/** Points a confirmed booking at its calendar event, so cancelling can remove it. */
+export async function setBookingEventId(id: number, calendarEventId: string): Promise<void> {
+  await getDatabase().update(bookings).set({ calendarEventId }).where(eq(bookings.id, id));
+}

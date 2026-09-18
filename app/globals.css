@@ -371,6 +371,7 @@ section{position:relative;border-top:1px solid var(--line)}
 .admin-table td.admin-muted{display:table-cell}
 .ev-dim{color:var(--muted);font-size:.82rem}
 .admin-confirmed{color:var(--ember);font-size:.82rem;letter-spacing:.06em;text-transform:uppercase}
+.admin-warn{color:var(--oxblood);font-size:.78rem;letter-spacing:.04em}
 /* A destructive action that lives inside a table row, where a full button would
    dominate the row it belongs to. */
 .admin-linkbtn{padding:0;border:0;background:transparent;color:var(--oxblood);font-family:var(--font-body);font-size:.82rem;cursor:pointer;text-decoration:underline;text-underline-offset:3px}

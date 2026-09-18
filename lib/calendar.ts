@@ -2,7 +2,7 @@ import 'server-only';
 
 import { SignJWT, importPKCS8 } from 'jose';
 
-import type { Interval } from '@/lib/scheduling';
+import { TIME_ZONE, type Interval } from '@/lib/scheduling';
 
 /**
  * When Nick is busy, according to Google Calendar.
@@ -35,7 +35,23 @@ import type { Interval } from '@/lib/scheduling';
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const FREEBUSY_URL = 'https://www.googleapis.com/calendar/v3/freeBusy';
-const SCOPE = 'https://www.googleapis.com/auth/calendar.freebusy';
+const EVENTS_URL = 'https://www.googleapis.com/calendar/v3/calendars';
+
+/**
+ * Two scopes, deliberately not one token covering both.
+ *
+ * Reading availability asks only for free/busy, so that call cannot see an
+ * event title whatever it does. Writing a booking needs calendar.events, which
+ * can. Merging them into a single token would quietly hand the read the
+ * ability to see everything on Nick's calendar — the exact thing the narrow
+ * scope was chosen to make impossible — in exchange for saving one cached
+ * token. Keeping them apart means the privacy boundary holds even if a future
+ * change to the read is careless.
+ */
+const SCOPES = {
+  read: 'https://www.googleapis.com/auth/calendar.freebusy',
+  write: 'https://www.googleapis.com/auth/calendar.events',
+} as const;
 
 type CalendarConfig = { email: string; privateKey: string; calendarId: string };
 
@@ -59,16 +75,17 @@ export function hasCalendar(): boolean {
  * a key like this one it is a no-op that only looks reassuring. Left as a
  * note rather than a defensive call so nobody adds one back.
  */
-let cachedToken: { value: string; expiresAt: number } | null = null;
+const cachedTokens = new Map<string, { value: string; expiresAt: number }>();
 
-async function accessToken(config: CalendarConfig): Promise<string | null> {
+async function accessToken(config: CalendarConfig, scope: string): Promise<string | null> {
   // A minute of headroom: a token that expires mid-request is a 401 that looks
   // exactly like a bad credential.
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.value;
+  const cached = cachedTokens.get(scope);
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.value;
 
   try {
     const now = Math.floor(Date.now() / 1000);
-    const assertion = await new SignJWT({ scope: SCOPE })
+    const assertion = await new SignJWT({ scope })
       .setProtectedHeader({ alg: 'RS256' })
       .setIssuer(config.email)
       .setAudience(TOKEN_URL)
@@ -92,11 +109,11 @@ async function accessToken(config: CalendarConfig): Promise<string | null> {
       return null;
     }
 
-    cachedToken = {
+    cachedTokens.set(scope, {
       value: body.access_token,
       expiresAt: Date.now() + (body.expires_in ?? 3600) * 1000,
-    };
-    return cachedToken.value;
+    });
+    return body.access_token as string;
   } catch (err) {
     console.error('calendar: could not sign in', err);
     return null;
@@ -111,7 +128,7 @@ export async function busyIntervals(from: Date, to: Date): Promise<Interval[] | 
   const config = calendarConfig();
   if (!config) return null;
 
-  const token = await accessToken(config);
+  const token = await accessToken(config, SCOPES.read);
   if (!token) return null;
 
   try {
@@ -152,5 +169,116 @@ export async function busyIntervals(from: Date, to: Date): Promise<Interval[] | 
   } catch (err) {
     console.error('calendar: free/busy request failed', err);
     return null;
+  }
+}
+
+/**
+ * Puts a confirmed shoot on Nick's calendar.
+ *
+ * Called only after the slot is claimed in the database, never before. The
+ * claim is what decides; this is what tells Nick. Reversing them would leave an
+ * event on his real calendar for a booking that lost its race — worse than no
+ * event, because he would plan around a shoot that is not happening.
+ *
+ * Returns the event id to store, or null if the write failed. **A null here
+ * must not undo the booking.** The client has been told they have the slot and
+ * the day is already blocked in the database, so availability is correct either
+ * way; what is missing is Nick's own view of it, which /admin/bookings shows
+ * regardless and flags as not on the calendar.
+ *
+ * The title carries the [Sala Nera] tag Nick asked for: this calendar is shared
+ * with his other brand, and at a glance he needs to know which business a
+ * booking came from without opening it.
+ */
+export async function createBookingEvent(booking: {
+  address: string;
+  startsAt: Date;
+  endsAt: Date;
+  name: string;
+  email: string;
+  phone: string | null;
+  sqft: number | null;
+  services: string[];
+  accessNotes: string | null;
+  notes: string | null;
+}): Promise<string | null> {
+  const config = calendarConfig();
+  if (!config) return null;
+
+  const token = await accessToken(config, SCOPES.write);
+  if (!token) return null;
+
+  // What Nick actually needs on his phone standing outside the house: who to
+  // call, how to get in, and what he agreed to shoot.
+  const description = [
+    `Client:   ${booking.name}`,
+    `Email:    ${booking.email}`,
+    `Phone:    ${booking.phone || '—'}`,
+    booking.sqft ? `Sqft:     ${booking.sqft.toLocaleString('en-US')}` : null,
+    '',
+    `Services: ${booking.services.join(', ') || '—'}`,
+    '',
+    'Access notes:',
+    booking.accessNotes || '—',
+    '',
+    'Anything else:',
+    booking.notes || '—',
+    '',
+    'Booked through salanera.com — see /admin/bookings to cancel.',
+  ]
+    .filter((line) => line !== null)
+    .join('\n');
+
+  try {
+    const res = await fetch(`${EVENTS_URL}/${encodeURIComponent(config.calendarId)}/events`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        summary: `[Sala Nera] ${booking.address}`,
+        location: booking.address,
+        description,
+        start: { dateTime: booking.startsAt.toISOString(), timeZone: TIME_ZONE },
+        end: { dateTime: booking.endsAt.toISOString(), timeZone: TIME_ZONE },
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+
+    const body = await res.json();
+    if (!res.ok) {
+      console.error('calendar: could not create event', res.status, body.error?.message ?? '');
+      return null;
+    }
+    return (body.id as string) ?? null;
+  } catch (err) {
+    console.error('calendar: create event threw', err);
+    return null;
+  }
+}
+
+/**
+ * Removes a cancelled shoot's event. Reports whether it is really gone, so a
+ * failure can be surfaced rather than leaving Nick holding a day he has given
+ * back. A 404 or 410 counts as success: the event is not there, which is the
+ * outcome asked for, and Google answers 410 for one already deleted.
+ */
+export async function deleteBookingEvent(eventId: string): Promise<boolean> {
+  const config = calendarConfig();
+  if (!config) return false;
+
+  const token = await accessToken(config, SCOPES.write);
+  if (!token) return false;
+
+  try {
+    const res = await fetch(
+      `${EVENTS_URL}/${encodeURIComponent(config.calendarId)}/events/${encodeURIComponent(eventId)}`,
+      { method: 'DELETE', headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) },
+    );
+    if (res.ok || res.status === 204 || res.status === 404 || res.status === 410) return true;
+
+    console.error('calendar: could not delete event', res.status);
+    return false;
+  } catch (err) {
+    console.error('calendar: delete event threw', err);
+    return false;
   }
 }

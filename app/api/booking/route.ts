@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { findOpenSlot, invalidateAvailability } from '@/lib/availability';
 import { DETAIL_QUESTIONS, cleanDetails } from '@/lib/booking-details';
-import { claimSlot, ensureClient, saveBooking, type ClientAccount } from '@/lib/bookings';
+import { claimSlot, ensureClient, saveBooking, setBookingEventId, type ClientAccount } from '@/lib/bookings';
+import { createBookingEvent } from '@/lib/calendar';
 import { isAdminEmail } from '@/lib/session';
 import { milesBetween } from '@/lib/distance';
 import { sendEmail } from '@/lib/email';
@@ -280,6 +281,39 @@ export async function POST(req: Request) {
     booked = { startsAt: open.start, endsAt: open.end, date: open.date };
     // So the next form to ask sees the day gone, rather than waiting out the cache.
     invalidateAvailability();
+
+    /**
+     * Now — and only now — it goes on Nick's calendar. The database decided;
+     * this tells him. A failure here does not undo the booking: the client has
+     * been told they have the slot, the day is already blocked, and
+     * availability is correct either way. What is missing is only Nick's own
+     * view of it, which /admin/bookings shows regardless and marks as not on
+     * the calendar.
+     */
+    const eventId = await createBookingEvent({
+      address, name, email, sqft,
+      startsAt: open.start,
+      endsAt: open.end,
+      phone: phone || null,
+      services: priced.lines.filter((l) => !l.automatic).map((l) => l.name),
+      accessNotes: accessNotes || null,
+      notes: notes || null,
+    });
+
+    if (eventId) {
+      try {
+        await setBookingEventId(claim.id, eventId);
+      } catch (error) {
+        // The event exists but nothing points at it, so cancelling later cannot
+        // remove it. Worth finding in telemetry rather than in a diary clash.
+        await record({ kind: 'booking', outcome: 'failed', reason: 'event_id_not_saved',
+          detail: `${eventId}: ${String(error).slice(0, 200)}`, email, requestId: reqId });
+      }
+    } else {
+      await record({ kind: 'booking', outcome: 'failed', reason: 'calendar_write_failed',
+        detail: `Booking ${claim.id} is confirmed but has no calendar event.`,
+        email, requestId: reqId });
+    }
   }
 
   const when = (d: Date) =>

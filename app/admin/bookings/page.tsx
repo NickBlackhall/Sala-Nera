@@ -91,6 +91,17 @@ export default async function BookingsPage() {
                         <span className={booking.status === 'cancelled' ? 'ev-dim' : 'admin-confirmed'}>
                           {booking.status === 'cancelled' ? 'cancelled' : 'confirmed'}
                         </span>
+                        {/*
+                          The booking is real and the day is blocked either way —
+                          this only says Nick's calendar did not get the memo, which
+                          is otherwise invisible until he fails to turn up.
+                        */}
+                        {booking.status === 'confirmed' && !booking.calendarEventId && (
+                          <>
+                            <br />
+                            <span className="admin-warn">not on your calendar</span>
+                          </>
+                        )}
                       </>
                     ) : (
                       <span className="ev-dim">{booking.desiredDate ? `${booking.desiredDate} wanted` : '—'}</span>
