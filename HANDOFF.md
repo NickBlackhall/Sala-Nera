@@ -345,15 +345,40 @@ means temporarily pasting the service-account values into `.env.local` and
 taking them out again — `reference/shoot-picker.mjs` (gitignored) drives the
 whole thing in Playwright once they are there.
 
-### What's left for instant booking, in order
+### ✅ BUILT — the calendar write (`eade080`)
 
-1. **Writing the booking to the calendar**, titled `[Sala Nera] <address>`
-   (see the tagging requirement above), and only after the slot is claimed in
-   the database — never the other way round, or a lost race leaves an orphan
-   event on Nick's real calendar. Needs the `calendar.events` scope, which
-   `lib/calendar.ts` deliberately does not request today, and a second
-   sharing tier check on the calendar itself.
-2. **Client-side cancel and reschedule** — a signed link in the confirmation
+A confirmed booking now lands on "Blackhall Media Group Appointments" as
+`[Sala Nera] <address>`, with the client's name, phone, email, services,
+square footage and access notes in the description — what Nick needs standing
+outside the house — plus the address as the event location so it navigates.
+Cancelling from `/admin/bookings` deletes it.
+
+**Ordering is deliberate: claim first, calendar second.** The database
+decides; the calendar write only tells Nick. Reversed, a booking that lost its
+race would leave an event on his real calendar for a shoot that is not
+happening. Equally, **a failed calendar write must never undo the booking** —
+the client has been told they have the slot and the day is already blocked, so
+availability stays correct either way. That would otherwise be invisible until
+he failed to turn up, so `/admin/bookings` shows **"not on your calendar"**
+against any confirmed booking with no `calendar_event_id`, and it goes to
+telemetry as `calendar_write_failed`.
+
+**Two scopes, two token caches, on purpose.** The read keeps
+`calendar.freebusy`; the write uses `calendar.events`. Widening one token to
+cover both would hand the availability read the ability to see every event
+title on a calendar carrying BMG's clients and Nick's medical appointments.
+**Verified against the real calendar** (`reference/check-calendar-write.mjs`):
+the narrow write scope creates an event, the free/busy read sees it as busy
+through its own separate token, the delete removes it, and the calendar ends
+up as it was.
+
+**On the service-account key file:** it is being left in `reference/` while
+calendar work continues, rather than deleted after every use. Deleting it each
+time cost Nick four separate interruptions and bought little — `reference/` is
+gitignored with an explicit never-commit rule, the file already lives in his
+Downloads, and the values are in Vercel. **Delete it when calendar work is
+finished**, and never move it anywhere outside `reference/`.
+1. **Client-side cancel and reschedule** — a signed link in the confirmation
    email, via `jose`, already a dependency. Nick can cancel from `/admin`
    today, so a booking is no longer unrecoverable, but the client still has to
    ring him. Instant booking is not really finished until they can undo their
@@ -361,7 +386,7 @@ whole thing in Playwright once they are there.
    returns the `calendar_event_id` for exactly this. Reschedule is a cancel
    and a claim, not a new mechanism — but the two must not leave a gap where
    the old day is released before the new one is taken.
-3. ~~**Confirmation email wording.**~~ **Done** with the picker: the client
+2. ~~**Confirmation email wording.**~~ **Done** with the picker: the client
    email now says the shoot is confirmed and in the diary when a slot was
    claimed, and keeps the old "not confirmed yet" wording when it was only a
    request. The placeholder-rates paragraph still applies to both — a date can
