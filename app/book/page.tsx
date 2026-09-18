@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { hasCalendar } from '@/lib/calendar';
 import BookingForm from './BookingForm';
 import Footer from '../components/Footer';
 import Nav from '../components/Nav';
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/book' },
   openGraph: {
     title: 'Book a Shoot — Sala Nera',
-    description: 'Price the shoot and request your date.',
+    description: 'Price the shoot and book a real slot.',
     url: '/book',
   },
 };
@@ -29,9 +30,19 @@ export default function BookPage() {
               Choose what the property needs and see the cost as you go — no
               &ldquo;contact us for rates&rdquo;, no back and forth before you know the number.
             </p>
+            {/*
+              The promise this page makes has to match the one the form can keep.
+              With the calendar connected a slot is held the moment it is sent;
+              without it the form falls back to asking for a preferred date, and
+              saying "booked on the spot" there would be a lie the client only
+              discovers when nobody turns up. SlotPicker carries the same
+              distinction in its own hint, for the case where the calendar is
+              configured but unreachable right now.
+            */}
             <p>
-              Sending this reserves nothing. We confirm the date, or offer the nearest
-              alternatives, usually within one business day.
+              {hasCalendar()
+                ? 'Pick a time that is genuinely open and it is yours — booked on the spot, no waiting to hear back.'
+                : 'Sending this reserves nothing. We confirm the date, or offer the nearest alternatives, usually within one business day.'}
             </p>
           </div>
         </header>

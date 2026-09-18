@@ -4,7 +4,9 @@ import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/admin';
+import { invalidateAvailability } from '@/lib/availability';
 import {
+  cancelBookingRow,
   deleteClientRow,
   deleteListingRow,
   emailIsTaken,
@@ -120,6 +122,29 @@ export async function updateClientAction(
   await updateClientRow(id, parsed.input);
   revalidatePath('/admin/clients');
   redirect('/admin/clients');
+}
+
+/**
+ * Cancels a confirmed booking and puts its day back on the market.
+ *
+ * The row is kept and marked rather than deleted — the booking really did
+ * happen and the client really was told so. Availability stops counting it the
+ * moment the status changes, because the index that enforces one shoot a day
+ * only looks at confirmed rows.
+ *
+ * Availability is invalidated here so the freed day shows up straight away
+ * rather than after the cache expires: Nick cancelling something is usually
+ * followed by him wanting to see it gone.
+ */
+export async function cancelBookingAction(form: FormData): Promise<void> {
+  await requireAdmin();
+
+  const id = Number(form.get('id'));
+  if (!Number.isInteger(id)) return;
+
+  await cancelBookingRow(id);
+  invalidateAvailability();
+  revalidatePath('/admin/bookings');
 }
 
 /** Listings and bookings this client had are kept; each one's clientId just becomes null. */

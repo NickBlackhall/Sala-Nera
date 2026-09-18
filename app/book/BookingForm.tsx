@@ -5,6 +5,7 @@ import { DETAIL_QUESTIONS, EMPTY_DETAILS, type DetailQuestion, type Details } fr
 import { isOffered, money, quote } from '@/lib/quote';
 import { RATES_ARE_PLACEHOLDER, RATE_NOTES, SERVICE_AREA_MILES, SERVICES, type Service } from '@/lib/rates';
 import { TERMS_ARE_PLACEHOLDER, TERMS_HEADING, TERMS_TEXT } from '@/lib/terms';
+import { SlotPicker } from './SlotPicker';
 
 /**
  * Six steps, because a single long form is where bookings go to be abandoned.
@@ -27,6 +28,19 @@ const CORE = LIVE.filter((s) => s.group === 'core');
 const TIED = LIVE.filter((s) => s.group === 'addon' && s.appliesTo);
 const EXTRAS = LIVE.filter((s) => s.group === 'addon' && !s.appliesTo);
 
+/**
+ * A chosen slot, written out for the review and success screens. Always in
+ * Nick's time zone rather than the client's: a Dallas shoot at 8am is 8am when
+ * you arrive at the house, whatever the phone that booked it thinks.
+ */
+function slotLabel(iso: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    weekday: 'long', month: 'long', day: 'numeric',
+    hour: 'numeric', hour12: true,
+  }).format(new Date(iso));
+}
+
 /** Today in the local timezone, as the date input wants it. */
 function today(): string {
   const d = new Date();
@@ -37,6 +51,12 @@ export default function BookingForm() {
   const [step, setStep] = useState(0);
   const [state, setState] = useState<State>('idle');
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Told, not asked for. `error` is rendered after "We still need ", which
+   * suits a missing field and mangles anything else — a slot going while the
+   * form was open is news, not a thing the client failed to provide.
+   */
+  const [notice, setNotice] = useState<string | null>(null);
 
   const [startedAt] = useState(() => Date.now());
   const [requestId] = useState(
@@ -51,6 +71,16 @@ export default function BookingForm() {
   const [services, setServices] = useState<string[]>([]);
   const [details, setDetails] = useState<Details>(EMPTY_DETAILS);
   const [signatureName, setSignatureName] = useState('');
+  /**
+   * The chosen slot, as the ISO instant the availability endpoint offered.
+   * Empty when nothing is picked, and also when live availability could not be
+   * loaded at all — in which case SlotPicker falls back to asking for a
+   * preferred date and this booking is a request, the way every booking was
+   * before instant booking existed.
+   */
+  const [slot, setSlot] = useState('');
+  /** True once the picker has real times to show; false when it fell back. */
+  const [slotsAreLive, setSlotsAreLive] = useState(false);
   const current = STEPS[step];
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -172,7 +202,12 @@ export default function BookingForm() {
       if (!f.name.trim()) return 'Your name, so we know who we are talking to.';
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.trim())) return 'A valid email address.';
     }
-    if (at === 'Property' && !f.address.trim()) return 'The property address.';
+    if (at === 'Property') {
+      if (!f.address.trim()) return 'The property address.';
+      // Only when there is something to choose. On the fallback there are no
+      // slots, and blocking here would strand the client on a dead step.
+      if (slotsAreLive && !slot) return 'A date and start time for the shoot.';
+    }
     if (at === 'Services' && services.length === 0) return 'At least one service.';
     if (at === 'Terms' && signatureName.trim().length < 2) return 'Your typed signature above.';
     return null;
@@ -180,6 +215,7 @@ export default function BookingForm() {
 
   function next() {
     const problem = problemWith(step);
+    setNotice(null);
     if (problem) return setError(problem);
     setError(null);
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
@@ -187,6 +223,7 @@ export default function BookingForm() {
 
   function back() {
     setError(null);
+    setNotice(null);
     setStep((s) => Math.max(s - 1, 0));
   }
 
@@ -222,11 +259,24 @@ export default function BookingForm() {
           services,
           details,
           signatureName,
+          slot,
           estimate: estimate.total,
           startedAt,
           requestId,
         }),
       });
+      /**
+       * Somebody confirmed this slot first. Not an error the client did
+       * anything to cause, and not a dead end either — send them back to the
+       * picker with the slot cleared, so the next thing they see is the list
+       * of times that are still real rather than a failure screen.
+       */
+      if (res.status === 409) {
+        setSlot('');
+        setState('idle');
+        setStep(STEPS.indexOf('Property'));
+        return setNotice('That time was taken a moment ago. Here are the times still open.');
+      }
       if (!res.ok) throw new Error(String(res.status));
       setState('sent');
     } catch {
@@ -237,18 +287,39 @@ export default function BookingForm() {
   }
 
   if (state === 'sent') {
+    // Two genuinely different outcomes, and saying the wrong one is the whole
+    // problem: telling someone their shoot is booked when it is a request means
+    // they stop expecting a call, and telling them to wait when the slot is
+    // already held means they chase a confirmation that has happened.
     return (
       <div className="form-success show" tabIndex={-1} role="status">
-        <h3>Booking request received.</h3>
-        <p>
-          A copy is on its way to <strong>{f.email}</strong> — if it doesn&rsquo;t arrive in
-          a few minutes, check your spam folder.
-        </p>
-        <p>
-          We&rsquo;ll confirm {f.desiredDate ? `${f.desiredDate} ` : 'your date '}
-          or offer the nearest alternatives, usually within one business day. Nothing is
-          locked in until you hear back from us.
-        </p>
+        <h3>{slot ? 'Your shoot is booked.' : 'Booking request received.'}</h3>
+        {slot ? (
+          <>
+            <p>
+              <strong>{slotLabel(slot)}</strong> at{' '}
+              <strong>{f.address}</strong>. The time is held for you — please allow around
+              six hours on site.
+            </p>
+            <p>
+              Confirmation is on its way to <strong>{f.email}</strong> — if it doesn&rsquo;t
+              arrive in a few minutes, check your spam folder. Need to move it? Just reply
+              to that email.
+            </p>
+          </>
+        ) : (
+          <>
+            <p>
+              A copy is on its way to <strong>{f.email}</strong> — if it doesn&rsquo;t arrive in
+              a few minutes, check your spam folder.
+            </p>
+            <p>
+              We&rsquo;ll confirm {f.desiredDate ? `${f.desiredDate} ` : 'your date '}
+              or offer the nearest alternatives, usually within one business day. Nothing is
+              locked in until you hear back from us.
+            </p>
+          </>
+        )}
       </div>
     );
   }
@@ -300,16 +371,14 @@ export default function BookingForm() {
             </label>
             <p className="field-hint">Square footage sets the tier, so the estimate moves as you type.</p>
           </div>
-          <div className="field">
-            <label>
-              Preferred date
-              <input type="date" value={f.desiredDate} onChange={set('desiredDate')} min={today()} />
-            </label>
-            <p className="field-hint">
-              This is a <strong>request, not a confirmation</strong> — we&rsquo;ll come back to you
-              with the date or the nearest alternatives.
-            </p>
-          </div>
+          <SlotPicker
+            value={slot}
+            onChange={setSlot}
+            fallbackDate={f.desiredDate}
+            onFallbackDate={(date) => setF((p) => ({ ...p, desiredDate: date }))}
+            onLive={setSlotsAreLive}
+            today={today()}
+          />
         </fieldset>
       )}
 
@@ -376,7 +445,16 @@ export default function BookingForm() {
             <Row k="Brokerage" v={f.brokerage} />
             <Row k="Address" v={f.address} />
             <Row k="Square footage" v={sqftNumber ? sqftNumber.toLocaleString('en-US') : ''} />
-            <Row k="Preferred date" v={f.desiredDate ? `${f.desiredDate} — requested, not confirmed` : ''} />
+            <Row
+              k={slot ? 'Shoot' : 'Preferred date'}
+              v={
+                slot
+                  ? `${slotLabel(slot)} — confirmed on send`
+                  : f.desiredDate
+                    ? `${f.desiredDate} — requested, not confirmed`
+                    : ''
+              }
+            />
             {DETAIL_QUESTIONS.map((q) => <Row key={q.key} k={q.short} v={details[q.key]} />)}
             <Row k="Access notes" v={f.accessNotes} />
             <Row k="Anything else" v={f.notes} />
@@ -480,6 +558,7 @@ export default function BookingForm() {
       )}
 
       {error && <p className="form-error" role="alert">We still need {error}</p>}
+      {notice && <p className="form-error" role="alert">{notice}</p>}
 
       {state === 'error' && (
         <p className="form-error" role="alert">
@@ -509,8 +588,10 @@ export default function BookingForm() {
       </div>
 
       <p className="form-note">
-        Submitting sends us a brief and reserves nothing. By submitting, you allow Blackhall Media
-        Group to use these details to respond. <a href="/privacy">Privacy</a>.
+        {slotsAreLive
+          ? 'Submitting holds the time you picked. By submitting, you allow Blackhall Media Group to use these details to respond.'
+          : 'Submitting sends us a brief and reserves nothing. By submitting, you allow Blackhall Media Group to use these details to respond.'}{' '}
+        <a href="/privacy">Privacy</a>.
       </p>
     </form>
   );

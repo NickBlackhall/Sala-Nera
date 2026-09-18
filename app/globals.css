@@ -289,6 +289,24 @@ section{position:relative;border-top:1px solid var(--line)}
 .bk-card-blurb{font-size:12px;color:var(--muted);line-height:1.45}
 .bk-card-price{flex:none;font-size:12px;color:var(--ember);letter-spacing:.02em;white-space:nowrap;padding-top:1px}
 
+.bk-slot-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.bk-slot-label-times{margin-top:22px}
+.bk-slot-days{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.bk-slot-day,.bk-slot-time{font-family:var(--font-body);font-size:.9rem;text-align:left;padding:13px 14px;border:1px solid var(--line);background:var(--ink-soft);color:var(--paper);cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.bk-slot-day:hover,.bk-slot-time:hover{border-color:#4A443C}
+.bk-slot-day:focus-visible,.bk-slot-time:focus-visible,.bk-slot-more:focus-visible{outline:2px solid var(--ember);outline-offset:3px}
+/* Open (being looked at) and chosen are different states: one day's times are
+   showing, a different day may still hold the actual selection. */
+.bk-slot-day.is-open{border-color:#6B635A}
+.bk-slot-day.is-on,.bk-slot-time.is-on{border-color:var(--ember);background:rgba(212,85,47,.07);color:var(--paper)}
+.bk-slot-times{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.bk-slot-time{text-align:center}
+.bk-slot-more{margin-top:10px;padding:0;border:0;background:transparent;color:var(--ember);font-family:var(--font-body);font-size:12px;letter-spacing:.02em;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+@media (max-width:560px){
+  .bk-slot-days{grid-template-columns:1fr}
+  .bk-slot-times{grid-template-columns:repeat(2,1fr)}
+}
+
 .bk-choice{border:0;min-inline-size:0;margin-bottom:24px}
 .bk-choice-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding:0}
 .bk-pills{display:flex;flex-wrap:wrap;gap:8px}
@@ -352,6 +370,12 @@ section{position:relative;border-top:1px solid var(--line)}
    layout when put on a <td>. The guard below catches that misuse anywhere. */
 .admin-table td.admin-muted{display:table-cell}
 .ev-dim{color:var(--muted);font-size:.82rem}
+.admin-confirmed{color:var(--ember);font-size:.82rem;letter-spacing:.06em;text-transform:uppercase}
+/* A destructive action that lives inside a table row, where a full button would
+   dominate the row it belongs to. */
+.admin-linkbtn{padding:0;border:0;background:transparent;color:var(--oxblood);font-family:var(--font-body);font-size:.82rem;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.admin-linkbtn:hover{color:#C81414}
+.admin-linkbtn:focus-visible{outline:2px solid var(--ember);outline-offset:3px}
 .admin-events td{vertical-align:top;font-size:.85rem}
 .admin-ev-detail{max-width:38ch}
 .ev-badge{display:inline-block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border:1px solid var(--line);white-space:nowrap}

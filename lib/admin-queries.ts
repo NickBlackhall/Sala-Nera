@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { asc, count, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, sql } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
 import { bookings, clients, downloads, events, listings, media } from '@/lib/schema';
 import type { Booking, Event } from '@/lib/schema';
@@ -275,4 +275,26 @@ export async function getRecentBookings(limit = 200): Promise<AdminBookingRow[]>
     .leftJoin(clients, eq(bookings.clientId, clients.id))
     .orderBy(desc(bookings.createdAt), desc(bookings.id))
     .limit(limit);
+}
+
+/**
+ * Releases a confirmed booking's day.
+ *
+ * Marks rather than deletes: the booking happened, the client was told it
+ * happened, and that history is worth keeping. The partial unique index only
+ * counts confirmed rows, so setting this is exactly what puts the day back on
+ * the market — there is no second step, and no row to tidy up.
+ *
+ * Returns the calendar event id, if one was ever written, so the caller can
+ * remove the event too. Nothing writes that column yet; it is here so the
+ * cancel path does not have to be rebuilt when the calendar write lands.
+ */
+export async function cancelBookingRow(id: number): Promise<{ calendarEventId: string | null } | null> {
+  const [row] = await getDatabase()
+    .update(bookings)
+    .set({ status: 'cancelled' })
+    .where(and(eq(bookings.id, id), eq(bookings.status, 'confirmed')))
+    .returning({ calendarEventId: bookings.calendarEventId });
+
+  return row ?? null;
 }

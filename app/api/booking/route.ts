@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
+import { findOpenSlot, invalidateAvailability } from '@/lib/availability';
 import { DETAIL_QUESTIONS, cleanDetails } from '@/lib/booking-details';
-import { ensureClient, saveBooking, type ClientAccount } from '@/lib/bookings';
+import { claimSlot, ensureClient, saveBooking, type ClientAccount } from '@/lib/bookings';
 import { isAdminEmail } from '@/lib/session';
 import { milesBetween } from '@/lib/distance';
 import { sendEmail } from '@/lib/email';
 import { geocodeAddress, hasGeocoding } from '@/lib/geocode';
 import { chosenLines, money, quote } from '@/lib/quote';
+import { TIME_ZONE } from '@/lib/scheduling';
 import { BASE_LOCATION, RATES_ARE_PLACEHOLDER, SERVICE_AREA_MILES } from '@/lib/rates';
 import { TERMS_ARE_PLACEHOLDER } from '@/lib/terms';
 import { record } from '@/lib/telemetry';
@@ -134,6 +136,14 @@ export async function POST(req: Request) {
   const accessNotes = clean(body.accessNotes, MAX.accessNotes);
   const notes = clean(body.notes, MAX.notes);
   const desiredDate = cleanInline(body.desiredDate, MAX.date);
+  /**
+   * The slot the browser says it picked, as an ISO instant. Treated exactly
+   * like the estimate that arrives alongside it: a claim to be checked, never
+   * a fact. Empty when live availability could not be loaded, in which case
+   * this submission is a request and desiredDate above carries what they asked
+   * for — the behaviour every booking had before instant booking existed.
+   */
+  const slotRaw = cleanInline(body.slot, MAX.date + 40);
   const details = cleanDetails(body.details);
   const signatureName = cleanInline(body.signatureName, MAX.name);
   const requestId = reqId;
@@ -199,14 +209,95 @@ export async function POST(req: Request) {
     return json({ error: 'not_configured' }, 500);
   }
 
+  /**
+   * An admin address booking (testing, usually) must not become a client —
+   * signing in with it goes to /admin regardless, so the account would be dead
+   * weight that only confuses the client list. Moved ahead of the claim below
+   * so a confirmed booking is linked to its client from the moment it exists;
+   * a failure here is still not fatal, it just costs the link.
+   */
+  let account: ClientAccount | null = null;
+  if (!isAdminEmail(email)) {
+    try {
+      account = await ensureClient({ email, name, phone, company: brokerage });
+    } catch (error) {
+      await record({ kind: 'booking', outcome: 'failed', reason: 'client_not_saved',
+        detail: String(error).slice(0, 300), email, requestId: reqId });
+    }
+  }
+
+  /**
+   * Taking the slot, before anything is sent or promised.
+   *
+   * Order matters and is the opposite of the rest of this route, where the
+   * email to Nick is the thing that must not fail. A confirmed booking is a
+   * commitment of his time, so the commitment is made first: if the slot has
+   * gone, nothing is emailed, nothing is saved, and the client is sent back to
+   * a list of times that are still real. Everything below this point is
+   * reporting a booking that already exists.
+   */
+  let booked: { startsAt: Date; endsAt: Date; date: string } | null = null;
+
+  if (slotRaw) {
+    const startsAt = new Date(slotRaw);
+    // Re-checked against the calendar rather than believed. A form can be
+    // edited in a devtools console, and the far likelier case is honest: an
+    // open tab offering times that were taken twenty minutes ago.
+    const open = Number.isFinite(startsAt.getTime()) ? await findOpenSlot(startsAt) : null;
+
+    if (!open) {
+      await record({ kind: 'booking', outcome: 'rejected', reason: 'slot_unavailable',
+        detail: slotRaw.slice(0, 100), email, requestId: reqId });
+      return json({ error: 'slot_taken' }, 409);
+    }
+
+    const claim = await claimSlot({
+      clientId: account?.id ?? null,
+      email, name, address, sqft, details,
+      phone: phone || null,
+      brokerage: brokerage || null,
+      desiredDate: desiredDate || null,
+      accessNotes: accessNotes || null,
+      notes: notes || null,
+      lines: priced.lines,
+      total: priced.total,
+      ratesArePlaceholder: RATES_ARE_PLACEHOLDER,
+      rateCardVersion: null,
+      requestId: requestId || null,
+      startsAt: open.start,
+      endsAt: open.end,
+      shootDate: open.date,
+    });
+
+    if (!claim.claimed) {
+      // Someone confirmed it in the seconds between the check above and this
+      // insert. The narrow window the unique index exists to cover.
+      await record({ kind: 'booking', outcome: 'rejected', reason: 'slot_taken',
+        detail: open.date, email, requestId: reqId });
+      return json({ error: 'slot_taken' }, 409);
+    }
+
+    booked = { startsAt: open.start, endsAt: open.end, date: open.date };
+    // So the next form to ask sees the day gone, rather than waiting out the cache.
+    invalidateAvailability();
+  }
+
+  const when = (d: Date) =>
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: TIME_ZONE, weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true,
+    }).format(d);
+
   // Laid out as labelled lines on purpose: this email is the record the Gmail
   // automations read, so the field names need to stay stable and greppable.
   const text = [
-    'New Booking Request',
+    booked ? 'New Booking — CONFIRMED' : 'New Booking Request',
     '',
     `Address:      ${address}`,
     `Sqft:         ${sqft ? sqft.toLocaleString('en-US') : '—'}${priced.tierLabel ? `  (${priced.tierLabel})` : ''}`,
-    `Desired date: ${desiredDate || '—'}   [REQUESTED — not confirmed]`,
+    booked
+      ? `Shoot:        ${when(booked.startsAt)} – ${when(booked.endsAt)}   [CONFIRMED — on your calendar's books]`
+      : `Desired date: ${desiredDate || '—'}   [REQUESTED — not confirmed]`,
     '',
     `Name:         ${name}`,
     `Email:        ${email}`,
@@ -273,51 +364,55 @@ export async function POST(req: Request) {
       await record({ kind: 'booking', outcome: 'failed', reason: 'resend_rejected',
         detail: `Resend answered ${r.status}: ${body.slice(0, 300)}`,
         email, requestId: reqId });
-      return json({ error: 'send_failed' }, 502);
+      if (!booked) return json({ error: 'send_failed' }, 502);
     }
   } catch (err) {
     console.error('booking: send threw', err);
     await record({ kind: 'booking', outcome: 'failed', reason: 'send_threw',
       detail: String(err).slice(0, 300), email, requestId: reqId });
-    return json({ error: 'send_failed' }, 502);
+    if (!booked) return json({ error: 'send_failed' }, 502);
   }
 
   /**
-   * The lead is in Nick's inbox, so nothing below may turn this into an error.
-   * The client account and the saved booking each fail on their own, into
-   * telemetry — a booking that emailed but did not save is still a booking.
+   * A confirmed booking survives a failed email, and that is deliberate.
+   *
+   * For a request, the email *is* the booking — nothing was saved, so failing
+   * loudly is honest. For a confirmed one the slot is already claimed and the
+   * day already blocked; telling the client it failed would leave them
+   * rebooking a slot they have in fact got, while Nick's calendar quietly fills
+   * anyway. It is in /admin/bookings and in telemetry either way, which is
+   * where a missing email gets noticed.
    */
-  // An admin address booking (testing, usually) must not become a client —
-  // signing in with it goes to /admin regardless, so the account would be
-  // dead weight that only confuses the client list.
-  let account: ClientAccount | null = null;
-  if (!isAdminEmail(email)) {
+
+  /**
+   * The lead is in Nick's inbox, so nothing below may turn this into an error.
+   * The saved booking fails on its own, into telemetry — a booking that
+   * emailed but did not save is still a booking.
+   *
+   * Only the request path saves here. A confirmed booking was written by
+   * claimSlot() above, because the row *is* the claim: writing it later would
+   * mean the slot was promised by an email before anything held it.
+   */
+  if (!booked) {
     try {
-      account = await ensureClient({ email, name, phone, company: brokerage });
+      await saveBooking({
+        clientId: account?.id ?? null,
+        email, name, address, sqft, details,
+        phone: phone || null,
+        brokerage: brokerage || null,
+        desiredDate: desiredDate || null,
+        accessNotes: accessNotes || null,
+        notes: notes || null,
+        lines: priced.lines,
+        total: priced.total,
+        ratesArePlaceholder: RATES_ARE_PLACEHOLDER,
+        rateCardVersion: null, // quote() above prices from the built-in card
+        requestId: requestId || null,
+      });
     } catch (error) {
-      await record({ kind: 'booking', outcome: 'failed', reason: 'client_not_saved',
+      await record({ kind: 'booking', outcome: 'failed', reason: 'booking_not_saved',
         detail: String(error).slice(0, 300), email, requestId: reqId });
     }
-  }
-
-  try {
-    await saveBooking({
-      clientId: account?.id ?? null,
-      email, name, address, sqft, details,
-      phone: phone || null,
-      brokerage: brokerage || null,
-      desiredDate: desiredDate || null,
-      accessNotes: accessNotes || null,
-      notes: notes || null,
-      lines: priced.lines,
-      total: priced.total,
-      ratesArePlaceholder: RATES_ARE_PLACEHOLDER,
-      rateCardVersion: null, // quote() above prices from the built-in card
-      requestId: requestId || null,
-    });
-  } catch (error) {
-    await record({ kind: 'booking', outcome: 'failed', reason: 'booking_not_saved',
-      detail: String(error).slice(0, 300), email, requestId: reqId });
   }
 
   /**
@@ -334,6 +429,7 @@ export async function POST(req: Request) {
     subject: `We've got your booking request — ${address}`,
     text: clientConfirmation({
       name, address, desiredDate, priced,
+      shoot: booked ? `${when(booked.startsAt)} – ${when(booked.endsAt)}` : null,
       portalLogin: account ? `${process.env.PORTAL_URL ?? new URL(req.url).origin}/portal/login` : null,
     }),
   });
@@ -361,11 +457,13 @@ export async function POST(req: Request) {
  * an argument later.
  */
 function clientConfirmation({
-  name, address, desiredDate, priced, portalLogin,
+  name, address, desiredDate, shoot, priced, portalLogin,
 }: {
   name: string;
   address: string;
   desiredDate: string;
+  /** The confirmed shoot window, or null when this is only a request. */
+  shoot: string | null;
   priced: ReturnType<typeof quote>;
   /** Only when the account really exists — never promise a sign-in that won't work. */
   portalLogin: string | null;
@@ -393,16 +491,28 @@ function clientConfirmation({
       : travel && travel.amount === null
         ? ['This address is outside our included travel radius, so travel is quoted', 'separately. That figure comes with our reply.', '']
         : []),
-    ...(desiredDate
+    /**
+     * A confirmed shoot and a requested date are different promises, and this
+     * email is where the difference is felt. The placeholder-rates wording
+     * below still applies to both: a date can be certain while the price is
+     * honestly not.
+     */
+    ...(shoot
       ? [
-          `Requested date: ${desiredDate}`,
-          "This date is not confirmed yet. We'll come back to you within one",
-          'business day to confirm it, or offer the nearest alternatives.',
+          `Your shoot: ${shoot}`,
+          'This is confirmed and in the diary — the time is held for you. Please',
+          'allow around six hours on site.',
         ]
-      : [
-          "You didn't give us a preferred date, so we'll suggest a few when we",
-          'reply — usually within one business day.',
-        ]),
+      : desiredDate
+        ? [
+            `Requested date: ${desiredDate}`,
+            "This date is not confirmed yet. We'll come back to you within one",
+            'business day to confirm it, or offer the nearest alternatives.',
+          ]
+        : [
+            "You didn't give us a preferred date, so we'll suggest a few when we",
+            'reply — usually within one business day.',
+          ]),
     '',
     ...(RATES_ARE_PLACEHOLDER
       ? [
@@ -426,7 +536,9 @@ function clientConfirmation({
           '',
         ]
       : []),
-    'Nothing is booked until you hear back from us.',
+    shoot
+      ? 'Need to move it, or something to change? Just reply to this email.'
+      : 'Nothing is booked until you hear back from us.',
     '',
     'Questions, or something to change? Just reply to this email.',
     '',

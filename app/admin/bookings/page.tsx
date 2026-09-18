@@ -2,8 +2,18 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/admin';
 import { getRecentBookings, type AdminBookingRow } from '@/lib/admin-queries';
 import { money } from '@/lib/quote';
+import { TIME_ZONE } from '@/lib/scheduling';
+import CancelBooking from '../CancelBooking';
 
 export const dynamic = 'force-dynamic';
+
+/** Always in Nick's time zone — it is his day being blocked out, not the viewer's. */
+const shootWhen = (d: Date | string) =>
+  new Intl.DateTimeFormat('en-US', {
+    timeZone: TIME_ZONE,
+    weekday: 'short', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  }).format(new Date(d));
 
 export default async function BookingsPage() {
   await requireAdmin();
@@ -22,7 +32,8 @@ export default async function BookingsPage() {
       <div className="admin-title">
         <h1>Bookings</h1>
         <p>
-          Every booking the form delivered, priced as it was quoted.{' '}
+          Every booking the form delivered, priced as it was quoted. Cancelling a confirmed
+          shoot puts that day back on the market.{' '}
           <Link href="/admin">Back to listings</Link>
         </p>
       </div>
@@ -46,7 +57,8 @@ export default async function BookingsPage() {
                 <th>Property</th>
                 <th>Services</th>
                 <th>Estimate</th>
-                <th>Date wanted</th>
+                <th>Shoot</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -71,7 +83,28 @@ export default async function BookingsPage() {
                     {money(booking.total)}
                     {booking.ratesArePlaceholder && <span className="ev-dim"> placeholder</span>}
                   </td>
-                  <td className="ev-dim">{booking.desiredDate ?? '—'}</td>
+                  <td>
+                    {booking.startsAt ? (
+                      <>
+                        {shootWhen(booking.startsAt)}
+                        <br />
+                        <span className={booking.status === 'cancelled' ? 'ev-dim' : 'admin-confirmed'}>
+                          {booking.status === 'cancelled' ? 'cancelled' : 'confirmed'}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="ev-dim">{booking.desiredDate ? `${booking.desiredDate} wanted` : '—'}</span>
+                    )}
+                  </td>
+                  <td>
+                    {booking.status === 'confirmed' && booking.startsAt && (
+                      <CancelBooking
+                        id={booking.id}
+                        when={shootWhen(booking.startsAt)}
+                        address={booking.address}
+                      />
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
