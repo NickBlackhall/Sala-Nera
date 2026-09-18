@@ -251,26 +251,58 @@ both documented at the top of that file:
 text and every row is a request, not a confirmation. **This is the next
 chunk's first job**, and it needs a migration.
 
+### ✅ APPLIED — `0004_confirmed_slots` is live in production (`8792633`)
+
+Run Sep 18 with Nick's say-so, from the Codespace (curl to salanera.com does
+work from here — the older "it is blocked" note is stale). Response was
+`{"ok":true,"status":"applied","migration":"0004_confirmed_slots"}`, then
+confirmed directly against the database rather than taken on trust: all five
+columns present, `bookings_one_confirmed_per_day` present, and the one
+pre-existing booking untouched — still `status: requested`, still carrying
+the `desired_date` the client typed, no slot invented for it.
+
+`bookings` now carries `status` / `starts_at` / `ends_at` / `shoot_date` /
+`calendar_event_id`. See `lib/schema.ts` for why `shoot_date` is text rather
+than derived, and for the long note on the partial unique index.
+
+**Before running a future migration: the endpoint executes whatever code is
+deployed, not what is in the working tree.** Push and let Vercel finish
+first, or the endpoint will happily report the *previous* migration id as
+already applied and change nothing. The id in the response is the check —
+`0004_confirmed_slots` coming back is what proved the deploy was current.
+
+Verification used a throwaway in-memory Postgres (`reference/check-migration.mjs`,
+gitignored) rather than production: it applies the real statements, re-applies
+them to prove idempotency, and then tries to break the one-a-day rule. Needs
+`npm install --no-save @electric-sql/pglite`, which is deliberately not a
+project dependency. Worth re-running whenever those statements change.
+
 ### What's left for instant booking, in order
 
-1. **A confirmed-booking schema** — `bookings` needs a real start/end
-   timestamp and a status, so "one Sala Nera booking a day" has a source of
-   truth and so a slot can be *claimed* before the calendar is written.
-   Needs a migration (`MIGRATE_TOKEN` / `/api/portal/migrate`; calling
-   salanera.com from the Codespace is blocked, so it is a command Nick runs).
+1. **Claiming a slot, and feeding `takenDates` back in.** The insert that
+   writes a `confirmed` booking, wrapped so the unique violation from
+   `bookings_one_confirmed_per_day` is caught and turned into "that slot has
+   just gone, here are the next ones" rather than a 500. The index — the hard
+   half — exists and is proven; this is the handling around it. The same
+   query supplies `availableSlots({ takenDates })`, which nothing passes yet.
 2. **The slot picker on `/book`** — and the date field has to move: it
    currently sits in the Property step, before services are chosen. Keep the
    visual design exactly as it is; Nick likes it.
 3. **Writing the booking to the calendar**, titled `[Sala Nera] <address>`
-   (see the tagging requirement above), plus the `calendar.events` scope,
-   which is deliberately *not* requested today.
-4. **The double-booking race.** Two agents can hold the same slot open and
-   confirm within the same second. Google cannot arbitrate this — the
-   database has to, claiming the slot in one all-or-nothing write, with only
-   the winner's claim reaching the calendar.
-5. **Cancel and reschedule links** — signed, via `jose`, already a
+   (see the tagging requirement above), and only after the slot is claimed in
+   the database — never the other way round, or a lost race leaves an orphan
+   event on Nick's real calendar. Needs the `calendar.events` scope, which
+   `lib/calendar.ts` deliberately does not request today, and a second
+   sharing tier check on the calendar itself.
+4. **Cancel and reschedule links** — signed, via `jose`, already a
    dependency. Instant booking is not safe to call finished without this; a
-   booking nobody can undo is worse than one that needed approval.
+   booking nobody can undo is worse than one that needed approval. Cancelling
+   sets `status = 'cancelled'` (which releases the day, by the partial index)
+   and deletes the calendar event by its stored `calendar_event_id`.
+5. **Confirmation email wording.** The existing client email deliberately
+   does not quote a price while rates are placeholders; a confirmed date and
+   time is a different promise and should appear even though the price still
+   cannot.
 
 ## Latest — Sep 16: R2 is connected and the upload button is live
 
