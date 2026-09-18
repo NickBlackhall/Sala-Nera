@@ -277,29 +277,49 @@ them to prove idempotency, and then tries to break the one-a-day rule. Needs
 `npm install --no-save @electric-sql/pglite`, which is deliberately not a
 project dependency. Worth re-running whenever those statements change.
 
+### ✅ BUILT — slot claiming and the availability endpoint (`1904eae`)
+
+`lib/bookings.ts` gained `claimSlot()` and `confirmedDates()`;
+`GET /api/booking/availability` returns the real open slots as
+`{ available, timeZone, days: [{ date, label, starts: [{ at, label }] }] }`.
+
+**Live against production, verified by curl after deploy:** 32 days offered,
+and both Sep 23 (BMG) and Oct 8 (personal) correctly absent. The route needs
+no key file to test — it runs on the credentials already in Vercel, so hit it
+directly rather than re-importing a service account key.
+
+`claimSlot()` distinguishes the two conflicts that can hit that insert,
+because only one is a failure: losing the day is a lost race, while the same
+`requestId` arriving twice is a retry whose booking already landed and should
+be reported as confirmed. Verified against a throwaway Postgres
+(`reference/check-claim.mjs`, gitignored) — the harness swaps `@/lib/db` for a
+PGlite-backed stub via a resolve hook rather than `lib/bookings.ts` being
+rewritten to take an injected database, same principle as
+`scripts/ts-alias-hook.mjs`.
+
+**Both the route and the engine refuse rather than guess.** If the calendar
+or the bookings query fails, the route answers `available: false` with no
+days, never times derived from "no busy periods found". Keep that property:
+the failure it prevents is Nick arriving somewhere else while a client waits
+at a house.
+
 ### What's left for instant booking, in order
 
-1. **Claiming a slot, and feeding `takenDates` back in.** The insert that
-   writes a `confirmed` booking, wrapped so the unique violation from
-   `bookings_one_confirmed_per_day` is caught and turned into "that slot has
-   just gone, here are the next ones" rather than a 500. The index — the hard
-   half — exists and is proven; this is the handling around it. The same
-   query supplies `availableSlots({ takenDates })`, which nothing passes yet.
-2. **The slot picker on `/book`** — and the date field has to move: it
+1. **The slot picker on `/book`** — and the date field has to move: it
    currently sits in the Property step, before services are chosen. Keep the
    visual design exactly as it is; Nick likes it.
-3. **Writing the booking to the calendar**, titled `[Sala Nera] <address>`
+2. **Writing the booking to the calendar**, titled `[Sala Nera] <address>`
    (see the tagging requirement above), and only after the slot is claimed in
    the database — never the other way round, or a lost race leaves an orphan
    event on Nick's real calendar. Needs the `calendar.events` scope, which
    `lib/calendar.ts` deliberately does not request today, and a second
    sharing tier check on the calendar itself.
-4. **Cancel and reschedule links** — signed, via `jose`, already a
+3. **Cancel and reschedule links** — signed, via `jose`, already a
    dependency. Instant booking is not safe to call finished without this; a
    booking nobody can undo is worse than one that needed approval. Cancelling
    sets `status = 'cancelled'` (which releases the day, by the partial index)
    and deletes the calendar event by its stored `calendar_event_id`.
-5. **Confirmation email wording.** The existing client email deliberately
+4. **Confirmation email wording.** The existing client email deliberately
    does not quote a price while rates are placeholders; a confirmed date and
    time is a different promise and should appear even though the price still
    cannot.
