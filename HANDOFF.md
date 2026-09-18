@@ -1,6 +1,12 @@
 # Sala Nera — Handoff (Sep 18 2026)
 
-## Latest — Sep 18: the Google Calendar credential is done. Every blocker for `lib/scheduling.ts` is now cleared
+## Latest — Sep 18: the Google Calendar credential is in place (untested), and the two-calendar plan collapsed to one
+
+> **Two tests are now owed, not one.** This entry's credential has never
+> made an API call (see "THE TEST STILL OWED" below), and the **Sep 16 R2
+> upload test is still outstanding too** — no real file has been put through
+> the admin upload button into the bucket yet. Neither blocks building
+> `lib/scheduling.ts`, but neither should be described as working.
 
 Session resumed after the Codespace crashed (nothing was lost — `git status`
 was clean, `main` matched `origin/main`). Picked up where Sep 16 left off:
@@ -35,12 +41,21 @@ the plan had wrong or hadn't accounted for:
 2. **Nick doesn't want two calendars.** "Blackhall Media Group Appointments"
    is shared between BMG (his other brand) and Sala Nera — both are real
    commitments for the same one photographer, and Nick would rather have one
-   true calendar than reconcile two. Confirmed the load-bearing fact first:
-   a manual block on that calendar already blocks the same time on Spiro
-   (BMG's booking tool), meaning Spiro just reads calendar conflicts rather
-   than doing anything special with the events themselves — so a
-   Sala-Nera-written event should behave exactly like a manual one and
-   protect both brands automatically.
+   true calendar than reconcile two.
+
+   ⚠️ **One assumption underneath this is Nick's belief, not a verified
+   fact, and it is load-bearing.** Asked directly how Spiro treats that
+   calendar, his answer was "I don't know how Spiro treats the calendar, but
+   if I go and manually book an appointment on that calendar through Google,
+   I *believe* it will block out that time on Spiro." If that's right, Spiro
+   merely reads calendar conflicts, and a Sala-Nera-written event protects
+   both brands automatically. **If it's wrong, the failure is real and
+   one-directional:** Sala Nera would still see Spiro's bookings (they land
+   on this calendar), but Spiro would not see Sala Nera's, so a BMG client
+   could book a slot Sala Nera already sold. **Verify this before instant
+   booking goes live to real clients** — the cheap test is to create a
+   manual event on that calendar and then check whether Spiro's own booking
+   page still offers that slot.
 
 **Decided: one calendar, not two.** `lib/scheduling.ts` reads *and* writes
 directly to **"Blackhall Media Group Appointments."** Every Sala Nera
@@ -50,19 +65,29 @@ brands apart at a glance, so don't skip it when this gets built. The
 separate "Sala Nera Bookings" calendar from the Sep 9 session is **unused,
 not part of the design** — leave it alone, nothing reads or writes it.
 
-**The service account is fully set up, shared, and its credentials are live
-in Vercel Production**, confirmed via `vercel env ls production`:
+**The service account is set up, shared, and its credentials are stored in
+Vercel Production** — names, type (Secret) and scope (Production only) all
+confirmed via `vercel env ls production`:
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`
-- `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
+- `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` — stored with **real newlines**, not
+  escaped `\n`. The JSON field was parsed before storing, so code reading
+  this should use it **as-is**; do not add the usual
+  `.replace(/\\n/g, '\n')` that Google examples show, or it will corrupt the
+  key. Vercel printed "Value contains newlines" on save, which is the
+  expected confirmation.
 - `GOOGLE_CALENDAR_ID` — the ID of "Blackhall Media Group Appointments"
 
 Same Google Cloud project as the Maps key: **sala-nera**, under
 `nblackhall@blackhallmediagroup.com`. Service account name
-`sala-nera-scheduler`. Shared onto "Blackhall Media Group Appointments" with
-permission **"Make changes (see private events as free/busy)"** — the
-closest match to the original privacy intent (Sala Nera can write its own
-events; other calendar entries it doesn't need full detail on stay as
-free/busy) even though the two-calendar isolation plan was dropped.
+`sala-nera-scheduler`. It was shared onto "Blackhall Media Group
+Appointments" at one of the "Make changes…" tiers — Nick was asked for
+**"Make changes (see private events as free/busy)"** (the closest match to
+the original privacy intent, and enough to write events) and reported back
+only that "the make changes option" was now selectable and done, so **which
+of the three "Make changes" tiers is actually set was not visually
+confirmed.** Any of them is sufficient to write events, so this does not
+block the build; check it on the calendar's sharing screen if the exact
+privacy posture ever matters.
 
 **Two real Google/Workspace obstacles hit along the way — expect these again
 on any future service-account setup in this same Google account, they are
@@ -130,12 +155,44 @@ Apply that level of detail for any future console walkthrough like this one;
 it's a stronger version of the existing "explain plainly, don't dump jargon"
 rule.
 
+### ⬜ THE TEST STILL OWED — the credential has never been exercised
+
+**Nothing has yet made a single API call with this service account.** Same
+shape of gap as R2 had on Sep 16: the values are placed and their names,
+type and scope are confirmed, but "stored in Vercel" is not the same as
+"works." A typo in the calendar ID, a share that didn't save, or a mangled
+private key would all look identical to this state. Untested specifically:
+
+1. ⬜ **Does the service account authenticate at all** (is the private key
+   intact after the newline handling above).
+2. ⬜ **Is `GOOGLE_CALENDAR_ID` really "Blackhall Media Group
+   Appointments"?** It was pasted from chat and never cross-checked against
+   the calendar's contents. A free/busy query returning Nick's actual known
+   commitments is what proves it.
+3. ⬜ **Did the calendar share actually save at a writable tier** — i.e. can
+   it create an event, not just read.
+
+The natural time to do all three is the first run of `lib/scheduling.ts`;
+don't declare the calendar connection working before then.
+
+**One thing that will get in the way of testing it locally:** all three vars
+are **Production only, type Secret**, and Vercel says Secret values are
+"unavailable to pulls" — so `vercel env pull` will not bring them into
+`.env.local`, and `npm run dev` won't see them. Two ways out when the time
+comes, decide then rather than pre-emptively: add them to Development as
+`--type config` so they can be pulled, or test against the deployed site the
+way the booking form and R2 were tested. Don't assume the Maps key's
+"Production + Development" recipe transfers — that key is also type Secret,
+so whether its Development copy actually pulls is itself unverified.
+
 **Next real step: build `lib/scheduling.ts`.** Every input it needs now
 exists — duration (~4hrs/2,500 sqft), hours (Mon–Thu 8–5), buffer (flat 1hr),
-and a live, working credential against the one calendar that matters. Phase
-2 from the plan artifact (duration/hours/buffer logic, pure code) and Phase
-3 (the free/busy check, adjusted for one calendar instead of two, plus the
-"[Sala Nera]" title-tagging requirement above) are both buildable now.
+and a credential in place against the one calendar that matters. Phase 2
+from the plan artifact (duration/hours/buffer logic, pure code, no
+credentials touched) and Phase 3 (the free/busy check, adjusted for one
+calendar instead of two, plus the "[Sala Nera]" title-tagging requirement
+above) are both buildable now. Phase 2 is the safer place to start: it needs
+nothing from Google and is testable on its own.
 
 ## Latest — Sep 16: R2 is connected and the upload button is live
 
