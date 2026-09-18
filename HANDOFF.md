@@ -1,12 +1,12 @@
 # Sala Nera — Handoff (Sep 18 2026)
 
-## Latest — Sep 18: the Google Calendar credential is in place (untested), and the two-calendar plan collapsed to one
+## Latest — Sep 18: the Google Calendar connection is live and verified, and the two-calendar plan collapsed to one
 
-> **Two tests are now owed, not one.** This entry's credential has never
-> made an API call (see "THE TEST STILL OWED" below), and the **Sep 16 R2
-> upload test is still outstanding too** — no real file has been put through
-> the admin upload button into the bucket yet. Neither blocks building
-> `lib/scheduling.ts`, but neither should be described as working.
+> **Calendar: tested end to end against the real calendar, passes** (see the
+> section below — auth, correct calendar confirmed by Nick, and a
+> create-then-delete write). **Still owed, unrelated: the Sep 16 R2 upload
+> test** — no real file has been put through the admin upload button into
+> the bucket yet, so media protection still can't be described as working.
 
 Session resumed after the Codespace crashed (nothing was lost — `git status`
 was clean, `main` matched `origin/main`). Picked up where Sep 16 left off:
@@ -155,25 +155,44 @@ Apply that level of detail for any future console walkthrough like this one;
 it's a stronger version of the existing "explain plainly, don't dump jargon"
 rule.
 
-### ⬜ THE TEST STILL OWED — the credential has never been exercised
+### ✅ TESTED END TO END — Sep 18, against the real calendar
 
-**Nothing has yet made a single API call with this service account.** Same
-shape of gap as R2 had on Sep 16: the values are placed and their names,
-type and scope are confirmed, but "stored in Vercel" is not the same as
-"works." A typo in the calendar ID, a share that didn't save, or a mangled
-private key would all look identical to this state. Untested specifically:
+The credential was exercised for real before anything got built on top of
+it, and all three unknowns are now settled:
 
-1. ⬜ **Does the service account authenticate at all** (is the private key
-   intact after the newline handling above).
-2. ⬜ **Is `GOOGLE_CALENDAR_ID` really "Blackhall Media Group
-   Appointments"?** It was pasted from chat and never cross-checked against
-   the calendar's contents. A free/busy query returning Nick's actual known
-   commitments is what proves it.
-3. ⬜ **Did the calendar share actually save at a writable tier** — i.e. can
-   it create an event, not just read.
+1. ✅ **Authentication works** — the service account signed in and was
+   issued an access token, proving the private key survived storage intact
+   (see the newline note above).
+2. ✅ **`GOOGLE_CALENDAR_ID` is the right calendar.** A free/busy query
+   returned two blocks in the next 21 days, and **Nick confirmed both are
+   real**: a BMG booking Sep 23 1:30–5:30pm, and a personal appointment
+   Oct 8 9:30–10:30am. Not inferred — he identified them himself.
+3. ✅ **It can write.** A test event was created and then deleted; the
+   calendar was left exactly as found.
 
-The natural time to do all three is the first run of `lib/scheduling.ts`;
-don't declare the calendar connection working before then.
+Method: a throwaway script (`reference/check-calendar.mjs`, gitignored) run
+against the JSON key, which Nick re-dropped for the test and which was
+deleted again immediately afterward. It signs a JWT with `jose` — already a
+dependency for the portal's magic links — rather than pulling in
+`googleapis`, the same hand-rolled approach `lib/sigv4.ts` takes for R2. If
+that script is wanted permanently it belongs in `scripts/` as
+`check:calendar`; it lives in `reference/` today because that directory is
+gitignored and the test needed a real key beside it.
+
+**Two facts from Nick's confirmation that shape `lib/scheduling.ts`:**
+
+- **This calendar holds personal commitments too, deliberately.** The Oct 8
+  block is a doctor's appointment, which he books onto the BMG calendar
+  specifically so it blocks his working time. So **every busy block is a
+  hard block** — do not filter by event type, title, or try to infer which
+  ones are "real shoots." If it's on this calendar, Nick is unavailable.
+- **Therefore it contains private personal data, including medical
+  appointments.** `lib/scheduling.ts` must read **busy intervals only** —
+  start and end times — and never event titles or descriptions. Never log
+  them, never surface them in `/admin`, and never let them reach anything
+  client-facing. The free/busy endpoint used in the test returns exactly
+  this and nothing else; keep using it rather than `events.list`, which
+  would return full details the site has no business handling.
 
 **One thing that will get in the way of testing it locally:** all three vars
 are **Production only, type Secret**, and Vercel says Secret values are
