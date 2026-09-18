@@ -1,12 +1,21 @@
 # Sala Nera — Handoff (Sep 18 2026)
 
-## Latest — Sep 18: the Google Calendar connection is live and verified, and the two-calendar plan collapsed to one
+## Latest — Sep 18: instant booking is live. A client can book a real slot and it lands on Nick's calendar
 
-> **Calendar: tested end to end against the real calendar, passes** (see the
-> section below — auth, correct calendar confirmed by Nick, and a
-> create-then-delete write). **Still owed, unrelated: the Sep 16 R2 upload
-> test** — no real file has been put through the admin upload button into
-> the bucket yet, so media protection still can't be described as working.
+> **This is the session instant booking actually happened in.** It opened with
+> the calendar credential unbuilt and closed with Nick booking a real shoot
+> through salanera.com that blocked the day and wrote itself to his Google
+> Calendar. The sections below run in the order it was built — credential,
+> availability engine, database, slot claiming, the picker, the calendar
+> write — and the end-to-end proof is under "THE WHOLE LOOP".
+>
+> **Two things are still owed, and neither is cosmetic:** whether cancelling
+> actually removes the calendar event (Nick had not cancelled his test booking
+> yet), and the **Sep 16 R2 upload test**, untouched by this session — no real
+> file has gone through the admin upload button, so media protection still
+> cannot honestly be described as working.
+>
+> **Nick's own test booking is holding Sep 28 2026.** Not a bug.
 
 Session resumed after the Codespace crashed (nothing was lost — `git status`
 was clean, `main` matched `origin/main`). Picked up where Sep 16 left off:
@@ -378,6 +387,66 @@ time cost Nick four separate interruptions and bought little — `reference/` is
 gitignored with an explicit never-commit rule, the file already lives in his
 Downloads, and the values are in Vercel. **Delete it when calendar work is
 finished**, and never move it anywhere outside `reference/`.
+
+### ✅ THE WHOLE LOOP, PROVEN END TO END — Sep 18, by Nick on the live site
+
+Nick booked a real shoot through salanera.com and it behaved correctly at
+every stage. Verified afterwards against the production database and the real
+calendar (`reference/check-live-availability.mjs`), not taken on his word or
+mine:
+
+- **Booking 3** — Sep 28, 9am–3pm, 4840 Serenity Trail, McKinney.
+  `status: confirmed`, and **`calendar_event_id` is populated**, which is what
+  proves the calendar write actually ran rather than failing quietly.
+- **Days offered fell 32 → 31, with Sep 28 gone.** The one-a-day rule is
+  working off real data: nobody else can be sold that day.
+- **Booking 2** — an earlier test, cancelled from `/admin`. The day is back on
+  offer and the row is kept as `cancelled` rather than deleted. Its
+  `calendar_event_id` is null because it predates the calendar write, which is
+  correct rather than a bug.
+- **Booking 1** — the original pre-instant-booking row. Still `requested`,
+  still carrying the `desired_date` the client typed. The migration genuinely
+  did not rewrite history.
+- Sep 23 (BMG) and Oct 8 (personal) remain correctly excluded from the
+  calendar side.
+
+**All three booking states now exist in production and each behaves right.**
+That is a better regression fixture than anything synthetic — if a future
+change breaks one of them, it will show up in that table.
+
+**Still unconfirmed at the time of writing:** deleting the calendar event when
+a booking is cancelled. Nick had not yet cancelled booking 3. The code path is
+`cancelBookingAction` → `deleteBookingEvent`, and `deleteBookingEvent` itself
+was verified in isolation against the real calendar — but the two have not been
+exercised together on a real booking. **Ask him whether the event disappeared
+from Google Calendar before calling that done.**
+
+**One deliberate guess awaiting Nick's eye:** what goes in the event
+description — client name, phone, email, services, square footage, access
+notes. Chosen as "what he needs standing outside the house", never confirmed
+with him. If he wants it changed, it is the `description` array in
+`createBookingEvent`.
+
+**A gotcha for future sessions, not an app problem:** repeated automated
+`curl`s to salanera.com from this Codespace eventually trip **Vercel's bot
+protection**, which answers with a "Vercel Security Checkpoint" HTML page
+instead of JSON. It looks exactly like the endpoint returning garbage. Verify
+against the database and `lib/availability.ts` directly instead of hammering
+the public URL.
+
+### ⬜ Bookings currently holding real days
+
+Worth knowing before anyone reads availability as broken: **Sep 28 2026 is
+blocked by Nick's own test booking** (booking 3). If he decides to keep the
+day, cancel it from `/admin/bookings`.
+
+### What's left for instant booking
+
+Much shorter than it was. The mechanism is built and running; what remains is
+finishing the client's side of it.
+
+0. **Confirm cancelling removes the calendar event** — see the note under the
+   calendar write above. Needs one answer from Nick, not a build.
 1. **Client-side cancel and reschedule** — a signed link in the confirmation
    email, via `jose`, already a dependency. Nick can cancel from `/admin`
    today, so a booking is no longer unrecoverable, but the client still has to
