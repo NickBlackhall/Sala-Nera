@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0003_bookings';
+export const PORTAL_MIGRATION_ID = '0004_confirmed_slots';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -136,4 +136,28 @@ export const PORTAL_MIGRATION_STATEMENTS = [
   `CREATE UNIQUE INDEX IF NOT EXISTS "bookings_request_id_key" ON "bookings" USING btree ("request_id")`,
   `CREATE INDEX IF NOT EXISTS "bookings_client_idx" ON "bookings" USING btree ("client_id")`,
   `CREATE INDEX IF NOT EXISTS "bookings_created_idx" ON "bookings" USING btree ("created_at")`,
+
+  /**
+   * 0004 — the confirmed slot behind instant booking.
+   *
+   * Additive on purpose. Existing rows are requests that were emailed to Nick
+   * and confirmed by hand, so the default below describes them accurately
+   * rather than retrofitting a promise nobody made. desired_date stays exactly
+   * as it is: what a client asked for is a different fact from what they got,
+   * and overwriting one with the other would lose the first.
+   */
+  `ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'requested' NOT NULL`,
+  `ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "starts_at" timestamp with time zone`,
+  `ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "ends_at" timestamp with time zone`,
+  `ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "shoot_date" text`,
+  `ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "calendar_event_id" text`,
+  /**
+   * One confirmed Sala Nera booking per day, enforced here rather than in
+   * application code — see the long note on this index in lib/schema.ts. It is
+   * the entire defence against two clients confirming the same slot in the
+   * same second, so it must not be relaxed to a plain index.
+   */
+  `CREATE UNIQUE INDEX IF NOT EXISTS "bookings_one_confirmed_per_day"
+    ON "bookings" USING btree ("shoot_date") WHERE "status" = 'confirmed'`,
+  `CREATE INDEX IF NOT EXISTS "bookings_starts_at_idx" ON "bookings" USING btree ("starts_at")`,
 ] as const;

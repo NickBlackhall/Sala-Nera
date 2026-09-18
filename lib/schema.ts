@@ -1,8 +1,18 @@
+import { sql } from 'drizzle-orm';
 import {
   pgTable, serial, text, integer, bigint, boolean, timestamp, index, uniqueIndex, jsonb,
 } from 'drizzle-orm/pg-core';
 import type { Details } from '@/lib/booking-details';
 import type { QuoteLine } from '@/lib/quote';
+
+/**
+ * 'requested' is every booking written before instant booking existed, and any
+ * that fails to claim a slot: an email to Nick, nothing promised. 'confirmed'
+ * holds a real slot on a real calendar. 'cancelled' held one and gave it back —
+ * kept rather than deleted so the history of a client's booking survives, and
+ * so the day is released by the partial index below rather than by a delete.
+ */
+export type BookingStatus = 'requested' | 'confirmed' | 'cancelled';
 
 /**
  * Five tables, per the portal spec.
@@ -186,11 +196,52 @@ export const bookings = pgTable(
     // Unique, so a retried submission from the same open form lands once.
     requestId: text('request_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+
+    /**
+     * The confirmed slot. Null on every row written before instant booking
+     * existed — those are requests, where desired_date above is whatever the
+     * client typed and nothing was ever promised. desired_date is deliberately
+     * kept rather than migrated into these: it records what someone asked for,
+     * which is not the same fact as what they were given.
+     */
+    status: text('status').$type<BookingStatus>().default('requested').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }),
+    endsAt: timestamp('ends_at', { withTimezone: true }),
+    /**
+     * The local calendar day of the shoot, YYYY-MM-DD, as lib/scheduling.ts
+     * reckons it. Stored rather than derived from starts_at because the
+     * one-a-day rule is about Nick's day in Central time, and asking Postgres
+     * which day an instant falls on means agreeing a time zone with it — one
+     * more place for that to drift. Text here matches Slot.date exactly.
+     */
+    shootDate: text('shoot_date'),
+    /** Google's id for the calendar event, so a cancellation can remove it. */
+    calendarEventId: text('calendar_event_id'),
   },
   (t) => [
     uniqueIndex('bookings_request_id_key').on(t.requestId),
     index('bookings_client_idx').on(t.clientId),
     index('bookings_created_idx').on(t.createdAt),
+    /**
+     * The whole of the double-booking defence, and the reason it is a database
+     * concern rather than an application one.
+     *
+     * Two agents can hold the form open, both be shown the same Thursday, and
+     * both confirm within the same second. Checking availability and then
+     * inserting cannot prevent that — between the check and the insert is
+     * exactly where the second booking fits. Google cannot arbitrate it
+     * either: its free/busy lags what has just been written. So the slot is
+     * claimed here, in one all-or-nothing write, and whoever loses gets a
+     * unique-violation to catch and turn into "that slot just went, here are
+     * the next ones" rather than a confirmation screen for a shoot Nick cannot
+     * do. Only the winner's booking is ever written to the calendar.
+     *
+     * Partial, so a cancelled booking releases the day rather than poisoning
+     * it forever.
+     */
+    uniqueIndex('bookings_one_confirmed_per_day')
+      .on(t.shootDate)
+      .where(sql`${t.status} = 'confirmed'`),
   ],
 );
 
