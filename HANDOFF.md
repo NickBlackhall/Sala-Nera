@@ -9,13 +9,12 @@
 > availability engine, database, slot claiming, the picker, the calendar
 > write — and the end-to-end proof is under "THE WHOLE LOOP".
 >
-> **Two things are still owed, and neither is cosmetic:** whether cancelling
-> actually removes the calendar event (Nick had not cancelled his test booking
-> yet), and the **Sep 16 R2 upload test**, untouched by this session — no real
-> file has gone through the admin upload button, so media protection still
-> cannot honestly be described as working.
+> **Instant booking is finished and proven, cancellation included.** The one
+> thing still owed is unrelated and predates this session: the **Sep 16 R2
+> upload test** — no real file has gone through the admin upload button, so
+> media protection still cannot honestly be described as working.
 >
-> **Nick's own test booking is holding Sep 28 2026.** Not a bug.
+> No test bookings are holding days; Nick cancelled his.
 
 Session resumed after the Codespace crashed (nothing was lost — `git status`
 was clean, `main` matched `origin/main`). Picked up where Sep 16 left off:
@@ -414,18 +413,18 @@ mine:
 That is a better regression fixture than anything synthetic — if a future
 change breaks one of them, it will show up in that table.
 
-**Still unconfirmed at the time of writing:** deleting the calendar event when
-a booking is cancelled. Nick had not yet cancelled booking 3. The code path is
-`cancelBookingAction` → `deleteBookingEvent`, and `deleteBookingEvent` itself
-was verified in isolation against the real calendar — but the two have not been
-exercised together on a real booking. **Ask him whether the event disappeared
-from Google Calendar before calling that done.**
+**Cancelling was then tested on that same booking, and the last link holds.**
+Nick cancelled booking 3 from `/admin/bookings`; verified directly afterwards
+rather than assumed: the row reads `cancelled` (kept, with its
+`calendar_event_id` still recorded), **a free/busy read of Sep 28 comes back
+clear — the event really was deleted from Google Calendar** — and days offered
+went back 31 → 32 with Sep 28 among them. Book, block, write to the calendar,
+cancel, release, remove: every stage now proven against production.
 
-**One deliberate guess awaiting Nick's eye:** what goes in the event
-description — client name, phone, email, services, square footage, access
-notes. Chosen as "what he needs standing outside the house", never confirmed
-with him. If he wants it changed, it is the `description` array in
-`createBookingEvent`.
+**The event description is approved** — client name, phone, email, services,
+square footage, access notes. Nick reviewed it and said it's fine "for now", so
+treat it as settled but not sacred; it is the `description` array in
+`createBookingEvent` if he wants it changed later.
 
 **A gotcha for future sessions, not an app problem:** repeated automated
 `curl`s to salanera.com from this Codespace eventually trip **Vercel's bot
@@ -436,17 +435,16 @@ the public URL.
 
 ### ⬜ Bookings currently holding real days
 
-Worth knowing before anyone reads availability as broken: **Sep 28 2026 is
-blocked by Nick's own test booking** (booking 3). If he decides to keep the
-day, cancel it from `/admin/bookings`.
+**None, as of the end of Sep 18.** Nick's test booking on Sep 28 was cancelled
+and the day released. Both remaining rows are `cancelled` or `requested`, so
+nothing in the table is holding a real day. Re-check here first if availability
+ever looks wrong: a forgotten test booking is the likeliest cause.
 
 ### What's left for instant booking
 
 Much shorter than it was. The mechanism is built and running; what remains is
 finishing the client's side of it.
 
-0. **Confirm cancelling removes the calendar event** — see the note under the
-   calendar write above. Needs one answer from Nick, not a build.
 1. **Client-side cancel and reschedule** — a signed link in the confirmation
    email, via `jose`, already a dependency. Nick can cancel from `/admin`
    today, so a booking is no longer unrecoverable, but the client still has to
