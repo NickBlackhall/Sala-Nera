@@ -303,26 +303,69 @@ days, never times derived from "no busy periods found". Keep that property:
 the failure it prevents is Nick arriving somewhere else while a client waits
 at a house.
 
+### ✅ BUILT AND LIVE — the slot picker and admin cancel (`fcc042e`)
+
+`/book` offers real times and holds one on send; `/admin/bookings` shows
+confirmed shoots with a Cancel link that puts the day back on the market.
+Deployed and confirmed live: the hero carries the instant-booking promise and
+the endpoint returns 32 days.
+
+**The date field did not move, and that was right.** The plan called for it to
+become its own step after Services because slot length used to depend on what
+was ordered. The flat six hours removed that dependency, so it stays in the
+Property step and the form Nick likes is otherwise untouched. If a dedicated
+scheduling step is ever wanted (Spiro has one), it is now a move rather than a
+redesign.
+
+**The fallback is load-bearing, not decoration.** When availability cannot be
+loaded, `SlotPicker` renders the old preferred-date field and the booking is
+saved as `requested` — precisely the pre-instant-booking behaviour, email and
+all. Do not "simplify" this away: a booking form that dead-ends during a
+Google outage costs Nick leads, and a lead needing a phone call beats no lead.
+
+**Three places promised something the form could no longer keep**, none of
+them visible in the diff — all found by rendering the page in a browser. The
+hero ("Sending this reserves nothing"), the fine print under the form, and the
+client's confirmation email ("Nothing is booked until you hear back from us").
+Each is now conditional on a slot actually being claimed. **When changing this
+flow, check the prose, not just the logic** — the copy is where an instant
+booking quietly turns back into a request.
+
+Verified in a real browser at 1280px and 390px against the live calendar:
+times appear only after a date is picked, switching date drops a time chosen
+on the old one, continuing without a time is refused, no horizontal overflow.
+Deliberately **not** submitted from the Codespace — `.env.local` points at the
+production database, so a local submission would claim a real day. Use the
+live site, where Cancel can undo it.
+
+**A trap worth knowing for any future local test of this flow:** the calendar
+vars are Production-only and type Secret, so `vercel env pull` will not fetch
+them and `npm run dev` shows the fallback. Testing the live picker locally
+means temporarily pasting the service-account values into `.env.local` and
+taking them out again — `reference/shoot-picker.mjs` (gitignored) drives the
+whole thing in Playwright once they are there.
+
 ### What's left for instant booking, in order
 
-1. **The slot picker on `/book`** — and the date field has to move: it
-   currently sits in the Property step, before services are chosen. Keep the
-   visual design exactly as it is; Nick likes it.
-2. **Writing the booking to the calendar**, titled `[Sala Nera] <address>`
+1. **Writing the booking to the calendar**, titled `[Sala Nera] <address>`
    (see the tagging requirement above), and only after the slot is claimed in
    the database — never the other way round, or a lost race leaves an orphan
    event on Nick's real calendar. Needs the `calendar.events` scope, which
    `lib/calendar.ts` deliberately does not request today, and a second
    sharing tier check on the calendar itself.
-3. **Cancel and reschedule links** — signed, via `jose`, already a
-   dependency. Instant booking is not safe to call finished without this; a
-   booking nobody can undo is worse than one that needed approval. Cancelling
-   sets `status = 'cancelled'` (which releases the day, by the partial index)
-   and deletes the calendar event by its stored `calendar_event_id`.
-4. **Confirmation email wording.** The existing client email deliberately
-   does not quote a price while rates are placeholders; a confirmed date and
-   time is a different promise and should appear even though the price still
-   cannot.
+2. **Client-side cancel and reschedule** — a signed link in the confirmation
+   email, via `jose`, already a dependency. Nick can cancel from `/admin`
+   today, so a booking is no longer unrecoverable, but the client still has to
+   ring him. Instant booking is not really finished until they can undo their
+   own booking; the server half already exists in `cancelBookingRow()`, which
+   returns the `calendar_event_id` for exactly this. Reschedule is a cancel
+   and a claim, not a new mechanism — but the two must not leave a gap where
+   the old day is released before the new one is taken.
+3. ~~**Confirmation email wording.**~~ **Done** with the picker: the client
+   email now says the shoot is confirmed and in the diary when a slot was
+   claimed, and keeps the old "not confirmed yet" wording when it was only a
+   request. The placeholder-rates paragraph still applies to both — a date can
+   be certain while the price honestly is not.
 
 ## Latest — Sep 16: R2 is connected and the upload button is live
 
