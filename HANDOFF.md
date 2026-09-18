@@ -9,10 +9,15 @@
 > availability engine, database, slot claiming, the picker, the calendar
 > write — and the end-to-end proof is under "THE WHOLE LOOP".
 >
-> **Instant booking is finished and proven, cancellation included.** The one
-> thing still owed is unrelated and predates this session: the **Sep 16 R2
-> upload test** — no real file has gone through the admin upload button, so
-> media protection still cannot honestly be described as working.
+> **The booking mechanism is finished and proven**, admin-side cancellation
+> included. **Two things are still owed**, in this order:
+>
+> 1. **Clients cannot cancel their own booking.** They have to ring Nick, who
+>    cancels from `/admin`. Not broken, but it is the obvious next piece — see
+>    "What's left for instant booking" below.
+> 2. The **Sep 16 R2 upload test**, untouched by this session and predating it:
+>    no real file has gone through the admin upload button, so media protection
+>    still cannot honestly be described as working.
 >
 > No test bookings are holding days; Nick cancelled his.
 
@@ -457,14 +462,26 @@ ever looks wrong: a forgotten test booking is the likeliest cause.
 Much shorter than it was. The mechanism is built and running; what remains is
 finishing the client's side of it.
 
-1. **Client-side cancel and reschedule** — a signed link in the confirmation
-   email, via `jose`, already a dependency. Nick can cancel from `/admin`
-   today, so a booking is no longer unrecoverable, but the client still has to
-   ring him. Instant booking is not really finished until they can undo their
-   own booking; the server half already exists in `cancelBookingRow()`, which
-   returns the `calendar_event_id` for exactly this. Reschedule is a cancel
-   and a claim, not a new mechanism — but the two must not leave a gap where
-   the old day is released before the new one is taken.
+1. **Client-side cancel and reschedule — the next thing to build.** A signed
+   link in the confirmation email, via `jose`, already a dependency for the
+   portal's magic links.
+
+   Nick can cancel from `/admin` today, so no booking is unrecoverable, and
+   that is why this is next rather than urgent. The real argument for doing it
+   soon is not convenience: a client who cannot cancel at 9pm may simply not
+   turn up, and Nick loses the day either way — except he finds out by
+   standing outside a house. A link they can use themselves turns a no-show
+   into a freed day.
+
+   The server half already exists: `cancelBookingRow()` releases the day and
+   returns the `calendar_event_id`, and `deleteBookingEvent()` removes the
+   event. What is missing is the signed link, the page it lands on, and the
+   confirmation that the person clicking it owns that booking.
+
+   Reschedule is a cancel and a claim, not a new mechanism — but the two must
+   not leave a gap where the old day is released before the new one is taken,
+   or a client moving a booking can lose both. Claim the new slot first, then
+   release the old one.
 2. ~~**Confirmation email wording.**~~ **Done** with the picker: the client
    email now says the shoot is confirmed and in the diary when a slot was
    claimed, and keeps the old "not confirmed yet" wording when it was only a
