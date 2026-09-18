@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { sql } from 'drizzle-orm';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
 import { bookings, clients } from '@/lib/schema';
 
@@ -44,4 +44,70 @@ export async function ensureClient(input: {
 /** Saves one delivered booking. A retry carrying the same requestId is a no-op. */
 export async function saveBooking(record: typeof bookings.$inferInsert): Promise<void> {
   await getDatabase().insert(bookings).values(record).onConflictDoNothing({ target: bookings.requestId });
+}
+
+/**
+ * Local dates (YYYY-MM-DD) already holding a confirmed Sala Nera booking, for
+ * feeding availableSlots({ takenDates }) — the one-shoot-a-day rule.
+ *
+ * Only Sala Nera's own bookings are counted here. Nick's other commitments,
+ * BMG's included, come from his calendar instead: this table has no idea they
+ * exist, and the calendar has no idea which of its entries are Sala Nera's
+ * without reading titles it is deliberately not allowed to read. Two sources,
+ * each answering the question it can actually answer.
+ *
+ * Text comparison is correct for YYYY-MM-DD, which sorts lexicographically in
+ * date order — the reason lib/scheduling.ts settled on that format.
+ */
+export async function confirmedDates(from: string, to: string): Promise<string[]> {
+  const rows = await getDatabase()
+    .select({ shootDate: bookings.shootDate })
+    .from(bookings)
+    .where(and(eq(bookings.status, 'confirmed'), gte(bookings.shootDate, from), lte(bookings.shootDate, to)));
+
+  return rows.map((r) => r.shootDate).filter((d): d is string => d !== null);
+}
+
+export type ClaimResult =
+  | { claimed: true; id: number }
+  | { claimed: false };
+
+/**
+ * Takes a slot, or reports that somebody else already has it.
+ *
+ * The check-then-insert this replaces cannot be made safe: between deciding a
+ * Thursday is free and writing the row is exactly where a second booking
+ * fits, and two agents confirming in the same second is not a rare case for a
+ * form that shows everyone the same short list of openings. So the decision is
+ * the insert, and bookings_one_confirmed_per_day either accepts it or does
+ * not. Nothing reaches Nick's calendar until this returns claimed.
+ *
+ * Conflicts are swallowed rather than thrown because two different ones are
+ * possible and only one is a failure: losing the day, and the same submission
+ * arriving twice. A retry that finds its own requestId already saved has not
+ * lost anything — the booking landed the first time — so it is reported as the
+ * success it is, and the client sees a confirmation rather than a slot they
+ * apparently missed by a second.
+ */
+export async function claimSlot(record: typeof bookings.$inferInsert): Promise<ClaimResult> {
+  const db = getDatabase();
+
+  const [row] = await db
+    .insert(bookings)
+    .values({ ...record, status: 'confirmed' })
+    .onConflictDoNothing()
+    .returning({ id: bookings.id });
+
+  if (row) return { claimed: true, id: row.id };
+
+  if (record.requestId) {
+    const [existing] = await db
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(eq(bookings.requestId, record.requestId))
+      .limit(1);
+    if (existing) return { claimed: true, id: existing.id };
+  }
+
+  return { claimed: false };
 }
