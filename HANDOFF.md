@@ -380,12 +380,24 @@ the narrow write scope creates an event, the free/busy read sees it as busy
 through its own separate token, the delete removes it, and the calendar ends
 up as it was.
 
-**On the service-account key file:** it is being left in `reference/` while
-calendar work continues, rather than deleted after every use. Deleting it each
-time cost Nick four separate interruptions and bought little — `reference/` is
-gitignored with an explicit never-commit rule, the file already lives in his
-Downloads, and the values are in Vercel. **Delete it when calendar work is
-finished**, and never move it anywhere outside `reference/`.
+**On the service-account key file: it has been deleted from the Codespace**,
+at the end of Sep 18, once calendar work was finished. Nothing breaks — the
+values live in Vercel and Nick still has the original in his Downloads.
+
+If calendar work resumes and it is needed again, ask Nick to drop it into
+`reference/` (gitignored, explicit never-commit rule) and **leave it there for
+the duration of that work** rather than deleting it after every use. Doing the
+latter cost him four separate interruptions in one session for very little: the
+ignore rule already closes the realistic risk. Never paste a private key into
+chat, never put one under `public/`, and delete it when the work is done.
+
+The throwaway scripts that need it are still in `reference/`, all gitignored:
+`check-calendar.mjs` (credential smoke test), `check-calendar-write.mjs` (the
+narrow write scope), `check-availability.mjs` and `check-live-availability.mjs`
+(real slots, the latter against the production database too), `check-claim.mjs`
+and `check-migration.mjs` (PGlite, no credential needed), and
+`shoot-picker.mjs` / `shoot-book.mjs` (Playwright through the form). Each names
+its own usage at the top.
 
 ### ✅ THE WHOLE LOOP, PROVEN END TO END — Sep 18, by Nick on the live site
 
