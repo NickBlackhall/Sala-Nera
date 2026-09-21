@@ -1,6 +1,58 @@
 # Sala Nera — Handoff (Sep 21 2026)
 
-## Latest — Sep 21: real media is in the bucket, and the admin can finally manage it
+## Latest — Sep 21, evening: galleries load from smaller copies — 332MB → 5.8MB
+
+> **Built, live, and backfilled on Rockwall Shores.** Opening that gallery
+> used to pull all 32 originals (332.4MB) for thumbnails a few hundred pixels
+> wide. It now pulls **5.8MB**; the admin listing page **4.6MB**. Measured on
+> the live site with `reference/measure-gallery.mjs`, same script before and
+> after. Nick's own read after refreshing: "everything is faster".
+
+### ✅ APPLIED — `0005_media_copies` (`7f2d5b8`)
+
+Nullable `grid_key` / `large_key` / `high_key` on `media`, and
+`downloads.resolution`. Shipped and deployed a commit ahead of the code that
+selects them. **Nick ran the migrate call himself** (19:26 UTC) — auto mode
+refused it for me even after his yes, so offer him the one-line command up
+front next time. Confirmed afterwards in `portal_migrations` and
+`information_schema`.
+
+### ✅ BUILT AND LIVE — smaller copies, made on the server (`921685e`)
+
+`lib/media-copies.ts` uses `sharp` to make, per photo: **grid** (1200px,
+gallery and admin tiles) and **large** (2400px, click-to-enlarge, cover
+banner, and the future low-res download). Upright from EXIF, sRGB, GPS
+stripped. Originals untouched and still the download. A **high** copy is made
+only when the original is over 19MB or not a JPEG — none of the 32 needed one.
+Rows with no copies fall back to the original, so nothing breaks in between.
+Deleting a photo or listing deletes its copies too.
+
+New uploads make their copies automatically. The **Make previews** notice on a
+listing (`app/admin/MakePreviews.tsx`) only appears when photos lack copies —
+uploaded before this existed, a tab closed mid-upload, or a failed copy.
+
+**Proven on production:** Nick clicked Make previews on listing 2; all 32
+rows now have `grid_key`, `large_key` and real `width`/`height`. Listing 1's
+10 rows have none by design — they're `/demo/*` seeds, excluded via
+`isLocalKey()`.
+
+This also **fixes the "uploads never record their dimensions" bug below**:
+width/height are now read from the file on the server, so the `blob:` CSP
+change is no longer needed.
+
+### ⬜ Still owed
+
+1. **Nick uploads a photo or two** to any listing, to prove new uploads get
+   copies on their own. Check with a read-only query that `grid_key` is set.
+2. **High res / Low res download switch** — next build. Agreed design: one
+   switch beside Download Selected / Download All, starting on High res,
+   replacing the disabled "MLS Photo Download" button. High = original (or
+   `high_key` if set), Low = `large_key`. Log the choice in
+   `downloads.resolution`. MLS cap assumed 19MB.
+3. Videos are untouched, and the gallery renders every file as an `<img>`, so
+   the Rockwall Shores video likely shows broken to clients. Separate, unfixed.
+
+## Sep 21: real media is in the bucket, and the admin can finally manage it
 
 > **The R2 upload test is no longer owed — Nick put a real listing's worth of
 > files through it.** 31 photos and a 127MB video landed on the Rockwall
@@ -24,7 +76,7 @@ new button. Real uploads are distinguishable by key: `listings/<slug>/<uuid>-…
 versus a demo row's leading-slash `/demo/…`, which is what `isLocalKey()` in
 `lib/storage.ts` keys off.
 
-### ⬜ A real bug found and NOT fixed: uploads never record their dimensions
+### ✅ FIXED by `921685e` (see above) — uploads never recorded their dimensions
 
 Every one of the 32 real uploads has `width`/`height` null, while the seeded
 rows have both. Traced to a genuine cause, not a mystery:
