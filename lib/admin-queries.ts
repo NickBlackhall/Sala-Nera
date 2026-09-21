@@ -259,6 +259,23 @@ export async function firstMediaKey(listingId: number): Promise<string | null> {
   return row?.r2Key ?? null;
 }
 
+/**
+ * Every object key one listing owns, for deleting the bytes behind it.
+ *
+ * Must be read before deleteListingRow(): media rows cascade with the
+ * listing, so afterwards there is nothing left to say which objects were
+ * ever its.
+ */
+export async function getListingMediaKeys(listingId: number): Promise<string[]> {
+  const db = getDatabase();
+  const rows = await db
+    .select({ r2Key: media.r2Key })
+    .from(media)
+    .where(eq(media.listingId, listingId));
+
+  return rows.map((r) => r.r2Key);
+}
+
 /** Media rows cascade; so do this listing's download records. */
 export async function deleteListingRow(id: number): Promise<void> {
   const db = getDatabase();

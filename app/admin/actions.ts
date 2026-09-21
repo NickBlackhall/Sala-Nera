@@ -13,6 +13,7 @@ import {
   deleteMediaRow,
   emailIsTaken,
   firstMediaKey,
+  getListingMediaKeys,
   getListingSlug,
   getMediaRow,
   insertClient,
@@ -187,6 +188,45 @@ export async function deleteClientAction(form: FormData): Promise<void> {
   redirect('/admin/clients');
 }
 
+// ------------------------------------------------------------ stored files
+
+/**
+ * Remove the bytes behind one key, best effort. Shared by deleting one photo
+ * and deleting a whole listing.
+ *
+ * Never throws: the row it belonged to is already gone by the time this runs,
+ * so a failure here leaves an orphaned object in a private bucket that nothing
+ * links to. That costs a fraction of a cent and is invisible to clients, which
+ * is why it is logged rather than surfaced.
+ */
+async function deleteObject(r2Key: string): Promise<void> {
+  // Seeded demo rows keep their bytes under /public, where there is nothing
+  // to delete and no signed URL to do it with.
+  if (isLocalKey(r2Key)) return;
+
+  const url = deleteUrl(r2Key);
+  if (!url) return;
+
+  try {
+    const res = await fetch(url, { method: 'DELETE' });
+    // R2 answers 204 on success, and on deleting something already gone.
+    if (!res.ok && res.status !== 404) {
+      console.error(`media delete: R2 kept ${r2Key} (${res.status})`);
+    }
+  } catch (error) {
+    console.error(`media delete: R2 unreachable for ${r2Key}`, error);
+  }
+}
+
+/** A few objects at a time, so a 200-photo listing neither crawls nor floods R2. */
+const DELETE_CONCURRENCY = 8;
+
+async function deleteObjects(keys: string[]): Promise<void> {
+  for (let i = 0; i < keys.length; i += DELETE_CONCURRENCY) {
+    await Promise.all(keys.slice(i, i + DELETE_CONCURRENCY).map(deleteObject));
+  }
+}
+
 // ----------------------------------------------------------------- listings
 
 async function readListingForm(form: FormData, exceptId?: number) {
@@ -275,14 +315,20 @@ export async function setCoverAction(form: FormData): Promise<void> {
   revalidatePath(`/admin/listings/${id}`);
 }
 
-/** Media rows and this listing's download history go with it. */
+/** Media rows and this listing's download history go with it — and the files. */
 export async function deleteListingAction(form: FormData): Promise<void> {
   await requireAdmin();
 
   const id = Number(form.get('id'));
   if (!Number.isInteger(id)) return;
 
+  // Read the keys first: the media rows cascade with the listing, and once
+  // they are gone nothing records which objects used to be its.
+  const keys = await getListingMediaKeys(id);
+
   await deleteListingRow(id);
+  await deleteObjects(keys);
+
   revalidatePath('/admin');
   redirect('/admin');
 }
@@ -407,22 +453,7 @@ export async function deleteMediaAction(form: FormData): Promise<void> {
     await setListingCover(listingId, await firstMediaKey(listingId));
   }
 
-  // Seeded demo rows keep their bytes under /public, where there is nothing
-  // to delete and no signed URL to do it with.
-  if (!isLocalKey(r2Key)) {
-    const url = deleteUrl(r2Key);
-    if (url) {
-      try {
-        const res = await fetch(url, { method: 'DELETE' });
-        // R2 answers 204 on success, and on deleting something already gone.
-        if (!res.ok && res.status !== 404) {
-          console.error(`media delete: R2 kept ${r2Key} (${res.status})`);
-        }
-      } catch (error) {
-        console.error(`media delete: R2 unreachable for ${r2Key}`, error);
-      }
-    }
-  }
+  await deleteObject(r2Key);
 
   revalidatePath(`/admin/listings/${listingId}`);
   revalidatePath('/admin');
