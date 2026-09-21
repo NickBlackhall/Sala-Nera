@@ -10,8 +10,9 @@
 > the **`/portal/<slug>` client view** rendering them locked and unlocked.
 > Those are eyeball checks Nick has not reported back on yet.
 >
-> Three things were then built on top, each shipped and deployed on its own:
-> the cover-image bug, delete, and drag-and-drop reorder. All three are live.
+> Four things were then built on top, each shipped and deployed on its own:
+> the cover-image bug, delete, drag-and-drop reorder, and select-several-and-
+> drag-as-a-group. All four are live.
 
 ### The "broken images" were not broken
 
@@ -106,6 +107,49 @@ deleted cannot stamp sort values onto rows that have moved on. A failed save
 puts the tiles back and says so, rather than showing an order the client's
 gallery would disagree with.
 
+### ✅ BUILT AND LIVE — select several photos and drag them as one group (`3f3630e`)
+
+Nick asked for this directly, having built the same thing in his Spiro
+listing editor: a checkbox per photo (`.admin-media-select`, overlaid on the
+thumbnail), check several, drag any one of the checked ones, and the whole
+group moves together in their existing relative order. Dragging a photo that
+was **not** checked moves only that one and replaces the selection — the same
+rule a file manager uses, so a selection from ten minutes ago can't silently
+hitch a ride on an unrelated drag.
+
+**The single-tile reorder rule changed to make this possible.** The old rule
+was direction-dependent — dropped forward, it landed after the target;
+dropped backward, before. That asymmetry has no single sensible reading once
+the thing being dragged is a group scattered on both sides of the target, so
+it is now one flat rule for both: **a drop always lands immediately before
+whatever it was dropped on.** Re-verified all four long single-tile drag cases
+under the new rule — still 12/12 passing, nothing regressed.
+
+**A "Drop here to move to the end" zone** (`app/admin/MediaGrid.tsx`, only
+rendered while `dragIds` is set) appears below the grid mid-drag. Needed
+because the grid is a packed CSS grid with no empty space of its own — without
+it, sending a whole room to the back had nowhere to land.
+
+**A genuine Playwright limitation, worth knowing before rebuilding this kind
+of test:** `dragTo()` resolves its target locator *before* the drag gesture
+starts, so it cannot target a drop zone that only mounts once dragging begins
+— it times out waiting for an element that will never appear yet. Do not
+"fix" this by keeping the zone permanently in the DOM with `opacity:0` just to
+satisfy the test; that reserves real screen space for a real user at all
+times, which is the wrong tradeoff. Instead, drive that one case with a
+manual `DragEvent` sequence dispatched via `page.evaluate` — Playwright's own
+docs recommend exactly this for a dynamically-appearing target. See
+`reference/shoot-multi-select.mjs` for the pattern (`dragstart` on the
+`[data-media-id]` element, then `dragover`+`drop` on `.admin-media-endzone`
+once it exists).
+
+**Verified in a real browser**, 20 checks: selecting 4 non-adjacent photos and
+dragging them as a contiguous block in their original relative order;
+dragging an unselected photo while others stay checked and untouched; sending
+a selected group to the end zone; clearing the selection. Production was
+re-checked afterward and confirmed untouched — see the note below, same
+interception pattern.
+
 ### How this was verified without touching Nick's data
 
 Worth repeating, because `.env.local` points at the **production** database and
@@ -114,11 +158,12 @@ a careless local test would have reordered a real listing:
 - **`reference/check-reorder.mjs`** — reorder, delete, and cover-reassignment
   against a throwaway PGlite Postgres (`npm install --no-save @electric-sql/pglite`),
   same resolve-hook harness as `check-claim.mjs`. Ten checks.
-- **`reference/shoot-media-grid.mjs`** and **`reference/shoot-drag-cases.mjs`** —
-  Playwright against a local dev server, **with the reorder request intercepted
-  and aborted every time**, so nothing was written. Production row order was
-  re-checked afterwards and confirmed untouched. An admin session is minted by
-  signing a JWT with `AUTH_SECRET` from `.env.local` — no magic-link needed.
+- **`reference/shoot-media-grid.mjs`**, **`reference/shoot-drag-cases.mjs`** and
+  **`reference/shoot-multi-select.mjs`** — Playwright against a local dev
+  server, **with the reorder request intercepted and aborted every time**, so
+  nothing was written. Production row order was re-checked afterwards and
+  confirmed untouched each time. An admin session is minted by signing a JWT
+  with `AUTH_SECRET` from `.env.local` — no magic-link needed.
 
 **A Playwright limitation that will waste an hour if rediscovered:**
 `dragTo()` cannot scroll mid-gesture, so any drag whose target is off-screen
