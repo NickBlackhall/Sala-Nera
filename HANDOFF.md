@@ -1,57 +1,49 @@
 # Sala Nera — Handoff (Sep 21 2026)
 
-## Start here — state at end of Sep 21 (23:40 UTC)
+## Start here — state at end of Sep 21 (23:45 UTC)
 
-**In flight: the delivery email button is built, tested, and NOT committed.**
-Its code is uncommitted in the working tree (list below). Migration
-`0007_delivery_emails` is committed and deployed (`49f1d8b`), but **Nick has
-not run the migrate call yet**. Checked read-only: `portal_migrations` tops out
-at `0006`, and `to_regclass('public.delivery_emails')` is null. **Don't commit
-the feature to main before the table exists.** `getAdminListing()` now selects
-from `delivery_emails`, so every /admin/listings/[id] page would 500.
+**The delivery email button is LIVE (`0b879e8`).** Nick ran the 0007 migrate
+call at 23:30 UTC. I confirmed `delivery_emails` exists, then looked at
+/admin/listings/2 on a local server reading production, with every non-GET
+request aborted. The section rendered and the confirm named the right
+recipient. Afterwards `delivery_emails` and `delivery` events were both still
+0. After the deploy, live GET checks passed: the section on listings 1 and 2
+(preview vs delivery label), /admin/bookings, the delivery page with no invoice
+button, signed-out /portal/rockwall-shores-drive → 307 to
+`/portal/login?next=%2Fportal%2Frockwall-shores-drive`, and the public /p page.
 
-To finish, in order:
-1. Nick runs the same one-liner as for 0006 (in the VS Code terminal; auto mode
-   refuses it for me):
-   `node --env-file=.env.local -e "fetch('https://salanera.com/api/portal/migrate',{method:'POST',headers:{Authorization:'Bearer '+process.env.MIGRATE_TOKEN}}).then(r=>r.text()).then(console.log)"`
-   Expect `"ok":true` and `0007_delivery_emails`.
-2. Confirm read-only: `portal_migrations` has 0007, and `delivery_emails` exists.
-3. Run `reference/check-delivery-email.mjs` (and the others below), `npx tsc
-   --noEmit`, then commit the uncommitted files and push.
-4. Verify live with GET only: /admin/listings/2 renders the "Delivery email"
-   section, and /portal/rockwall-shores-drive with no cookie redirects to
-   `/portal/login?next=%2Fportal%2Frockwall-shores-drive`.
-5. Nick presses **Send delivery email** on **Rockwall Shores**. Its agent is
-   client 6, `nickblackhall@gmail.com`, so it lands in his own inbox. **Never
-   send on Preston Hollow** (listing 1): its demo agent is
-   `agent@briggsfreeman.com`, a made-up address on a real brokerage's domain.
+**No real delivery email has been sent yet.** That's Nick's test: press **Send
+delivery email** on **Rockwall Shores**. Its agent is client 6,
+`nickblackhall@gmail.com`, so it lands in his own inbox. Then follow the link
+signed out, to prove sign-in returns to the gallery. Check read-only after:
+`select * from delivery_emails` and `events where kind = 'delivery'`. **Never
+send on Preston Hollow** (listing 1): its demo agent is
+`agent@briggsfreeman.com`, a made-up address on a real brokerage's domain.
 
-Uncommitted files: `app/admin/SendDelivery.tsx` (new), `lib/delivery-email.ts`
-(new), `app/admin/actions.ts`, `app/admin/listings/[id]/page.tsx`,
-`app/api/portal/login/route.ts`, `app/api/portal/verify/route.ts`,
-`app/globals.css`, `app/portal/[slug]/page.tsx`, `app/portal/login/LoginForm.tsx`,
-`app/portal/login/page.tsx`, `lib/admin-queries.ts`, `lib/schema.ts`,
-`lib/session.ts`, `lib/telemetry.ts`.
+Gotcha from this session: `kill`ing the `npx next dev` PID leaves its
+`next-server` child holding the port. A demo-mode server from an hour earlier
+was still answering on :3217, and it looked like a 500 in the new code. Check
+`ss -ltnp | grep 3217` and kill both PIDs.
 
 **Waiting on Nick (nothing to build, just his test, then my read-only check):**
 - Low res download on Rockwall: one photo, then Download All. Expect ~0.6MB
   `-low-res.jpg` files and "low res" in the admin download history.
 - First real booking since `f9f203a`: its listing should appear in /admin with
-  a "Listing →" link on /admin/bookings. Latest ids at 23:40 were listing 2,
+  a "Listing →" link on /admin/bookings. Latest ids at 23:30 were listing 2,
   booking 3.
 - A horizontal film upload, and a fresh photo upload that makes its copies
   on its own.
 
 **Client-journey gaps, in the order Nick is taking them:**
-1. ~~No "your photos are ready" email~~: built, finishing per the steps above.
+1. ~~No "your photos are ready" email~~: LIVE, waiting on Nick's first send.
 2. **Payment: Stripe, "eventually"** (Nick, Sep 21). Parked. Until then the
-   dead invoice button is hidden (part of the uncommitted batch) and payment is
+   dead invoice button is hidden (live, `0b879e8`) and payment is
    arranged directly with Nick, who unlocks the listing in /admin.
 3. Real prices and terms (both still `…_ARE_PLACEHOLDER = true`).
 4. Agents cancelling/rescheduling their own booking.
 5. Verify Spiro reads the same calendar (possible double-booking).
 
-## Sep 21, near midnight: the delivery email button — built and tested, waiting on migration 0007
+## Sep 21, near midnight: the delivery email button — LIVE (`0b879e8`, migration `49f1d8b`)
 
 Nick asked for "a delivery email button on my side". I recommended a button
 over sending automatically, since uploads land in batches and he checks the
@@ -82,7 +74,7 @@ set first. He agreed.
   Stripe exists. It was `href="#"`.
 - Also fixed: the "· low res" tag in the admin download history used
   `.admin-muted` (display:block), so it wrapped onto its own line. It's now
-  `.ev-dim`. That bug is live until this batch ships.
+  `.ev-dim`.
 
 **Checks:** `reference/check-delivery-email.mjs` runs the real action and the
 real login/verify routes on a throwaway Postgres, with Resend captured: 35
@@ -90,8 +82,8 @@ checks, all pass. It prints both email versions for reading.
 `reference/next-server-stub.mjs` gives the check scripts a `next/server` whose
 `after()` runs inline. check-booking-listing, check-downloads,
 check-listing-delete, check-copies-action and check-claim were re-run after
-these changes: all pass. **Not yet seen in a browser:** the admin section
-itself. It needs the table, so look at it (GET only) once 0007 is applied.
+these changes: all pass. The admin section was checked in a browser against
+production data with writes blocked. See "Start here".
 
 ## Latest — Sep 21, late night: every booking creates its own listing — LIVE (`f9f203a`)
 
