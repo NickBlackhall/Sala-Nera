@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0006_booking_listings';
+export const PORTAL_MIGRATION_ID = '0007_delivery_emails';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -187,4 +187,21 @@ export const PORTAL_MIGRATION_STATEMENTS = [
   `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "booking_id" integer
     REFERENCES "bookings"("id") ON DELETE set null`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "listings_booking_id_key" ON "listings" USING btree ("booking_id")`,
+
+  /**
+   * 0007 — every "your photos are ready" email Nick sends from a listing, so
+   * the listing can say what went out, to whom, and when. Goes with the
+   * listing: the history of a deleted listing's emails is of no use to anyone.
+   */
+  `CREATE TABLE IF NOT EXISTS "delivery_emails" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "listing_id" integer NOT NULL,
+    "sent_to" text NOT NULL,
+    "kind" text NOT NULL,
+    "at" timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT "delivery_emails_listing_id_listings_id_fk"
+      FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id")
+      ON DELETE cascade ON UPDATE no action
+  )`,
+  `CREATE INDEX IF NOT EXISTS "delivery_emails_listing_idx" ON "delivery_emails" USING btree ("listing_id", "at")`,
 ] as const;
