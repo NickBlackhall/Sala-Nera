@@ -10,9 +10,10 @@
 > the **`/portal/<slug>` client view** rendering them locked and unlocked.
 > Those are eyeball checks Nick has not reported back on yet.
 >
-> Four things were then built on top, each shipped and deployed on its own:
-> the cover-image bug, delete, drag-and-drop reorder, and select-several-and-
-> drag-as-a-group. All four are live.
+> Five things were then built on top, each shipped and deployed on its own:
+> the cover-image bug, delete, drag-and-drop reorder, select-several-and-
+> drag-as-a-group, and deleting a whole listing now deleting its files. All
+> five are live; the last was proven against the real bucket.
 
 ### The "broken images" were not broken
 
@@ -77,9 +78,48 @@ DELETE each sign differently, which catches a method being accepted and then
 dropped from the canonical request — a failure that otherwise only shows up
 against a real bucket.
 
-**Still true and still not done:** `deleteListingAction` deletes rows but not
-objects, so deleting a whole listing orphans its files (its own on-screen text
-admits this). Now that `deleteUrl()` exists, wiring it in is small.
+~~`deleteListingAction` deletes rows but not objects~~ — **fixed, see the
+next section.** The per-object delete now lives in a shared `deleteObject()`
+helper in `app/admin/actions.ts` that both delete buttons use.
+
+### ✅ BUILT, LIVE AND PROVEN ON PRODUCTION — deleting a listing deletes its files (`560bc4a`)
+
+Deleting a whole listing used to remove its rows and leave every photo and
+video it had uploaded sitting in the bucket, with nothing left recording whose
+they were. It now removes the files too.
+
+**Order matters, and there are two orders in play:**
+
+- `getListingMediaKeys()` must run **before** `deleteListingRow()`. Media rows
+  cascade with the listing, so afterwards nothing says which objects were its.
+  Reading them second silently orphans every file.
+- Rows are deleted **before** bytes, same rule as the single-photo delete and
+  for the same reason: the worst case is an orphaned object nothing links to,
+  never a gallery tile pointing at nothing.
+
+Objects go 8 at a time (`DELETE_CONCURRENCY`), so a 200-photo listing neither
+crawls nor floods R2. A failed object delete is logged, never thrown — the row
+is already gone, so there is nothing useful to show the admin.
+
+**Proven on the live site, not inferred**, because this workspace has no R2
+credentials and so cannot exercise the real bucket locally:
+
+1. Nick created a listing called "test" (id 4) and uploaded one photo
+   (`listings/test/…-2320-Valdina-Street2.jpg`, 9,956,458 bytes).
+2. Its signed preview URL was lifted from the admin page and fetched: **206,
+   `bytes 0-0/9956458`** — the object was really there, matching the row.
+3. Nick deleted the listing through the real button.
+4. Same URL, fetched again: **404 `NoSuchKey`**. Listing row, media row, and
+   any row with a `listings/test/` key all gone. Listings 1 and 2 untouched.
+
+The database side is also covered by **`reference/check-listing-delete.mjs`**
+(PGlite, 11 checks — keys scoped to one listing, video included, demo rows
+included for the caller to skip, empty listing handled, keys unrecoverable
+after the cascade). **`reference/live-listing-delete.mjs`** automates the
+production test above end to end (creates and deletes its own throwaway
+listing) — **the auto-mode permission classifier refused to run it** because it
+writes to production, which is why the test was done by hand with Nick.
+Running it needs his explicit go-ahead.
 
 ### ✅ BUILT AND LIVE — drag-and-drop reorder (`fc028c4`, fixed by `ad691e3`)
 
