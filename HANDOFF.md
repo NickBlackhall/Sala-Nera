@@ -1,36 +1,98 @@
 # Sala Nera — Handoff (Sep 21 2026)
 
-## Latest — Sep 21, night: new gallery header shipped; property website decided, not built
+## Latest — Sep 21, late: the public property website is live, branded and MLS
 
-### ✅ BUILT AND LIVE — the gallery header (`154ad01`)
+> **Start here next session.** Every paid listing now has a public show-off page
+> agents send to buyers: `salanera.com/p/<slug>`, and `/p/<slug>/mls` with no
+> branding. Checked live on Rockwall Shores from a browser with no login. The
+> delivery page (`/portal/<slug>`) is unchanged for agent download testing,
+> apart from a new header and a strip to copy the two links.
+>
+> **Next up, in order:** (1) Nick uploads a photo or two to prove new uploads
+> make their copies on their own, now with the copyright notice (never proven
+> live); (2) the High res / Low res download switch (agreed, not built, see
+> the Sep 21 evening entry below); (3) video, which neither gallery shows properly.
+
+### ✅ LIVE — the property website (`e3acc25`, `eea99ad`)
+
+What it is, and the decisions behind it (all Nick's unless noted):
+
+- **Public, paid only.** Exists once `downloadLocked` is false. Unpaid, unknown and
+  deleted listings all return the same 404, with a neutral page
+  (`app/p/[slug]/not-found.tsx`) and a neutral tab title and preview.
+- **Readable address link, no random code.** I suggested adding a short code to
+  make links unguessable; Nick declined: "if people want to guess, thats fine -
+  but they shouldnt be able to download pictures or anything."
+- **Two versions.** Branded ends with the agent's contact (name, company,
+  US-formatted phone, email) and "Photography by Sala Nera". The MLS version carries
+  no agent, brokerage, photographer or contact anywhere a viewer sees: not the page,
+  tab title, icon, manifest or link preview. The agent isn't even sent to the
+  browser. `reference/check-property-site.mjs` checks all of this, including the
+  whole HTML for leaks.
+- **Kept out of Google** (noindex). Nick's choice, so sellers' homes aren't
+  searchable under his name after they sell.
+- **Photos = the existing smaller copies**, not a smaller public size. Nick asked
+  whether photos can be protected from saving; the answer given: no (screenshots,
+  and the MLS feeds Zillow anyway). Real protection is his terms (still
+  placeholder in `lib/terms.ts`, the biggest gap), copyright metadata,
+  takedowns, and registration. He accepted.
+- Signed for **24h** (`PUBLIC_TTL` in `lib/storage.ts`) so a tab left open still
+  loads. A photo without copies is left off, never shown full size. Videos are
+  left off. No storage key reaches the browser.
+- **Layout:** the new header, then 3/2/1 columns by screen width, uncropped, in
+  Nick's order read left to right. Panoramas (wider than 2:1) span the page.
+  Click or swipe to enlarge. No downloads, no checkboxes.
+- **My calls, told to Nick, open to change:** "Presented by" rather than "Shot
+  for" on the public page (buyers are the audience); no full-width opening photo
+  (a normal photo at full width is a whole extra screen; panoramas get it instead).
+- **Where the links are:** a "Property website" strip on the delivery page (View,
+  Copy link, Copy MLS link) once paid; links on the admin listing page too.
+
+**Live check** (fresh browser, no cookies, GET only): both versions 200, all 32
+photos load, 5.8MB, every image a signed copy from `copies/` at 24h, noindex, no
+download or checkbox. Unknown and unpaid slugs 404. Delivery page strip present.
+
+**Known limits:**
+- The MLS link still says `salanera.com`. Some MLSs reject branded domains; a
+  neutral domain can be pointed at the same pages if an agent hits that.
+- The MLS page's *source* still contains the root not-found template (logo file
+  name, "Sala Nera" alt text) because Next ships it in every page's RSC payload,
+  plus a hidden preload of the logo. Invisible to viewers. Removing it needs
+  separate root layouts (route groups), not worth it unless an MLS complains.
+- The site's business JSON-LD moved from the root layout to the homepage to keep
+  it out of the MLS page. Other pages no longer carry it; search engines only
+  read it from the homepage anyway.
+
+### ✅ LIVE — copyright in every new copy (`e3acc25`)
+
+`lib/media-copies.ts` now writes `Copyright <year> Sala Nera. All rights reserved.`
+and `Artist: Sala Nera` into EXIF on the grid, large and high copies. It replaces the
+camera's metadata, so GPS is still dropped. Plain ASCII: a © garbles in some
+readers. Same holder as the site footer; Nick may want Blackhall Media Group, since
+that's a legal question for when he writes his terms. **Rockwall's existing 32
+copies predate this** and don't carry it. `reference/check-media-copies.mjs`
+parses the EXIF bytes to prove the notice is there and Make/GPS aren't (and that
+the reader really does see GPS in the input).
+
+### ✅ LIVE — the gallery header (`154ad01`)
 
 Logo removed from the middle of the cover. The dark layer is now a gradient over
-the lower part of the photo only, and the city, address, "Shot for {client.name}"
-and {client.company} sit on it. The header is 80svh tall. This also fixed a real
-bug: the logo's oversized box pushed the address below the first screen on laptop
-and phone. Verified live on Rockwall Shores with a minted admin cookie (GET only).
-Only `app/globals.css` and `app/portal/[slug]/page.tsx` changed; downloads,
-selection and the grid are untouched. Nick has seen it and approved.
+the lower part of the photo only, with city, address, "Shot for {client.name}" and
+{client.company} on it. 80svh. Also fixed the address sitting below the first
+screen on laptop and phone. Nick approved. The property website reuses it.
 
-### ⬜ DECIDED, NOT BUILT — split into a property website and a delivery page
+### Testing notes for next time
 
-Nick wants what Spiro has: a **public property website** to show a listing off
-(no downloads, no checkboxes, no login) and the **login-only delivery page**
-(today's `/portal/[slug]`, unchanged so agents can test downloads). Decisions:
-
-- Public, works **only after the agent has paid** (`downloadLocked` false). No
-  separate on/off switch.
-- **Readable address link, no random code.** Nick's call: guessing is fine as long
-  as nobody can download. Unpaid or unknown listings return the same "not found".
-- **Branded and unbranded versions** (unbranded for MLS links).
-- The delivery page gets a "Copy link" for each version.
-- Stays dark; fonts unchanged.
-
-**Open:** the size of the public photos (anyone who can see one can save it), and how
-to serve them: signed links expire after 1 hour (`PREVIEW_TTL`, `lib/storage.ts`),
-so a shared link needs the site to serve the smaller copies itself with long
-caching. Video belongs on this page eventually. Ties to the parked unpaid-gallery
-protection item in the polish pass.
+- **Realistic screenshots without R2 keys:** run `next dev` with `.env.local`
+  (production DB, reads only) and in Playwright fulfil `**/copies/**` requests
+  with bytes fetched through signed URLs lifted from the live delivery page
+  (minted admin cookie). **Unescape `\u0026` and `&amp;` first**, or every URL is
+  cut short and R2 answers 403.
+- **Don't `pkill -f "next dev ..."` in the same command string**: it matches
+  and kills its own shell (exit 144). Stop servers by PID, excluding `$$`.
+- Demo mode (`DATABASE_URL=` empty) has Rockwall Shores paid and Preston
+  Hollow unpaid, which is what the HTTP half of `check-property-site.mjs`
+  expects.
 
 ## Sep 21, evening: galleries load from smaller copies — 332MB → 5.8MB
 
