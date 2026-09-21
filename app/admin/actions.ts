@@ -13,10 +13,12 @@ import {
   deleteMediaRow,
   emailIsTaken,
   firstMediaKey,
+  getAdminListing,
   getListingMediaKeys,
   getListingSlug,
   getMediaRow,
   insertClient,
+  insertDeliveryEmail,
   insertListing,
   insertMediaRow,
   reorderMedia,
@@ -29,6 +31,9 @@ import {
 } from '@/lib/admin-queries';
 import { copyKey, makeCopies, type Copies } from '@/lib/media-copies';
 import { releaseBookingListing } from '@/lib/booking-listing';
+import { deliveryEmail } from '@/lib/delivery-email';
+import { sendEmail } from '@/lib/email';
+import { record } from '@/lib/telemetry';
 import { slugify } from '@/lib/slug';
 import { COPIES_BATCH } from '@/lib/media-view';
 import {
@@ -320,6 +325,65 @@ export async function setCoverAction(form: FormData): Promise<void> {
   await setListingCover(id, key);
   revalidatePath('/admin');
   revalidatePath(`/admin/listings/${id}`);
+}
+
+export type DeliveryState = { error?: string; sent?: string };
+
+/**
+ * Emails the listing's agent that their photos are ready — the preview
+ * version while it is locked, the download version once it is paid. Nick
+ * presses this when an upload is finished and checked; nothing sends it by
+ * itself, because uploads land in batches and a half-uploaded gallery is not
+ * something to announce.
+ *
+ * Recorded only once Resend has accepted it, so the listing never claims an
+ * email went out that did not.
+ */
+export async function sendDeliveryAction(
+  _prev: DeliveryState,
+  form: FormData,
+): Promise<DeliveryState> {
+  await requireAdmin();
+
+  const id = Number(form.get('id'));
+  const detail = Number.isInteger(id) ? await getAdminListing(id) : null;
+  if (!detail) return { error: 'That listing no longer exists.' };
+
+  const { listing, client, media } = detail;
+  if (!client) return { error: 'Assign an agent to this listing first.' };
+  if (media.length === 0) return { error: 'Upload the photos first.' };
+
+  const kind = listing.downloadLocked ? 'preview' : 'ready';
+  const { subject, text } = deliveryEmail({
+    kind,
+    name: client.name,
+    email: client.email,
+    address: listing.address,
+    slug: listing.slug,
+    photos: media.filter((m) => m.kind === 'photo').length,
+    films: media.filter((m) => m.kind === 'video').length,
+    base: process.env.PORTAL_URL ?? 'https://salanera.com',
+  });
+
+  const sent = await sendEmail({ to: client.email, subject, text, replyTo: process.env.NOTIFY_EMAIL });
+  await record({
+    kind: 'delivery',
+    outcome: sent ? 'ok' : 'failed',
+    reason: sent ? kind : 'send_failed',
+    detail: `${listing.address} — ${kind === 'preview' ? 'preview' : 'ready to download'} email`,
+    email: client.email,
+  });
+  if (!sent) return { error: "The email didn't send. Try again in a minute." };
+
+  try {
+    await insertDeliveryEmail({ listingId: listing.id, sentTo: client.email, kind });
+  } catch (error) {
+    // The email is out either way; only this page's record of it is missing.
+    console.error('admin: delivery email sent but not recorded', { listingId: listing.id, error });
+  }
+
+  revalidatePath(`/admin/listings/${listing.id}`);
+  return { sent: `Sent to ${client.email}.` };
 }
 
 /** Media rows and this listing's download history go with it — and the files. */

@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default async function PortalLogin({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
 
   return (
     <div className="plogin">
@@ -29,7 +29,8 @@ export default async function PortalLogin({
           Enter the email address your shoot was booked under. No password —
           we&rsquo;ll send you a sign-in link.
         </p>
-        <LoginForm expired={error === 'expired'} />
+        {/* Passed through as-is; the login route decides whether it is a safe place to land. */}
+        <LoginForm expired={error === 'expired'} next={next ?? null} />
       </div>
     </div>
   );

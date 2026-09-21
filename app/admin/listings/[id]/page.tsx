@@ -8,7 +8,9 @@ import MediaGrid from '../../MediaGrid';
 import { updateListingAction } from '../../actions';
 import { isLocalKey, isRemoteStorage, withPreviewUrls } from '@/lib/storage';
 import MakePreviews from '../../MakePreviews';
+import SendDelivery from '../../SendDelivery';
 import UploadMedia from '../../UploadMedia';
+import { TIME_ZONE } from '@/lib/scheduling';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +31,7 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
   ]);
   if (!detail) notFound();
 
-  const { listing, client, media, activity } = detail;
+  const { listing, client, media, activity, delivered } = detail;
 
   // Photos still served as full-size originals: uploaded before copies
   // existed, or whose copies failed. Demo rows are small files already.
@@ -93,6 +95,22 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
         )}
       </section>
 
+      <SendDelivery
+        id={listing.id}
+        address={listing.address}
+        to={client?.email ?? null}
+        locked={listing.downloadLocked}
+        mediaCount={media.length}
+        history={delivered.map((row) => ({
+          id: row.id,
+          what: row.kind === 'preview' ? 'Preview email' : 'Delivery email',
+          sentTo: row.sentTo,
+          when: new Date(row.at).toLocaleString('en-US', {
+            timeZone: TIME_ZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+          }),
+        }))}
+      />
+
       <section className="admin-section">
         <h2>Download activity</h2>
         {activity.length === 0 ? (
@@ -107,7 +125,7 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
                 <span>
                   {row.filename ?? 'file'}
                   {/* Rows from before the switch have none: all full-size originals. */}
-                  {row.resolution === 'low' && <span className="admin-muted"> · low res</span>}
+                  {row.resolution === 'low' && <span className="ev-dim"> · low res</span>}
                 </span>
                 <span className="admin-muted">{row.clientEmail ?? 'unknown'}</span>
                 <span className="admin-muted">

@@ -83,7 +83,9 @@ function render(data: ListingBundle) {
             slug={listing.slug}
             media={withPreviewUrls(media)}
             locked={locked}
-            invoiceUrl={locked ? '#' : '#'}
+            // No invoice link until Stripe exists: a button that goes nowhere is
+            // worse than none. Payment is arranged directly with Nick for now.
+            invoiceUrl={null}
           />
         </>
       )}
@@ -109,7 +111,8 @@ export default async function PortalListing({
   // Everything else is gated: sign in, then prove the listing is yours.
   if (!IS_DEMO) {
     const session = await getSession();
-    if (!session) redirect('/portal/login');
+    // Back to this listing after sign-in: delivery emails link straight here.
+    if (!session) redirect(`/portal/login?next=${encodeURIComponent(`/portal/${slug}`)}`);
 
     if (!session.isAdmin) {
       const viewer = await getClientByEmail(session.email);

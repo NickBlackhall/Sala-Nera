@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export default function LoginForm({ expired }: { expired: boolean }) {
+export default function LoginForm({ expired, next }: { expired: boolean; next: string | null }) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
@@ -13,7 +13,7 @@ export default function LoginForm({ expired }: { expired: boolean }) {
       const r = await fetch('/api/portal/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, next }),
       });
       setState(r.ok ? 'sent' : 'error');
     } catch {

@@ -21,7 +21,7 @@ import { events } from '@/lib/schema';
  *      trace, because it is indistinguishable from success at the other end.
  */
 
-export type EventKind = 'booking' | 'inquiry' | 'download' | 'auth';
+export type EventKind = 'booking' | 'inquiry' | 'download' | 'auth' | 'delivery';
 
 export type EventOutcome =
   /** It worked, all the way through. */

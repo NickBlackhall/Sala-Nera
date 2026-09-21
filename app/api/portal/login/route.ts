@@ -1,7 +1,7 @@
 import { NextResponse, after } from 'next/server';
 import { sendEmail } from '@/lib/email';
 import { getClientByEmail } from '@/lib/portal-queries';
-import { isAdminEmail, signLoginToken } from '@/lib/session';
+import { isAdminEmail, safePortalPath, signLoginToken } from '@/lib/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,9 +17,11 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  */
 export async function POST(request: Request) {
   let email = '';
+  let next: string | null = null;
   try {
     const body = await request.json();
     email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+    next = safePortalPath(body?.next);
   } catch {
     // fall through to the validation error below
   }
@@ -33,7 +35,9 @@ export async function POST(request: Request) {
   if (known) {
     const base = process.env.PORTAL_URL ?? new URL(request.url).origin;
     const token = await signLoginToken(email);
-    const link = `${base}/api/portal/verify?token=${encodeURIComponent(token)}`;
+    const link = `${base}/api/portal/verify?token=${encodeURIComponent(token)}${
+      next ? `&next=${encodeURIComponent(next)}` : ''
+    }`;
 
     after(sendEmail({
       to: email,

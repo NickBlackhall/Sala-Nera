@@ -124,6 +124,24 @@ export const downloads = pgTable(
 );
 
 /**
+ * "Your photos are ready" emails, one row per send — see lib/delivery-email.ts.
+ * 'preview' went out while the listing was locked, 'ready' once it was paid.
+ */
+export const deliveryEmails = pgTable(
+  'delivery_emails',
+  {
+    id: serial('id').primaryKey(),
+    listingId: integer('listing_id')
+      .references(() => listings.id, { onDelete: 'cascade' })
+      .notNull(),
+    sentTo: text('sent_to').notNull(),
+    kind: text('kind').$type<'preview' | 'ready'>().notNull(),
+    at: timestamp('at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('delivery_emails_listing_idx').on(t.listingId, t.at)],
+);
+
+/**
  * What happened, when, and why — the thing that was missing the day three
  * separate anti-spam rules threw away real bookings behind a success screen.
  *
@@ -136,7 +154,7 @@ export const events = pgTable(
   {
     id: serial('id').primaryKey(),
     at: timestamp('at', { withTimezone: true }).defaultNow().notNull(),
-    /** Which part of the system: 'booking' | 'inquiry' | 'download' | 'auth'. */
+    /** Which part of the system: 'booking' | 'inquiry' | 'download' | 'auth' | 'delivery'. */
     kind: text('kind').notNull(),
     /** 'ok' | 'discarded' | 'rejected' | 'failed'. See lib/telemetry.ts. */
     outcome: text('outcome').notNull(),
@@ -263,6 +281,7 @@ export const bookings = pgTable(
 export type Client = typeof clients.$inferSelect;
 export type Listing = typeof listings.$inferSelect;
 export type Media = typeof media.$inferSelect;
+export type DeliveryEmail = typeof deliveryEmails.$inferSelect;
 export type Event = typeof events.$inferSelect;
 export type RateCardRow = typeof rateCards.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;

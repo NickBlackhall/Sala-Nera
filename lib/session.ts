@@ -39,6 +39,16 @@ export function isAdminEmail(email: string): boolean {
 }
 
 /**
+ * Where to land after signing in, when a delivery email's link brought the
+ * agent to sign-in first. Only one listing's delivery page is allowed — never
+ * a full URL, never anything outside /portal — so a crafted sign-in link
+ * cannot send someone off-site after they authenticate.
+ */
+export function safePortalPath(value: unknown): string | null {
+  return typeof value === 'string' && /^\/portal\/[a-z0-9-]{1,80}$/.test(value) ? value : null;
+}
+
+/**
  * Tokens carry a purpose claim so a login link can never be replayed as a
  * session cookie, or vice versa, even though both are signed with one secret.
  */

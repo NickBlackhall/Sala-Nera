@@ -2,8 +2,8 @@ import 'server-only';
 
 import { and, asc, count, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
-import { bookings, clients, downloads, events, listings, media } from '@/lib/schema';
-import type { Booking, Event } from '@/lib/schema';
+import { bookings, clients, deliveryEmails, downloads, events, listings, media } from '@/lib/schema';
+import type { Booking, DeliveryEmail, Event } from '@/lib/schema';
 import type { Client, Listing, Media } from '@/lib/schema';
 
 /**
@@ -59,6 +59,7 @@ export type AdminListingDetail = {
   client: Client | null;
   media: Media[];
   activity: (typeof downloads.$inferSelect)[];
+  delivered: DeliveryEmail[];
 };
 
 /** One listing, everything the edit page shows. */
@@ -89,7 +90,19 @@ export async function getAdminListing(id: number): Promise<AdminListingDetail | 
     owner = row ?? null;
   }
 
-  return { listing, client: owner, media: items, activity };
+  const delivered = await db
+    .select()
+    .from(deliveryEmails)
+    .where(eq(deliveryEmails.listingId, listing.id))
+    .orderBy(desc(deliveryEmails.at))
+    .limit(10);
+
+  return { listing, client: owner, media: items, activity, delivered };
+}
+
+/** Records one "your photos are ready" email, after it has actually gone. */
+export async function insertDeliveryEmail(input: typeof deliveryEmails.$inferInsert): Promise<void> {
+  await getDatabase().insert(deliveryEmails).values(input);
 }
 
 export async function getClientById(id: number): Promise<Client | null> {
