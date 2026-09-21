@@ -1,6 +1,43 @@
 # Sala Nera — Handoff (Sep 21 2026)
 
-## Start here — state at end of Sep 21 (23:45 UTC)
+## Start here — state at end of Sep 21/22
+
+**The admin has its own sign-in now — LIVE (`9803434`).** Nick opened
+salanera.com/admin on a new computer and got a 404: the admin gate answered 404
+to anyone not signed in as the admin, and there was no admin sign-in, only the
+client portal's. He said, rightly, that the admin is his CMS and must not go
+through the client portal. Now:
+- `requireAdmin()` (`lib/admin.ts`) **redirects** non-admins (signed out, or an
+  agent's session) to **/admin/login** instead of `notFound()`. Every admin page
+  and all 16 actions call it on their first line (checked, none inside a try).
+- `app/admin/layout.tsx` no longer gates. It only draws the admin chrome for the
+  admin, and renders bare children otherwise, so /admin/login shows no admin nav.
+- **/admin/login** (`app/admin/login/page.tsx`): "Admin" heading, reuses
+  `LoginForm` with `admin`. The login route emails **only admin addresses** from
+  it (same reply for everyone, so no address probing), subject "Your Sala Nera
+  admin sign-in link", with `&from=admin` on the link. An expired admin link goes
+  back to /admin/login. If the visitor has an agent's session, the page says
+  which address and that signing in switches to the admin. The admin going
+  there already signed in is sent straight to /admin.
+- Admin **Sign out** posts `to=admin` and lands on /admin/login. The client
+  portal's sign-out and sign-in are unchanged.
+- Checks: `reference/check-admin-signin.mjs` (29, all pass). The browser run
+  covered every admin page signed out, as an agent and as admin, on laptop and
+  phone. Live GET checks after deploy: all admin pages 307 → /admin/login for
+  signed-out and agent, 200 for admin, and the client sign-in, agent portal and
+  public /p page unchanged. **Not yet proven:** the admin sign-in email reaching
+  Nick and opening /admin (he's signing in on the new computer).
+
+**Incident during the double-check (Sep 21, ~23:59 UTC): I locked Rockwall
+Shores by accident for about a minute.** I replayed a recorded Locked/Unlocked
+button request against a local server reading production: signed out, as an
+agent, then as admin "as a control". My edit to point it at a non-existent
+listing silently didn't match, so the admin replay really ran. I restored it
+with `update listings set download_locked = false where id = 2`, confirmed /p
+returned 200, and confirmed no events, downloads or delivery emails in the
+window and unchanged counts (2 listings, 43 media, 3 bookings, 3 clients). Nick
+was told. **Rule: never send a write-capable request as admin to the
+prod-backed local server.** Prove action gating in the pglite harness.
 
 **The delivery email button is LIVE (`0b879e8`).** Nick ran the 0007 migrate
 call at 23:30 UTC. I confirmed `delivery_emails` exists, then looked at
@@ -12,8 +49,11 @@ recipient. Afterwards `delivery_emails` and `delivery` events were both still
 button, signed-out /portal/rockwall-shores-drive → 307 to
 `/portal/login?next=%2Fportal%2Frockwall-shores-drive`, and the public /p page.
 
-**No real delivery email has been sent yet.** That's Nick's test: press **Send
-delivery email** on **Rockwall Shores**. Its agent is client 6,
+**No real delivery email has been sent yet.** That's Nick's test, once he's
+signed in on the new computer: open Rockwall Shores (the button is near the
+bottom, under the photos; Nick was offered moving it to the top of the listing
+page and/or a Send link on the listings table, and hasn't answered) and press
+**Send delivery email** on **Rockwall Shores**. Its agent is client 6,
 `nickblackhall@gmail.com`, so it lands in his own inbox. Then follow the link
 signed out, to prove sign-in returns to the gallery. Check read-only after:
 `select * from delivery_emails` and `events where kind = 'delivery'`. **Never
