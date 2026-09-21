@@ -1,5 +1,98 @@
 # Sala Nera — Handoff (Sep 21 2026)
 
+## Start here — state at end of Sep 21 (23:40 UTC)
+
+**In flight: the delivery email button is built, tested, and NOT committed.**
+Its code is uncommitted in the working tree (list below). Migration
+`0007_delivery_emails` is committed and deployed (`49f1d8b`), but **Nick has
+not run the migrate call yet**. Checked read-only: `portal_migrations` tops out
+at `0006`, and `to_regclass('public.delivery_emails')` is null. **Don't commit
+the feature to main before the table exists.** `getAdminListing()` now selects
+from `delivery_emails`, so every /admin/listings/[id] page would 500.
+
+To finish, in order:
+1. Nick runs the same one-liner as for 0006 (in the VS Code terminal; auto mode
+   refuses it for me):
+   `node --env-file=.env.local -e "fetch('https://salanera.com/api/portal/migrate',{method:'POST',headers:{Authorization:'Bearer '+process.env.MIGRATE_TOKEN}}).then(r=>r.text()).then(console.log)"`
+   Expect `"ok":true` and `0007_delivery_emails`.
+2. Confirm read-only: `portal_migrations` has 0007, and `delivery_emails` exists.
+3. Run `reference/check-delivery-email.mjs` (and the others below), `npx tsc
+   --noEmit`, then commit the uncommitted files and push.
+4. Verify live with GET only: /admin/listings/2 renders the "Delivery email"
+   section, and /portal/rockwall-shores-drive with no cookie redirects to
+   `/portal/login?next=%2Fportal%2Frockwall-shores-drive`.
+5. Nick presses **Send delivery email** on **Rockwall Shores**. Its agent is
+   client 6, `nickblackhall@gmail.com`, so it lands in his own inbox. **Never
+   send on Preston Hollow** (listing 1): its demo agent is
+   `agent@briggsfreeman.com`, a made-up address on a real brokerage's domain.
+
+Uncommitted files: `app/admin/SendDelivery.tsx` (new), `lib/delivery-email.ts`
+(new), `app/admin/actions.ts`, `app/admin/listings/[id]/page.tsx`,
+`app/api/portal/login/route.ts`, `app/api/portal/verify/route.ts`,
+`app/globals.css`, `app/portal/[slug]/page.tsx`, `app/portal/login/LoginForm.tsx`,
+`app/portal/login/page.tsx`, `lib/admin-queries.ts`, `lib/schema.ts`,
+`lib/session.ts`, `lib/telemetry.ts`.
+
+**Waiting on Nick (nothing to build, just his test, then my read-only check):**
+- Low res download on Rockwall: one photo, then Download All. Expect ~0.6MB
+  `-low-res.jpg` files and "low res" in the admin download history.
+- First real booking since `f9f203a`: its listing should appear in /admin with
+  a "Listing →" link on /admin/bookings. Latest ids at 23:40 were listing 2,
+  booking 3.
+- A horizontal film upload, and a fresh photo upload that makes its copies
+  on its own.
+
+**Client-journey gaps, in the order Nick is taking them:**
+1. ~~No "your photos are ready" email~~: built, finishing per the steps above.
+2. **Payment: Stripe, "eventually"** (Nick, Sep 21). Parked. Until then the
+   dead invoice button is hidden (part of the uncommitted batch) and payment is
+   arranged directly with Nick, who unlocks the listing in /admin.
+3. Real prices and terms (both still `…_ARE_PLACEHOLDER = true`).
+4. Agents cancelling/rescheduling their own booking.
+5. Verify Spiro reads the same calendar (possible double-booking).
+
+## Sep 21, near midnight: the delivery email button — built and tested, waiting on migration 0007
+
+Nick asked for "a delivery email button on my side". I recommended a button
+over sending automatically, since uploads land in batches and he checks the
+set first. He agreed.
+
+- **/admin/listings/[id] → "Delivery email"** (`app/admin/SendDelivery.tsx`).
+  One button. Its label and explanation follow the payment lock: **Send preview
+  email** while locked ("preview now, downloads unlock as soon as payment is
+  received"), **Send delivery email** once paid (ready to download, the High/Low
+  res hint, and both property website links). It asks to confirm, naming the
+  address and recipient. It refuses with a plain reason when the listing has no
+  agent, has no media, or Resend fails. History of sends is listed below it,
+  with dates formatted server-side in Central time to avoid hydration mismatch.
+- **Email text:** `lib/delivery-email.ts`. Plain text, first-name greeting ("Hi
+  there" without a name), counts ("32 photos and 1 film"), wording that adapts
+  to photos only, film only, or both. Each sentence sits on one line (no hard
+  wrapping, for phones). Reply-to is `NOTIFY_EMAIL`. Links use `PORTAL_URL`.
+- **Recorded only after Resend accepts it:** a `delivery_emails` row (listing,
+  sent_to, `preview`/`ready`, at) and a `delivery` event in /admin/activity.
+  A failed send writes a `delivery/failed/send_failed` event and no row.
+- **Sign-in returns to the listing.** /portal/[slug] without a session now
+  redirects to `/portal/login?next=/portal/<slug>`. The login form posts `next`,
+  and the login route puts it on the emailed verify link. Verify lands there,
+  and an expired link keeps it. `safePortalPath()` in `lib/session.ts` allows
+  only `/portal/<slug>` (`[a-z0-9-]`, no query, no `..`, nothing absolute).
+  Everything else falls back to /portal or /admin as before.
+- **Invoice button hidden** on the delivery page (`invoiceUrl={null}`) until
+  Stripe exists. It was `href="#"`.
+- Also fixed: the "· low res" tag in the admin download history used
+  `.admin-muted` (display:block), so it wrapped onto its own line. It's now
+  `.ev-dim`. That bug is live until this batch ships.
+
+**Checks:** `reference/check-delivery-email.mjs` runs the real action and the
+real login/verify routes on a throwaway Postgres, with Resend captured: 35
+checks, all pass. It prints both email versions for reading.
+`reference/next-server-stub.mjs` gives the check scripts a `next/server` whose
+`after()` runs inline. check-booking-listing, check-downloads,
+check-listing-delete, check-copies-action and check-claim were re-run after
+these changes: all pass. **Not yet seen in a browser:** the admin section
+itself. It needs the table, so look at it (GET only) once 0007 is applied.
+
 ## Latest — Sep 21, late night: every booking creates its own listing — LIVE (`f9f203a`)
 
 > **Nick chose fully automatic**, over my recommended one-click "Create
