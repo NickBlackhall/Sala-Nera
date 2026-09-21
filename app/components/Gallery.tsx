@@ -224,7 +224,7 @@ export default function Gallery({
           <button className="lb-close" onClick={close} aria-label="Close">✕</button>
           <button className="lb-prev" onClick={() => step(-1)} aria-label="Previous">‹</button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="lb-img" src={current.previewUrl} alt="" />
+          <img className="lb-img" src={current.largeUrl} alt="" />
           <button className="lb-next" onClick={() => step(1)} aria-label="Next">›</button>
           <div className="lb-meta">
             <span>{current.filename}</span>

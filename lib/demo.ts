@@ -63,6 +63,10 @@ export const DEMO_MEDIA: Media[] = PHOTOS.map(([key, label, w, h], i) => ({
   width: w,
   height: h,
   sort: i,
+  // Demo photos are small files under /public, so they are their own copies.
+  gridKey: null,
+  largeKey: null,
+  highKey: null,
 }));
 
 export const DEMO_LISTINGS = [DEMO_LISTING, DEMO_LISTING_PAID];

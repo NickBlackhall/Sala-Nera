@@ -6,10 +6,15 @@ import DeleteListing from '../../DeleteListing';
 import ListingForm from '../../ListingForm';
 import MediaGrid from '../../MediaGrid';
 import { updateListingAction } from '../../actions';
-import { isRemoteStorage, withPreviewUrls } from '@/lib/storage';
+import { isLocalKey, isRemoteStorage, withPreviewUrls } from '@/lib/storage';
+import MakePreviews from '../../MakePreviews';
 import UploadMedia from '../../UploadMedia';
 
 export const dynamic = 'force-dynamic';
+
+// Server actions on this page make photo copies — a few photos per call, a
+// second or two each. Set explicitly so it never depends on the plan default.
+export const maxDuration = 60;
 
 export default async function EditListing({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -25,6 +30,12 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
   if (!detail) notFound();
 
   const { listing, client, media, activity } = detail;
+
+  // Photos still served as full-size originals: uploaded before copies
+  // existed, or whose copies failed. Demo rows are small files already.
+  const missingPreviews = isRemoteStorage()
+    ? media.filter((m) => m.kind === 'photo' && !m.gridKey && !isLocalKey(m.r2Key)).map((m) => m.id)
+    : [];
 
   return (
     <>
@@ -52,7 +63,10 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
       <section className="admin-section">
         <h2>Media ({media.length})</h2>
         {isRemoteStorage() ? (
-          <UploadMedia listingId={listing.id} />
+          <>
+            <UploadMedia listingId={listing.id} />
+            <MakePreviews missingIds={missingPreviews} />
+          </>
         ) : (
           <p className="admin-empty">
             Uploads are built but Cloudflare storage isn&apos;t connected yet, so

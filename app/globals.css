@@ -255,6 +255,9 @@ section{position:relative;border-top:1px solid var(--line)}
 .admin-upload-rows{list-style:none;font-size:.88rem;margin-top:14px;max-width:520px}
 .admin-upload-row{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid var(--line)}
 .admin-upload-error .admin-muted{color:var(--ember)}
+.admin-previews{display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px;margin-bottom:26px;padding:16px 18px;border:1px solid var(--line);border-left:2px solid var(--ember)}
+.admin-previews p{font-size:.9rem;line-height:1.6;max-width:60ch}
+.admin-previews-errors{flex-basis:100%;list-style:none;font-size:.85rem;color:var(--ember)}
 .admin-activity{list-style:none;font-size:.9rem}
 .admin-activity li{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
 .admin-danger{margin-top:64px;border:1px solid var(--line);border-left:2px solid var(--oxblood);padding:24px}

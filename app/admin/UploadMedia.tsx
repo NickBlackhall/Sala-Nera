@@ -3,35 +3,26 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { addMediaAction, createUploadUrlAction } from './actions';
+import { runCopies } from './MakePreviews';
 
-type Row = { name: string; status: 'uploading' | 'done' | 'error'; detail?: string };
+type Row = {
+  name: string;
+  status: 'uploading' | 'waiting' | 'preparing' | 'done' | 'error';
+  detail?: string;
+};
 
-/** Dimensions for a photo, read in the browser before upload. Video is left null — no cheap way to read it client-side. */
-function imageSize(file: File): Promise<{ width: number; height: number } | null> {
-  if (!file.type.startsWith('image/')) return Promise.resolve(null);
-
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    img.src = url;
-  });
-}
-
-async function uploadOne(listingId: number, file: File): Promise<Row> {
+/** Upload one file and record it. A photo's id comes back so its copies can follow. */
+async function uploadOne(
+  listingId: number,
+  file: File,
+): Promise<{ row: Row; photoId?: number }> {
+  const name = file.name;
   const signed = await createUploadUrlAction({
     listingId,
     filename: file.name,
     contentType: file.type,
   });
-  if ('error' in signed) return { name: file.name, status: 'error', detail: signed.error };
+  if ('error' in signed) return { row: { name, status: 'error', detail: signed.error } };
 
   const put = await fetch(signed.url, {
     method: 'PUT',
@@ -39,22 +30,21 @@ async function uploadOne(listingId: number, file: File): Promise<Row> {
     body: file,
   });
   if (!put.ok) {
-    return { name: file.name, status: 'error', detail: `Upload failed (${put.status}).` };
+    return { row: { name, status: 'error', detail: `Upload failed (${put.status}).` } };
   }
 
-  const size = await imageSize(file);
   const result = await addMediaAction({
     listingId,
     r2Key: signed.key,
     filename: file.name,
     contentType: file.type,
     bytes: file.size,
-    width: size?.width ?? null,
-    height: size?.height ?? null,
   });
-  if (result.error) return { name: file.name, status: 'error', detail: result.error };
+  if ('error' in result) return { row: { name, status: 'error', detail: result.error } };
 
-  return { name: file.name, status: 'done' };
+  return result.kind === 'photo'
+    ? { row: { name, status: 'waiting' }, photoId: result.id }
+    : { row: { name, status: 'done' } };
 }
 
 export default function UploadMedia({ listingId }: { listingId: number }) {
@@ -63,6 +53,9 @@ export default function UploadMedia({ listingId }: { listingId: number }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
+  const patch = (index: number, next: Partial<Row>) =>
+    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...next } : r)));
+
   async function handleFiles(files: FileList) {
     const list = Array.from(files);
     if (list.length === 0) return;
@@ -70,18 +63,38 @@ export default function UploadMedia({ listingId }: { listingId: number }) {
     setBusy(true);
     setRows(list.map((f) => ({ name: f.name, status: 'uploading' })));
 
+    // Every file goes up first, then the previews are made. Server actions
+    // run one at a time, so making a preview between uploads would hold up
+    // the next file rather than overlap with it.
+    //
     // A dropped connection partway through a large video throws rather than
     // returning, so each file is caught on its own: one failure reports on its
     // own row and the rest still go up.
+    const photos = new Map<number, number>(); // media id → row index
     for (let i = 0; i < list.length; i++) {
-      let row: Row;
       try {
-        row = await uploadOne(listingId, list[i]);
+        const { row, photoId } = await uploadOne(listingId, list[i]);
+        patch(i, row);
+        if (photoId !== undefined) photos.set(photoId, i);
       } catch {
-        row = { name: list[i].name, status: 'error', detail: 'Connection lost. Try this one again.' };
+        patch(i, { status: 'error', detail: 'Connection lost. Try this one again.' });
       }
-      setRows((prev) => prev.map((r, idx) => (idx === i ? row : r)));
     }
+
+    const ids = [...photos.keys()];
+    ids.forEach((id) => patch(photos.get(id)!, { status: 'preparing' }));
+    await runCopies(ids, (id, error) => {
+      const index = photos.get(id);
+      if (index === undefined) return;
+      // The file itself is safely stored either way; only its preview is
+      // missing, and the "Make previews" button below can retry it.
+      patch(
+        index,
+        error
+          ? { status: 'error', detail: 'Uploaded, but its preview could not be made.' }
+          : { status: 'done' },
+      );
+    });
 
     setBusy(false);
     if (inputRef.current) inputRef.current.value = '';
@@ -110,6 +123,8 @@ export default function UploadMedia({ listingId }: { listingId: number }) {
               <span>{row.name}</span>
               <span className="admin-muted">
                 {row.status === 'uploading' && 'Uploading…'}
+                {row.status === 'waiting' && 'Uploaded'}
+                {row.status === 'preparing' && 'Preparing preview…'}
                 {row.status === 'done' && 'Done'}
                 {row.status === 'error' && (row.detail ?? 'Failed')}
               </span>

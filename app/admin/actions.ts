@@ -22,11 +22,22 @@ import {
   reorderMedia,
   setListingCover,
   setListingLock,
+  setMediaCopies,
   slugIsTaken,
   updateClientRow,
   updateListingRow,
 } from '@/lib/admin-queries';
-import { deleteUrl, isLocalKey, uploadUrl } from '@/lib/storage';
+import { copyKey, makeCopies } from '@/lib/media-copies';
+import { COPIES_BATCH } from '@/lib/media-view';
+import {
+  deleteUrl,
+  getObject,
+  isLocalKey,
+  isRemoteStorage,
+  mediaObjectKeys,
+  putObject,
+  uploadUrl,
+} from '@/lib/storage';
 
 /**
  * Every action starts with requireAdmin(). A server action is a POST endpoint
@@ -371,11 +382,14 @@ export async function createUploadUrlAction(input: {
   return { key, url };
 }
 
-export type AddMediaResult = { error?: string };
+export type AddMediaResult = { id: number; kind: 'photo' | 'video' } | { error: string };
 
 /**
  * Step 2, called once the browser has PUT the bytes to the URL step 1 handed
  * back: record the row so the gallery and admin grid pick it up.
+ *
+ * Width and height are left for makeCopiesAction to fill in from the file
+ * itself — the browser's own reading was blocked by the CSP and never landed.
  */
 export async function addMediaAction(input: {
   listingId: number;
@@ -383,25 +397,104 @@ export async function addMediaAction(input: {
   filename: string;
   contentType: string;
   bytes: number;
-  width: number | null;
-  height: number | null;
 }): Promise<AddMediaResult> {
   await requireAdmin();
 
   if (!Number.isInteger(input.listingId) || !input.r2Key) return { error: 'That upload did not complete.' };
 
-  await insertMediaRow({
+  const kind = input.contentType.startsWith('image/') ? 'photo' : 'video';
+  const row = await insertMediaRow({
     listingId: input.listingId,
-    kind: input.contentType.startsWith('image/') ? 'photo' : 'video',
+    kind,
     r2Key: input.r2Key,
     filename: safeFilename(input.filename),
     bytes: Number.isFinite(input.bytes) ? input.bytes : null,
-    width: input.width,
-    height: input.height,
+    width: null,
+    height: null,
   });
 
-  revalidatePath(`/admin/listings/${input.listingId}`);
-  revalidatePath('/admin');
+  // No revalidatePath: the upload component refreshes once, after every file
+  // is up and its preview made. Refreshing per file would show the new
+  // photos as "no preview yet" while their previews were still coming.
+  return { id: row.id, kind };
+}
+
+/**
+ * Step 3 for photos: make their smaller copies (lib/media-copies.ts) and
+ * record them. Also what the "Make previews" button calls for photos uploaded
+ * before copies existed.
+ *
+ * Takes a few ids and works on them together, because the client dispatches
+ * server actions one at a time — parallelism has to happen in here or not at
+ * all (Next's own docs, 07-mutating-data.md). Kept to a small batch so no
+ * call comes near the page's maxDuration.
+ */
+export async function makeCopiesAction(
+  mediaIds: number[],
+): Promise<{ id: number; error?: string }[]> {
+  await requireAdmin();
+
+  const ids = mediaIds.filter(Number.isInteger).slice(0, COPIES_BATCH);
+  return Promise.all(ids.map(async (id) => ({ id, ...(await makeCopiesFor(id)) })));
+}
+
+function keyList(keys: { gridKey: string; largeKey: string; highKey: string | null }): string[] {
+  return [keys.gridKey, keys.largeKey, keys.highKey].filter((k): k is string => Boolean(k));
+}
+
+/**
+ * Safe to run twice: copies land on the same keys and simply overwrite. A
+ * failure leaves the row exactly as it was — the gallery keeps showing the
+ * original — so it is reported, never thrown.
+ */
+async function makeCopiesFor(mediaId: number): Promise<{ error?: string }> {
+  if (!isRemoteStorage()) return {};
+
+  const row = await getMediaRow(mediaId);
+  if (!row) return { error: 'That photo no longer exists.' };
+
+  const { kind, r2Key, filename } = row.media;
+  // Videos have no copies, and demo rows live under /public with nothing to fetch.
+  if (kind !== 'photo' || isLocalKey(r2Key)) return {};
+
+  let copies;
+  try {
+    copies = await makeCopies(await getObject(r2Key));
+  } catch (error) {
+    console.error(`media copies: could not read ${r2Key}`, error);
+    return { error: `${filename}: this file could not be read as a photo.` };
+  }
+
+  const keys = {
+    gridKey: copyKey(r2Key, 'grid'),
+    largeKey: copyKey(r2Key, 'large'),
+    highKey: copies.high ? copyKey(r2Key, 'high') : null,
+  };
+
+  try {
+    await Promise.all([
+      putObject(keys.gridKey, copies.grid, 'image/jpeg'),
+      putObject(keys.largeKey, copies.large, 'image/jpeg'),
+      copies.high && keys.highKey ? putObject(keys.highKey, copies.high, 'image/jpeg') : null,
+    ]);
+  } catch (error) {
+    console.error(`media copies: could not store copies of ${r2Key}`, error);
+    // Some may have landed before one failed. The row will not record them,
+    // so remove them rather than leave them orphaned.
+    await deleteObjects(keyList(keys));
+    return { error: `${filename}: its preview could not be saved.` };
+  }
+
+  const saved = await setMediaCopies(mediaId, {
+    ...keys,
+    width: copies.width,
+    height: copies.height,
+  });
+
+  // Deleted while its copies were being made: nothing will ever point at
+  // them, so they go now rather than sit orphaned in the bucket.
+  if (!saved) await deleteObjects(keyList(keys));
+
   return {};
 }
 
@@ -453,7 +546,8 @@ export async function deleteMediaAction(form: FormData): Promise<void> {
     await setListingCover(listingId, await firstMediaKey(listingId));
   }
 
-  await deleteObject(r2Key);
+  // The original and its copies.
+  await deleteObjects(mediaObjectKeys(row.media));
 
   revalidatePath(`/admin/listings/${listingId}`);
   revalidatePath('/admin');

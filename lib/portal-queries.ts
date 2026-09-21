@@ -104,6 +104,23 @@ export async function getAllListings(): Promise<Listing[]> {
   return db.select().from(listings).orderBy(desc(listings.shootDate), desc(listings.id));
 }
 
+/**
+ * The media rows behind a set of cover keys, so a listing card can show its
+ * cover's grid copy rather than the full original. Covers without a row (a
+ * demo path, or a row since deleted) simply do not come back, and the caller
+ * falls back to the key itself.
+ */
+export async function getCoverRows(
+  coverKeys: string[],
+): Promise<Pick<Media, 'r2Key' | 'gridKey' | 'largeKey'>[]> {
+  if (coverKeys.length === 0) return [];
+  const db = getDatabase();
+  return db
+    .select({ r2Key: media.r2Key, gridKey: media.gridKey, largeKey: media.largeKey })
+    .from(media)
+    .where(inArray(media.r2Key, coverKeys));
+}
+
 /** One media row with the listing it belongs to, for the download route. */
 export async function getMediaWithListing(
   mediaId: number,

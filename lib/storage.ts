@@ -100,25 +100,80 @@ export function mediaUrl(key: string, options: SignOptions = {}): string {
 }
 
 /**
- * A media row plus the URL its <img> should point at.
+ * A media row plus the URLs its <img>s should point at.
  *
- * Previews are signed too, because the bucket is private — there is no "public
- * thumbnail, private original" split. Keep previewUrl for rendering and r2Key
- * for identity: the admin page compares a listing's coverKey against media
- * keys, and comparing signed URLs would never match twice.
+ * Both point at the smaller copies from lib/media-copies.ts, falling back to
+ * the original for a row whose copies have not been made yet (anything
+ * uploaded before they existed, or a video). Previews are signed too, because
+ * the bucket is private. Keep these URLs for rendering and r2Key for identity:
+ * the admin page compares a listing's coverKey against media keys, and
+ * comparing signed URLs would never match twice.
  */
 export type { MediaView };
 
 export function withPreviewUrls(items: Media[]): MediaView[] {
   return items.map((item) => ({
     ...item,
-    previewUrl: mediaUrl(item.r2Key, { expiresIn: PREVIEW_TTL }),
+    previewUrl: previewUrl(item.gridKey ?? item.r2Key),
+    largeUrl: previewUrl(item.largeKey ?? item.r2Key),
   }));
 }
 
-/** A signed URL for a cover image or any other single key rendered inline. */
+/** A signed URL for any single key rendered inline. */
 export function previewUrl(key: string): string {
   return mediaUrl(key, { expiresIn: PREVIEW_TTL });
+}
+
+/**
+ * A listing's cover, as one of its copies.
+ *
+ * coverKey stores the original's key — it is an identity, compared against
+ * media rows — so the copy has to be looked up from the row it names. Falls
+ * back to the original when that row has no copies yet, or is not in `rows`.
+ */
+export function coverUrl(
+  coverKey: string,
+  rows: Pick<Media, 'r2Key' | 'gridKey' | 'largeKey'>[],
+  size: 'grid' | 'large',
+): string {
+  const row = rows.find((r) => r.r2Key === coverKey);
+  const copy = size === 'grid' ? row?.gridKey : row?.largeKey;
+  return previewUrl(copy ?? coverKey);
+}
+
+/** Every stored object one media row owns: the original and any copies. */
+export function mediaObjectKeys(
+  row: Pick<Media, 'r2Key' | 'gridKey' | 'largeKey' | 'highKey'>,
+): string[] {
+  return [row.r2Key, row.gridKey, row.largeKey, row.highKey].filter(
+    (key): key is string => Boolean(key),
+  );
+}
+
+/**
+ * Read a whole object into memory, server-side. Only used to make copies of a
+ * photo, so the ceiling is a large JPEG — never call this on a video.
+ */
+export async function getObject(key: string): Promise<Buffer> {
+  const res = await fetch(mediaUrl(key, { expiresIn: DOWNLOAD_TTL }));
+  if (!res.ok) throw new Error(`R2 GET ${key} answered ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+/**
+ * Write an object from the server — the copies, which are made here and so
+ * have no browser to upload them. Same signed PUT the browser uses.
+ */
+export async function putObject(key: string, body: Buffer, contentType: string): Promise<void> {
+  const url = uploadUrl(key);
+  if (!url) throw new Error('R2 is not configured');
+
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: new Uint8Array(body),
+  });
+  if (!res.ok) throw new Error(`R2 PUT ${key} answered ${res.status}`);
 }
 
 /**

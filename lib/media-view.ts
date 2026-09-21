@@ -9,4 +9,16 @@ import type { Media } from '@/lib/schema';
  * lib/storage.ts is `server-only`, which a client component cannot import from
  * even for a type.
  */
-export type MediaView = Media & { previewUrl: string };
+/**
+ * Photos per makeCopiesAction call — here because the upload component sends
+ * batches this size and the action caps at it, and a 'use server' file may
+ * only export functions. Each photo is a second or two of CPU.
+ */
+export const COPIES_BATCH = 3;
+
+export type MediaView = Media & {
+  /** The small grid copy — tiles in the gallery and the admin grid. */
+  previewUrl: string;
+  /** The 2400px copy — click-to-enlarge. */
+  largeUrl: string;
+};

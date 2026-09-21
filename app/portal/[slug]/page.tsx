@@ -9,7 +9,7 @@ import {
   type ListingBundle,
 } from '@/lib/portal-queries';
 import { getSession } from '@/lib/session';
-import { previewUrl, withPreviewUrls } from '@/lib/storage';
+import { coverUrl, withPreviewUrls } from '@/lib/storage';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false }, // client galleries stay out of search
@@ -43,7 +43,7 @@ function render(data: ListingBundle) {
         className="pcover"
         style={
           listing.coverKey
-            ? { backgroundImage: `url(${previewUrl(listing.coverKey)})` }
+            ? { backgroundImage: `url(${coverUrl(listing.coverKey, media, 'large')})` }
             : undefined
         }
       >

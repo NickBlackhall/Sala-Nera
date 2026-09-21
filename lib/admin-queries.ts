@@ -215,6 +215,33 @@ export async function getMediaRow(
   return row ?? null;
 }
 
+export type MediaCopiesInput = {
+  gridKey: string;
+  largeKey: string;
+  highKey: string | null;
+  width: number;
+  height: number;
+};
+
+/**
+ * Record a photo's copies, and its real dimensions while at it — read on the
+ * server from the file itself, so they are right even when the browser's
+ * guess was not.
+ *
+ * Returns false when the row has gone: the photo was deleted while its copies
+ * were being made. The caller then owns cleaning those copies up, since no row
+ * will ever record them.
+ */
+export async function setMediaCopies(id: number, input: MediaCopiesInput): Promise<boolean> {
+  const db = getDatabase();
+  const rows = await db
+    .update(media)
+    .set(input)
+    .where(eq(media.id, id))
+    .returning({ id: media.id });
+  return rows.length > 0;
+}
+
 export async function deleteMediaRow(id: number): Promise<void> {
   const db = getDatabase();
   await db.delete(media).where(eq(media.id, id));
@@ -269,11 +296,20 @@ export async function firstMediaKey(listingId: number): Promise<string | null> {
 export async function getListingMediaKeys(listingId: number): Promise<string[]> {
   const db = getDatabase();
   const rows = await db
-    .select({ r2Key: media.r2Key })
+    .select({
+      r2Key: media.r2Key,
+      gridKey: media.gridKey,
+      largeKey: media.largeKey,
+      highKey: media.highKey,
+    })
     .from(media)
     .where(eq(media.listingId, listingId));
 
-  return rows.map((r) => r.r2Key);
+  // Originals and their copies alike — a copy left behind is as orphaned as
+  // an original would be.
+  return rows.flatMap((r) =>
+    [r.r2Key, r.gridKey, r.largeKey, r.highKey].filter((k): k is string => Boolean(k)),
+  );
 }
 
 /** Media rows cascade; so do this listing's download records. */

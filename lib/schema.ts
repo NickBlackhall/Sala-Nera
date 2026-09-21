@@ -73,6 +73,12 @@ export const media = pgTable(
     width: integer('width'),
     height: integer('height'),
     sort: integer('sort').default(0).notNull(),
+    // Smaller copies made after upload — see lib/media-copies.ts. Null until
+    // made, and readers fall back to r2Key; highKey stays null for any
+    // original that is already fine to hand out as the high-res download.
+    gridKey: text('grid_key'),
+    largeKey: text('large_key'),
+    highKey: text('high_key'),
   },
   (t) => [index('media_listing_idx').on(t.listingId, t.sort)],
 );
@@ -103,6 +109,8 @@ export const downloads = pgTable(
     listingId: integer('listing_id').references(() => listings.id, { onDelete: 'cascade' }),
     clientEmail: text('client_email'),
     filename: text('filename'),
+    // 'high' or 'low'. Null on rows from before the choice existed — all originals.
+    resolution: text('resolution'),
     at: timestamp('at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index('downloads_listing_idx').on(t.listingId), index('downloads_at_idx').on(t.at)],
