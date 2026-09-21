@@ -1,6 +1,38 @@
 # Sala Nera — Handoff (Sep 21 2026)
 
-## Latest — Sep 21, evening: galleries load from smaller copies — 332MB → 5.8MB
+## Latest — Sep 21, night: new gallery header shipped; property website decided, not built
+
+### ✅ BUILT AND LIVE — the gallery header (`154ad01`)
+
+Logo removed from the middle of the cover. The dark layer is now a gradient over
+the lower part of the photo only, and the city, address, "Shot for {client.name}"
+and {client.company} sit on it. The header is 80svh tall. This also fixed a real
+bug: the logo's oversized box pushed the address below the first screen on laptop
+and phone. Verified live on Rockwall Shores with a minted admin cookie (GET only).
+Only `app/globals.css` and `app/portal/[slug]/page.tsx` changed; downloads,
+selection and the grid are untouched. Nick has seen it and approved.
+
+### ⬜ DECIDED, NOT BUILT — split into a property website and a delivery page
+
+Nick wants what Spiro has: a **public property website** to show a listing off
+(no downloads, no checkboxes, no login) and the **login-only delivery page**
+(today's `/portal/[slug]`, unchanged so agents can test downloads). Decisions:
+
+- Public, works **only after the agent has paid** (`downloadLocked` false). No
+  separate on/off switch.
+- **Readable address link, no random code.** Nick's call: guessing is fine as long
+  as nobody can download. Unpaid or unknown listings return the same "not found".
+- **Branded and unbranded versions** (unbranded for MLS links).
+- The delivery page gets a "Copy link" for each version.
+- Stays dark; fonts unchanged.
+
+**Open:** the size of the public photos (anyone who can see one can save it), and how
+to serve them: signed links expire after 1 hour (`PREVIEW_TTL`, `lib/storage.ts`),
+so a shared link needs the site to serve the smaller copies itself with long
+caching. Video belongs on this page eventually. Ties to the parked unpaid-gallery
+protection item in the polish pass.
+
+## Sep 21, evening: galleries load from smaller copies — 332MB → 5.8MB
 
 > **Built, live, and backfilled on Rockwall Shores.** Opening that gallery
 > used to pull all 32 originals (332.4MB) for thumbnails a few hundred pixels
