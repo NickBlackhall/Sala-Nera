@@ -17,8 +17,10 @@ import type { Media } from '@/lib/schema';
 export const COPIES_BATCH = 3;
 
 export type MediaView = Media & {
-  /** The small grid copy — tiles in the gallery and the admin grid. */
-  previewUrl: string;
-  /** The 2400px copy — click-to-enlarge. */
-  largeUrl: string;
+  /** The small grid copy — tiles in the gallery and the admin grid. For a video, its still; null until it has one. */
+  previewUrl: string | null;
+  /** The 2400px copy — click-to-enlarge, or a video's poster. Null for a video with no still. */
+  largeUrl: string | null;
+  /** A video's own file, for <video>. Null for photos. */
+  videoUrl: string | null;
 };

@@ -5,6 +5,9 @@
  * Empty until R2 is configured, which keeps the policy at its tightest until
  * there is something real to allow. Note a newly added env var needs a redeploy
  * before this header changes.
+ *
+ * media-src also allows blob: so the admin upload can read a video's shape and
+ * take a still from the file on the user's own machine (app/admin/probeVideo.ts).
  */
 const accountId = process.env.R2_ACCOUNT_ID;
 const r2Origin = accountId && /^[a-zA-Z0-9]+$/.test(accountId)
@@ -26,7 +29,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; img-src 'self' data:${r2Origin}; media-src 'self'${r2Origin}; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; connect-src 'self'${r2Origin}; upgrade-insecure-requests`,
+            value: `default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; img-src 'self' data:${r2Origin}; media-src 'self' blob:${r2Origin}; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; connect-src 'self'${r2Origin}; upgrade-insecure-requests`,
           },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

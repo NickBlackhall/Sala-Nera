@@ -15,10 +15,12 @@ import { isLocalKey, mediaUrl, PUBLIC_TTL } from '@/lib/storage';
  * false); before that, and for a slug that was never a listing, the answer is
  * the same "not found", so the page reveals nothing about unpaid work.
  *
- * Only the smaller copies ever reach this page. The original is the paid
- * download, and at 10MB+ far too heavy for a page anyone can open, so a photo
- * whose copies are not made yet is left off rather than shown full-size.
- * Everything handed to the page is a URL; no storage key leaves the server.
+ * Only a photo's smaller copies ever reach this page. The original is the
+ * paid download, and at 10MB+ far too heavy for a page anyone can open, so a
+ * photo whose copies are not made yet is left off rather than shown full-size.
+ * A video has no smaller copy — the file itself is what plays, fetched only
+ * when someone presses play — with its still as the poster. Everything handed
+ * to the page is a URL; no storage key leaves the server.
  */
 
 export type PropertyPhoto = {
@@ -27,6 +29,15 @@ export type PropertyPhoto = {
   height: number;
   gridUrl: string;
   largeUrl: string;
+};
+
+export type PropertyVideo = {
+  id: number;
+  /** Displayed shape; null for a video uploaded before its still was taken. */
+  width: number | null;
+  height: number | null;
+  url: string;
+  posterUrl: string | null;
 };
 
 export type PropertyAgent = {
@@ -40,7 +51,9 @@ export type PropertySite = {
   slug: string;
   address: string;
   city: string | null;
-  coverUrl: string;
+  /** Null only for a listing with videos and no photos, none of them with a still. */
+  coverUrl: string | null;
+  videos: PropertyVideo[];
   photos: PropertyPhoto[];
   agent: PropertyAgent | null;
 };
@@ -56,7 +69,16 @@ export function toPropertySite({ listing, media, client }: ListingBundle): Prope
   const shown = media.filter(
     (m) => m.kind === 'photo' && (isLocalKey(m.r2Key) || (m.gridKey && m.largeKey)),
   );
-  if (shown.length === 0) return null;
+  const videos = media
+    .filter((m) => m.kind === 'video')
+    .map((m) => ({
+      id: m.id,
+      width: m.width,
+      height: m.height,
+      url: url(m.r2Key),
+      posterUrl: m.largeKey ? url(m.largeKey) : null,
+    }));
+  if (shown.length === 0 && videos.length === 0) return null;
 
   const photos = shown.map((m) => ({
     id: m.id,
@@ -73,7 +95,8 @@ export function toPropertySite({ listing, media, client }: ListingBundle): Prope
     slug: listing.slug,
     address: listing.address,
     city: listing.city,
-    coverUrl: photos[Math.max(cover, 0)].largeUrl,
+    coverUrl: photos.length ? photos[Math.max(cover, 0)].largeUrl : (videos.find((v) => v.posterUrl)?.posterUrl ?? null),
+    videos,
     photos,
     agent: client
       ? { name: client.name, company: client.company, phone: client.phone, email: client.email }
@@ -118,10 +141,10 @@ export function propertyMetadata(site: PropertySite | null, branded: boolean): M
       url: path,
       title: place,
       description,
-      images: [{ url: site.coverUrl }],
+      images: site.coverUrl ? [{ url: site.coverUrl }] : [],
       ...(branded ? { siteName: 'Sala Nera' } : {}),
     },
-    twitter: { card: 'summary_large_image', title: place, description, images: [site.coverUrl] },
+    twitter: { card: 'summary_large_image', title: place, description, images: site.coverUrl ? [site.coverUrl] : [] },
     ...(branded ? { icons: SITE_ICONS, manifest: SITE_MANIFEST } : {}),
   };
 }

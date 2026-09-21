@@ -27,7 +27,7 @@ import {
   updateClientRow,
   updateListingRow,
 } from '@/lib/admin-queries';
-import { copyKey, makeCopies } from '@/lib/media-copies';
+import { copyKey, makeCopies, type Copies } from '@/lib/media-copies';
 import { COPIES_BATCH } from '@/lib/media-view';
 import {
   deleteUrl,
@@ -454,7 +454,8 @@ async function makeCopiesFor(mediaId: number): Promise<{ error?: string }> {
   if (!row) return { error: 'That photo no longer exists.' };
 
   const { kind, r2Key, filename } = row.media;
-  // Videos have no copies, and demo rows live under /public with nothing to fetch.
+  // A video's copies come from its still (saveVideoFrameAction), and demo
+  // rows live under /public with nothing to fetch.
   if (kind !== 'photo' || isLocalKey(r2Key)) return {};
 
   let copies;
@@ -465,6 +466,19 @@ async function makeCopiesFor(mediaId: number): Promise<{ error?: string }> {
     return { error: `${filename}: this file could not be read as a photo.` };
   }
 
+  return storeCopies(mediaId, row.media, copies, copies);
+}
+
+/**
+ * Store a row's copies and point the row at them. Shared by photos and by a
+ * video's still, so both clean up the same way when something fails.
+ */
+async function storeCopies(
+  mediaId: number,
+  { r2Key, filename }: { r2Key: string; filename: string },
+  copies: Copies,
+  size: { width: number; height: number },
+): Promise<{ error?: string }> {
   const keys = {
     gridKey: copyKey(r2Key, 'grid'),
     largeKey: copyKey(r2Key, 'large'),
@@ -485,17 +499,53 @@ async function makeCopiesFor(mediaId: number): Promise<{ error?: string }> {
     return { error: `${filename}: its preview could not be saved.` };
   }
 
-  const saved = await setMediaCopies(mediaId, {
-    ...keys,
-    width: copies.width,
-    height: copies.height,
-  });
+  const saved = await setMediaCopies(mediaId, { ...keys, ...size });
 
   // Deleted while its copies were being made: nothing will ever point at
   // them, so they go now rather than sit orphaned in the bucket.
   if (!saved) await deleteObjects(keyList(keys));
 
   return {};
+}
+
+/**
+ * Step 3 for videos. The browser took a still from the file before uploading
+ * it (app/admin/probeVideo.ts); that still becomes the video's grid and large
+ * copies, made by the same makeCopies() as a photo's, so the gallery tile, the
+ * poster before play and deletion all work exactly as they do for photos.
+ *
+ * Width and height are the video's own, as the browser displayed it — not the
+ * still's, which may have been scaled down to fit the request.
+ */
+export async function saveVideoFrameAction(form: FormData): Promise<{ error?: string }> {
+  await requireAdmin();
+  if (!isRemoteStorage()) return {};
+
+  const id = Number(form.get('id'));
+  const width = Number(form.get('width'));
+  const height = Number(form.get('height'));
+  const frame = form.get('frame');
+  const plausible = (n: number) => Number.isInteger(n) && n > 0 && n <= 16_384;
+  if (!Number.isInteger(id) || !plausible(width) || !plausible(height) || !(frame instanceof Blob)) {
+    return { error: 'That preview frame was not usable.' };
+  }
+
+  const row = await getMediaRow(id);
+  if (!row || row.media.kind !== 'video' || isLocalKey(row.media.r2Key)) {
+    return { error: 'That video no longer exists.' };
+  }
+
+  let copies;
+  try {
+    copies = await makeCopies(Buffer.from(await frame.arrayBuffer()));
+  } catch (error) {
+    console.error(`media copies: could not read the still for ${row.media.r2Key}`, error);
+    return { error: `${row.media.filename}: its preview frame could not be read.` };
+  }
+
+  // A still is a JPEG well under the MLS cap, so no high copy — and a video's
+  // high-res download is the video, never a picture of it.
+  return storeCopies(id, row.media, { ...copies, high: null }, { width, height });
 }
 
 /**

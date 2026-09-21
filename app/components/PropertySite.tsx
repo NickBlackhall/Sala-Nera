@@ -1,5 +1,22 @@
 import PropertyGallery from '@/app/components/PropertyGallery';
-import type { PropertySite as Site } from '@/lib/property-site';
+import VideoPlayer from '@/app/components/VideoPlayer';
+import type { PropertySite as Site, PropertyVideo } from '@/lib/property-site';
+
+const isVertical = (v: PropertyVideo) => Boolean(v.width && v.height && v.height > v.width);
+
+/**
+ * Consecutive vertical films share a row, side by side where the screen is
+ * wide enough; each horizontal one gets the full width to itself.
+ */
+function filmRows(videos: PropertyVideo[]): PropertyVideo[][] {
+  const rows: PropertyVideo[][] = [];
+  for (const video of videos) {
+    const last = rows[rows.length - 1];
+    if (last && isVertical(video) && isVertical(last[0])) last.push(video);
+    else rows.push([video]);
+  }
+  return rows;
+}
 
 /** "15123632928" → "(512) 363-2928". Anything that is not a US number is shown as typed. */
 function formatPhone(phone: string): string {
@@ -18,7 +35,7 @@ export default function PropertySite({ site, branded }: { site: Site; branded: b
 
   return (
     <div className="psite">
-      <header className="pcover" style={{ backgroundImage: `url(${site.coverUrl})` }}>
+      <header className="pcover" style={site.coverUrl ? { backgroundImage: `url(${site.coverUrl})` } : undefined}>
         <div className="pcover-scrim" />
         <div className="pcover-inner">
           {site.city && <p className="pcover-kicker">{site.city}</p>}
@@ -29,7 +46,25 @@ export default function PropertySite({ site, branded }: { site: Site; branded: b
       </header>
 
       <main className="psite-body">
-        <PropertyGallery photos={site.photos} address={site.address} />
+        {site.videos.length > 0 && (
+          <section className="psite-films" aria-label="Film">
+            {filmRows(site.videos).map((row) => (
+              <div className="psite-film-row" key={row[0].id}>
+                {row.map((video) => (
+                  <VideoPlayer
+                    key={video.id}
+                    src={video.url}
+                    poster={video.posterUrl}
+                    width={video.width}
+                    height={video.height}
+                    label={site.videos.length > 1 ? `${site.address}, film ${site.videos.indexOf(video) + 1}` : `${site.address}, film`}
+                  />
+                ))}
+              </div>
+            ))}
+          </section>
+        )}
+        {site.photos.length > 0 && <PropertyGallery photos={site.photos} address={site.address} />}
       </main>
 
       {branded && (

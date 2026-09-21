@@ -2,8 +2,9 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { addMediaAction, createUploadUrlAction } from './actions';
+import { addMediaAction, createUploadUrlAction, saveVideoFrameAction } from './actions';
 import { runCopies } from './MakePreviews';
+import { probeVideo } from './probeVideo';
 
 type Row = {
   name: string;
@@ -11,12 +12,19 @@ type Row = {
   detail?: string;
 };
 
-/** Upload one file and record it. A photo's id comes back so its copies can follow. */
+/**
+ * Upload one file and record it. A photo's id comes back so its copies can
+ * follow; a video's still is saved here, since it was taken from the file.
+ */
 async function uploadOne(
   listingId: number,
   file: File,
 ): Promise<{ row: Row; photoId?: number }> {
   const name = file.name;
+  // Same rule addMediaAction uses. Read while the file is still only on this
+  // machine, before anything is written.
+  const probe = file.type.startsWith('image/') ? null : await probeVideo(file);
+
   const signed = await createUploadUrlAction({
     listingId,
     filename: file.name,
@@ -42,9 +50,20 @@ async function uploadOne(
   });
   if ('error' in result) return { row: { name, status: 'error', detail: result.error } };
 
-  return result.kind === 'photo'
-    ? { row: { name, status: 'waiting' }, photoId: result.id }
-    : { row: { name, status: 'done' } };
+  if (result.kind === 'photo') return { row: { name, status: 'waiting' }, photoId: result.id };
+
+  if (!probe) {
+    return { row: { name, status: 'done', detail: 'Uploaded. No preview frame: this browser could not read the video.' } };
+  }
+  const form = new FormData();
+  form.set('id', String(result.id));
+  form.set('width', String(probe.width));
+  form.set('height', String(probe.height));
+  form.set('frame', probe.frame, 'frame.jpg');
+  const saved = await saveVideoFrameAction(form);
+  return {
+    row: { name, status: 'done', detail: saved.error ? 'Uploaded, but its preview frame could not be saved.' : undefined },
+  };
 }
 
 export default function UploadMedia({ listingId }: { listingId: number }) {
@@ -125,7 +144,7 @@ export default function UploadMedia({ listingId }: { listingId: number }) {
                 {row.status === 'uploading' && 'Uploading…'}
                 {row.status === 'waiting' && 'Uploaded'}
                 {row.status === 'preparing' && 'Preparing preview…'}
-                {row.status === 'done' && 'Done'}
+                {row.status === 'done' && (row.detail ?? 'Done')}
                 {row.status === 'error' && (row.detail ?? 'Failed')}
               </span>
             </li>

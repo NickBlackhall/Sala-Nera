@@ -103,11 +103,12 @@ export function mediaUrl(key: string, options: SignOptions = {}): string {
 }
 
 /**
- * A media row plus the URLs its <img>s should point at.
+ * A media row plus the URLs its <img>s and <video> should point at.
  *
  * Both point at the smaller copies from lib/media-copies.ts, falling back to
- * the original for a row whose copies have not been made yet (anything
- * uploaded before they existed, or a video). Previews are signed too, because
+ * the original for a photo whose copies have not been made yet (anything
+ * uploaded before they existed). A video's copies are its still, and it has no
+ * fallback picture; its file is videoUrl. Previews are signed too, because
  * the bucket is private. Keep these URLs for rendering and r2Key for identity:
  * the admin page compares a listing's coverKey against media keys, and
  * comparing signed URLs would never match twice.
@@ -115,11 +116,23 @@ export function mediaUrl(key: string, options: SignOptions = {}): string {
 export type { MediaView };
 
 export function withPreviewUrls(items: Media[]): MediaView[] {
-  return items.map((item) => ({
-    ...item,
-    previewUrl: previewUrl(item.gridKey ?? item.r2Key),
-    largeUrl: previewUrl(item.largeKey ?? item.r2Key),
-  }));
+  return items.map((item) =>
+    item.kind === 'video'
+      ? {
+          // A video never falls back to its own file as a picture: an <img>
+          // pointed at an MP4 is just a broken image.
+          ...item,
+          previewUrl: item.gridKey ? previewUrl(item.gridKey) : null,
+          largeUrl: item.largeKey ? previewUrl(item.largeKey) : null,
+          videoUrl: previewUrl(item.r2Key),
+        }
+      : {
+          ...item,
+          previewUrl: previewUrl(item.gridKey ?? item.r2Key),
+          largeUrl: previewUrl(item.largeKey ?? item.r2Key),
+          videoUrl: null,
+        },
+  );
 }
 
 /** A signed URL for any single key rendered inline. */

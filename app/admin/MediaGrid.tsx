@@ -200,15 +200,20 @@ export default function MediaGrid({
               }
             >
               <div className="admin-media-thumb">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.previewUrl}
-                  alt=""
-                  loading="lazy"
-                  // An image is draggable on its own, and that drag carries the
-                  // file rather than the tile — which would make it unsortable.
-                  draggable={false}
-                />
+                {item.previewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.previewUrl}
+                    alt=""
+                    loading="lazy"
+                    // An image is draggable on its own, and that drag carries the
+                    // file rather than the tile — which would make it unsortable.
+                    draggable={false}
+                  />
+                ) : (
+                  // A video with no still yet: its file is not a picture.
+                  <span className="admin-media-novideo">Video</span>
+                )}
                 <input
                   type="checkbox"
                   className="admin-media-select"
@@ -226,7 +231,7 @@ export default function MediaGrid({
                 <div className="admin-media-actions">
                   {coverKey === item.r2Key ? (
                     <span className="admin-cover-flag">Cover</span>
-                  ) : (
+                  ) : item.kind === 'video' ? null : (
                     <form action={setCoverAction}>
                       <input type="hidden" name="id" value={listingId} />
                       <input type="hidden" name="coverKey" value={item.r2Key} />

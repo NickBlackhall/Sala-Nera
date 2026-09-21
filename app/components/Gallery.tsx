@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import VideoPlayer from '@/app/components/VideoPlayer';
 import type { MediaView } from '@/lib/media-view';
 
 /**
@@ -70,6 +71,10 @@ export default function Gallery({
     if (lightbox === null) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
+      // Arrows inside a video player skip through the film. React listens on
+      // the document too, so the player cannot stop this handler; it has to
+      // step aside here instead.
+      if (e.target instanceof Element && e.target.closest('.vp')) return;
       if (e.key === 'ArrowRight') step(1);
       if (e.key === 'ArrowLeft') step(-1);
     };
@@ -198,8 +203,22 @@ export default function Gallery({
                     onClick={() => setLightbox(i)}
                     aria-label={`Open ${m.filename}`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={m.previewUrl} alt="" width={m.width ?? 1600} height={m.height ?? 1067} loading="lazy" />
+                    {m.kind === 'video' ? (
+                      // Its still in its own shape, or black until it has one.
+                      <span
+                        className="tile-video"
+                        style={m.width && m.height ? ({ '--tile-ratio': `${m.width} / ${m.height}` } as React.CSSProperties) : undefined}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {m.previewUrl && <img src={m.previewUrl} alt="" loading="lazy" />}
+                        <span className="tile-play" aria-hidden="true">
+                          <svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" /></svg>
+                        </span>
+                      </span>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.previewUrl ?? undefined} alt="" width={m.width ?? 1600} height={m.height ?? 1067} loading="lazy" />
+                    )}
                     {locked && <span className="tile-wm" aria-hidden="true">SALA NERA</span>}
                   </button>
                   {!locked && (
@@ -223,8 +242,25 @@ export default function Gallery({
         <div className="lb" role="dialog" aria-modal="true" aria-label={current.filename}>
           <button className="lb-close" onClick={close} aria-label="Close">✕</button>
           <button className="lb-prev" onClick={() => step(-1)} aria-label="Previous">‹</button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="lb-img" src={current.largeUrl} alt="" />
+          {current.kind === 'video' && current.videoUrl ? (
+            <div className="lb-video">
+              {/* Keyed, so stepping to another video starts it fresh. Opened by
+                  a click, so it may start with sound. */}
+              <VideoPlayer
+                key={current.id}
+                src={current.videoUrl}
+                poster={current.largeUrl}
+                width={current.width}
+                height={current.height}
+                label={current.filename}
+                watermark={locked}
+                autoPlay
+              />
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="lb-img" src={current.largeUrl ?? undefined} alt="" />
+          )}
           <button className="lb-next" onClick={() => step(1)} aria-label="Next">›</button>
           <div className="lb-meta">
             <span>{current.filename}</span>
