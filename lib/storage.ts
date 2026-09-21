@@ -27,6 +27,9 @@ import type { Media } from '@/lib/schema';
 /** How long a minted URL stays good. Previews outlive one page view; downloads are one click. */
 export const PREVIEW_TTL = 60 * 60; // 1 hour
 export const DOWNLOAD_TTL = 60 * 5; // 5 minutes
+// The public property website: a buyer may leave the tab open for hours
+// before scrolling. Only ever used for the smaller copies of a paid listing.
+export const PUBLIC_TTL = 60 * 60 * 24; // 24 hours
 // Generous: a big property film on a slow upload should not race the clock.
 export const UPLOAD_TTL = 60 * 30; // 30 minutes
 

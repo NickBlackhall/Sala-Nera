@@ -45,6 +45,14 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
           <h1>{listing.address}</h1>
           <p className="admin-muted">
             <Link href={`/portal/${listing.slug}`}>/portal/{listing.slug}</Link>
+            {!listing.downloadLocked && (
+              <>
+                {' · '}
+                <a href={`/p/${listing.slug}`} target="_blank" rel="noopener">property website</a>
+                {' · '}
+                <a href={`/p/${listing.slug}/mls`} target="_blank" rel="noopener">MLS version</a>
+              </>
+            )}
             {client ? ` · ${client.email}` : ' · unassigned'}
           </p>
         </div>

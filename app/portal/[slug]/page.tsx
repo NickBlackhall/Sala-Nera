@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import Gallery from '@/app/components/Gallery';
+import PropertyLinks from '@/app/components/PropertyLinks';
 import { DEMO_CLIENT, DEMO_LISTINGS, DEMO_MEDIA, IS_DEMO } from '@/lib/demo';
 import {
   getClientByEmail,
@@ -55,6 +56,9 @@ function render(data: ListingBundle) {
           {client?.company && <p className="pcover-by">{client.company}</p>}
         </div>
       </header>
+
+      {/* The public property website exists only once the listing is paid. */}
+      {!locked && <PropertyLinks slug={listing.slug} />}
 
       <Gallery
         slug={listing.slug}

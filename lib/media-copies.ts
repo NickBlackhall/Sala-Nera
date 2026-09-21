@@ -21,8 +21,9 @@ import sharp from 'sharp';
  *          over the MLS size cap, or not a JPEG at all
  *
  * Every copy is auto-rotated from EXIF, converted to sRGB with the profile
- * embedded, and stripped of all other metadata — including GPS, which has no
- * business leaving in a file an agent reposts publicly.
+ * embedded, and has the camera's metadata replaced by a copyright notice —
+ * dropping GPS, which has no business leaving in a file an agent reposts
+ * publicly.
  */
 
 /** Long edge, in pixels. A vertical still gets 800px across: enough for a 2x tile. */
@@ -54,6 +55,17 @@ export type Copies = {
  */
 const INPUT = { failOn: 'error' } as const;
 
+/**
+ * Written in place of the camera's EXIF, which withExif() discards. Plain
+ * ASCII: EXIF text fields are ASCII by spec, and a © comes out garbled in
+ * some readers. Same holder as the site footer. The original keeps whatever
+ * Nick's own export preset wrote into it.
+ */
+function copyright() {
+  const notice = `Copyright ${new Date().getFullYear()} Sala Nera. All rights reserved.`;
+  return { IFD0: { Copyright: notice, Artist: 'Sala Nera' } };
+}
+
 export async function makeCopies(original: Buffer): Promise<Copies> {
   const meta = await sharp(original, INPUT).metadata();
   if (!meta.width || !meta.height) throw new Error('not a readable image');
@@ -67,6 +79,7 @@ export async function makeCopies(original: Buffer): Promise<Copies> {
     .autoOrient()
     .resize({ width: LARGE_EDGE, height: LARGE_EDGE, fit: 'inside', withoutEnlargement: true })
     .withIccProfile('srgb')
+    .withExif(copyright())
     .jpeg({ quality: 85, mozjpeg: true })
     .toBuffer();
 
@@ -75,6 +88,7 @@ export async function makeCopies(original: Buffer): Promise<Copies> {
   const grid = await sharp(large)
     .resize({ width: GRID_EDGE, height: GRID_EDGE, fit: 'inside', withoutEnlargement: true })
     .withIccProfile('srgb')
+    .withExif(copyright())
     .jpeg({ quality: 80, mozjpeg: true })
     .toBuffer();
 
@@ -94,7 +108,7 @@ async function makeHigh(original: Buffer, uprightWidth: number): Promise<Buffer>
   const encode = (quality: number, width?: number) => {
     const pipeline = sharp(original, INPUT).autoOrient();
     if (width) pipeline.resize({ width });
-    return pipeline.withIccProfile('srgb').jpeg({ quality }).toBuffer();
+    return pipeline.withIccProfile('srgb').withExif(copyright()).jpeg({ quality }).toBuffer();
   };
 
   for (const quality of [92, 88, 84, 80]) {

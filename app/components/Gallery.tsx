@@ -7,8 +7,8 @@ import type { MediaView } from '@/lib/media-view';
  * Tiles keep their natural aspect ratio, so verticals are never cropped.
  * Round-robin into flex columns means reading order still runs left→right.
  */
-function intoColumns(items: MediaView[], count: number): MediaView[][] {
-  const cols: MediaView[][] = Array.from({ length: count }, () => []);
+export function intoColumns<T>(items: T[], count: number): T[][] {
+  const cols: T[][] = Array.from({ length: count }, () => []);
   items.forEach((m, i) => cols[i % count].push(m));
   return cols;
 }
