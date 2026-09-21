@@ -2,7 +2,18 @@
 
 import { useState } from 'react';
 
-export default function LoginForm({ expired, next }: { expired: boolean; next: string | null }) {
+export default function LoginForm({
+  expired,
+  next,
+  admin = false,
+  placeholder = 'you@brokerage.com',
+}: {
+  expired: boolean;
+  next: string | null;
+  /** The admin's sign-in page: only admin addresses get a link, and it opens /admin. */
+  admin?: boolean;
+  placeholder?: string;
+}) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
@@ -13,7 +24,7 @@ export default function LoginForm({ expired, next }: { expired: boolean; next: s
       const r = await fetch('/api/portal/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, next }),
+        body: JSON.stringify({ email, next, admin }),
       });
       setState(r.ok ? 'sent' : 'error');
     } catch {
@@ -45,7 +56,7 @@ export default function LoginForm({ expired, next }: { expired: boolean; next: s
           autoComplete="email"
           required
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@brokerage.com"
+          placeholder={placeholder}
         />
       </div>
       <button className="btn" type="submit" disabled={state === 'sending'}>

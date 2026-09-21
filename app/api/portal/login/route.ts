@@ -18,10 +18,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export async function POST(request: Request) {
   let email = '';
   let next: string | null = null;
+  let adminOnly = false;
   try {
     const body = await request.json();
     email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
     next = safePortalPath(body?.next);
+    adminOnly = body?.admin === true;
   } catch {
     // fall through to the validation error below
   }
@@ -30,20 +32,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'A valid email address is required.' }, { status: 400 });
   }
 
-  const known = isAdminEmail(email) || (await getClientByEmail(email)) !== null;
+  // From the admin's sign-in page only an admin address gets a link: an agent
+  // who wandered in would just be emailed a link to the client portal, and the
+  // answer they see is the same either way.
+  const known = adminOnly
+    ? isAdminEmail(email)
+    : isAdminEmail(email) || (await getClientByEmail(email)) !== null;
 
   if (known) {
     const base = process.env.PORTAL_URL ?? new URL(request.url).origin;
     const token = await signLoginToken(email);
     const link = `${base}/api/portal/verify?token=${encodeURIComponent(token)}${
       next ? `&next=${encodeURIComponent(next)}` : ''
-    }`;
+    }${adminOnly ? '&from=admin' : ''}`;
 
     after(sendEmail({
       to: email,
-      subject: 'Your Sala Nera sign-in link',
+      subject: adminOnly ? 'Your Sala Nera admin sign-in link' : 'Your Sala Nera sign-in link',
       text: [
-        'Here is your sign-in link for the Sala Nera client portal:',
+        adminOnly
+          ? 'Here is your sign-in link for the Sala Nera admin:'
+          : 'Here is your sign-in link for the Sala Nera client portal:',
         '',
         link,
         '',

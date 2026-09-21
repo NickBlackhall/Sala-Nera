@@ -12,12 +12,15 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const token = params.get('token');
   const next = safePortalPath(params.get('next'));
+  const fromAdmin = params.get('from') === 'admin';
   const base = process.env.PORTAL_URL ?? new URL(request.url).origin;
 
   const email = token ? await verifyLoginToken(token) : null;
   if (!email) {
     // An expired link still remembers where it was going.
-    const retry = `/portal/login?error=expired${next ? `&next=${encodeURIComponent(next)}` : ''}`;
+    const retry = fromAdmin
+      ? '/admin/login?error=expired'
+      : `/portal/login?error=expired${next ? `&next=${encodeURIComponent(next)}` : ''}`;
     return NextResponse.redirect(new URL(retry, base));
   }
 
