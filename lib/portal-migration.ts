@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0005_media_copies';
+export const PORTAL_MIGRATION_ID = '0006_booking_listings';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -175,4 +175,16 @@ export const PORTAL_MIGRATION_STATEMENTS = [
   `ALTER TABLE "media" ADD COLUMN IF NOT EXISTS "high_key" text`,
   /** 'high' or 'low'. Null on rows written before the choice existed, all of which were originals. */
   `ALTER TABLE "downloads" ADD COLUMN IF NOT EXISTS "resolution" text`,
+
+  /**
+   * 0006 — every booking makes its own listing, and this is the link back.
+   *
+   * On the listing, not the booking, because a listing Nick makes by hand has
+   * no booking at all. Unique, so a booking retried with the same requestId
+   * can never make a second listing. SET NULL rather than cascade: a
+   * listing with photos in it outlives anything that happens to its booking.
+   */
+  `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "booking_id" integer
+    REFERENCES "bookings"("id") ON DELETE set null`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "listings_booking_id_key" ON "listings" USING btree ("booking_id")`,
 ] as const;
