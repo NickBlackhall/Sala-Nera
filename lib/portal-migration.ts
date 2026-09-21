@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0004_confirmed_slots';
+export const PORTAL_MIGRATION_ID = '0005_media_copies';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -160,4 +160,19 @@ export const PORTAL_MIGRATION_STATEMENTS = [
   `CREATE UNIQUE INDEX IF NOT EXISTS "bookings_one_confirmed_per_day"
     ON "bookings" USING btree ("shoot_date") WHERE "status" = 'confirmed'`,
   `CREATE INDEX IF NOT EXISTS "bookings_starts_at_idx" ON "bookings" USING btree ("starts_at")`,
+
+  /**
+   * 0005 — smaller copies of each photo, made on the server after upload.
+   *
+   * All nullable, and null means "not made yet": every reader falls back to
+   * the original r2_key, so rows uploaded before this existed keep rendering
+   * exactly as they did until their copies are made. high_key is only ever set
+   * when the original itself is no good as a download (over the MLS size cap,
+   * or not a JPEG); for everything else the original is the high-res file.
+   */
+  `ALTER TABLE "media" ADD COLUMN IF NOT EXISTS "grid_key" text`,
+  `ALTER TABLE "media" ADD COLUMN IF NOT EXISTS "large_key" text`,
+  `ALTER TABLE "media" ADD COLUMN IF NOT EXISTS "high_key" text`,
+  /** 'high' or 'low'. Null on rows written before the choice existed, all of which were originals. */
+  `ALTER TABLE "downloads" ADD COLUMN IF NOT EXISTS "resolution" text`,
 ] as const;
