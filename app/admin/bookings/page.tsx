@@ -62,7 +62,7 @@ export default async function BookingsPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ booking, client }) => (
+              {rows.map(({ booking, client, listing }) => (
                 <tr key={booking.id}>
                   <td className="ev-dim">
                     {new Date(booking.createdAt).toLocaleString('en-US', {
@@ -77,6 +77,12 @@ export default async function BookingsPage() {
                   <td>
                     {booking.address}
                     {booking.sqft ? <span className="ev-dim"> · {booking.sqft.toLocaleString('en-US')} sq ft</span> : null}
+                    {listing && (
+                      <>
+                        <br />
+                        <Link href={`/admin/listings/${listing.id}`}>Listing →</Link>
+                      </>
+                    )}
                   </td>
                   <td>{booking.lines.filter((l) => !l.automatic).map((l) => l.name).join(', ')}</td>
                   <td>

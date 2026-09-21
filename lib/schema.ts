@@ -54,9 +54,16 @@ export const listings = pgTable(
     // The payment gate. True means previews are watermarked, video will not
     // play, and no signed download URL is ever minted.
     downloadLocked: boolean('download_locked').default(true).notNull(),
+    // The booking that made this listing — see lib/booking-listing.ts. Null on
+    // one Nick made by hand. Unique, so a booking can only ever make one.
+    bookingId: integer('booking_id').references(() => bookings.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [uniqueIndex('listings_slug_key').on(t.slug), index('listings_client_idx').on(t.clientId)],
+  (t) => [
+    uniqueIndex('listings_slug_key').on(t.slug),
+    index('listings_client_idx').on(t.clientId),
+    uniqueIndex('listings_booking_id_key').on(t.bookingId),
+  ],
 );
 
 export const media = pgTable(

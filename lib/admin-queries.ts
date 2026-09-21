@@ -375,15 +375,20 @@ export async function getEventSummary(hours = 24): Promise<
     .groupBy(events.outcome, events.kind);
 }
 
-export type AdminBookingRow = { booking: Booking; client: Client | null };
+export type AdminBookingRow = {
+  booking: Booking;
+  client: Client | null;
+  listing: { id: number; slug: string } | null;
+};
 
-/** Newest bookings first, with the client account each one landed in. */
+/** Newest bookings first, with the client account each landed in and the listing it made. */
 export async function getRecentBookings(limit = 200): Promise<AdminBookingRow[]> {
   const db = getDatabase();
   return db
-    .select({ booking: bookings, client: clients })
+    .select({ booking: bookings, client: clients, listing: { id: listings.id, slug: listings.slug } })
     .from(bookings)
     .leftJoin(clients, eq(bookings.clientId, clients.id))
+    .leftJoin(listings, eq(listings.bookingId, bookings.id))
     .orderBy(desc(bookings.createdAt), desc(bookings.id))
     .limit(limit);
 }

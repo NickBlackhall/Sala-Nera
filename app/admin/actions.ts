@@ -28,6 +28,8 @@ import {
   updateListingRow,
 } from '@/lib/admin-queries';
 import { copyKey, makeCopies, type Copies } from '@/lib/media-copies';
+import { releaseBookingListing } from '@/lib/booking-listing';
+import { slugify } from '@/lib/slug';
 import { COPIES_BATCH } from '@/lib/media-view';
 import {
   deleteUrl,
@@ -59,22 +61,6 @@ const text = (form: FormData, key: string, limit = 200): string =>
 /** Empty strings become NULL, so a cleared field does not save as "". */
 const optional = (form: FormData, key: string, limit = 200): string | null =>
   text(form, key, limit) || null;
-
-/**
- * Address to URL. This is what a client sees in the link you send them, so it
- * stays readable: "4200 Preston Hollow Lane" becomes "preston-hollow-lane"
- * with the street number dropped, matching the two seeded listings.
- */
-function slugify(address: string): string {
-  return address
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/^\s*\d+\s+/, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
-}
 
 function parseDate(value: string): Date | null {
   if (!value) return null;
@@ -184,6 +170,16 @@ export async function cancelBookingAction(form: FormData): Promise<void> {
     }
   }
 
+  // The listing the booking made goes too, but only while it is still empty —
+  // see lib/booking-listing.ts. A failure leaves an empty locked listing,
+  // which Nick can delete by hand; not worth undoing the cancellation over.
+  try {
+    await releaseBookingListing(id);
+  } catch (error) {
+    console.error('admin: booking cancelled but its listing could not be removed', { bookingId: id, error });
+  }
+
+  revalidatePath('/admin');
   revalidatePath('/admin/bookings');
 }
 

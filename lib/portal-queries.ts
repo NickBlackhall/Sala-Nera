@@ -121,6 +121,20 @@ export async function getCoverRows(
     .where(inArray(media.r2Key, coverKeys));
 }
 
+/**
+ * Which of these listings have anything uploaded. The rest were made by a
+ * booking and are waiting on the shoot, so the client's list says so rather
+ * than calling them locked.
+ */
+export async function listingsWithMedia(ids: number[]): Promise<Set<number>> {
+  if (ids.length === 0) return new Set();
+  const rows = await getDatabase()
+    .selectDistinct({ id: media.listingId })
+    .from(media)
+    .where(inArray(media.listingId, ids));
+  return new Set(rows.map((r) => r.id));
+}
+
 /** One media row with the listing it belongs to, for the download route. */
 export async function getMediaWithListing(
   mediaId: number,

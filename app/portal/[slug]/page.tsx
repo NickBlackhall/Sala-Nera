@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import Gallery from '@/app/components/Gallery';
 import PropertyLinks from '@/app/components/PropertyLinks';
-import { DEMO_CLIENT, DEMO_LISTINGS, DEMO_MEDIA, IS_DEMO } from '@/lib/demo';
+import { DEMO_CLIENT, DEMO_LISTINGS, IS_DEMO, demoMediaFor } from '@/lib/demo';
 import {
   getClientByEmail,
   getListingBySlug,
@@ -23,14 +23,23 @@ export const dynamic = 'force-dynamic';
 async function getListing(slug: string): Promise<ListingBundle | null> {
   if (IS_DEMO) {
     const listing = DEMO_LISTINGS.find((l) => l.slug === slug);
-    return listing ? { listing, media: DEMO_MEDIA, client: DEMO_CLIENT } : null;
+    return listing ? { listing, media: demoMediaFor(listing), client: DEMO_CLIENT } : null;
   }
   return getListingBySlug(slug);
 }
 
+/** Midday UTC, as shoot dates are stored, so read back in UTC to keep the day. */
+const shootDay = (d: Date | string) =>
+  new Date(d).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC',
+  });
+
 function render(data: ListingBundle) {
   const { listing, media, client } = data;
   const locked = listing.downloadLocked;
+  // Nothing uploaded yet: a booking made this listing and the shoot is still
+  // to come (lib/booking-listing.ts). No gallery bar, no invoice button.
+  const booked = media.length === 0;
 
   return (
     <div className="portal">
@@ -41,7 +50,7 @@ function render(data: ListingBundle) {
       )}
 
       <header
-        className="pcover"
+        className={`pcover${listing.coverKey ? '' : ' pcover--bare'}`}
         style={
           listing.coverKey
             ? { backgroundImage: `url(${coverUrl(listing.coverKey, media, 'large')})` }
@@ -52,20 +61,32 @@ function render(data: ListingBundle) {
         <div className="pcover-inner">
           {listing.city && <p className="pcover-kicker">{listing.city}</p>}
           <h1>{listing.address}</h1>
-          {client?.name && <p className="pcover-by">Shot for {client.name}</p>}
+          {client?.name && <p className="pcover-by">{booked ? 'Booked for' : 'Shot for'} {client.name}</p>}
           {client?.company && <p className="pcover-by">{client.company}</p>}
         </div>
       </header>
 
-      {/* The public property website exists only once the listing is paid. */}
-      {!locked && <PropertyLinks slug={listing.slug} />}
+      {booked ? (
+        <section className="pbooked wrap">
+          <p className="kicker kicker--accent">Shoot booked</p>
+          {listing.shootDate && <p className="pbooked-date">{shootDay(listing.shootDate)}</p>}
+          <p className="pbooked-note">
+            Your photos and film will appear here as soon as they&rsquo;re ready.
+          </p>
+        </section>
+      ) : (
+        <>
+          {/* The public property website exists only once the listing is paid. */}
+          {!locked && <PropertyLinks slug={listing.slug} />}
 
-      <Gallery
-        slug={listing.slug}
-        media={withPreviewUrls(media)}
-        locked={locked}
-        invoiceUrl={locked ? '#' : '#'}
-      />
+          <Gallery
+            slug={listing.slug}
+            media={withPreviewUrls(media)}
+            locked={locked}
+            invoiceUrl={locked ? '#' : '#'}
+          />
+        </>
+      )}
 
       <footer className="pfoot">
         <div className="wrap">

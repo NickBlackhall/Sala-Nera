@@ -41,9 +41,27 @@ export async function ensureClient(input: {
   return row;
 }
 
-/** Saves one delivered booking. A retry carrying the same requestId is a no-op. */
-export async function saveBooking(record: typeof bookings.$inferInsert): Promise<void> {
-  await getDatabase().insert(bookings).values(record).onConflictDoNothing({ target: bookings.requestId });
+/**
+ * Saves one delivered booking. A retry carrying the same requestId is a no-op,
+ * and gets back the id the first attempt saved, so the retry and the original
+ * agree on which booking they are.
+ */
+export async function saveBooking(record: typeof bookings.$inferInsert): Promise<number | null> {
+  const db = getDatabase();
+  const [row] = await db
+    .insert(bookings)
+    .values(record)
+    .onConflictDoNothing({ target: bookings.requestId })
+    .returning({ id: bookings.id });
+  if (row) return row.id;
+  if (!record.requestId) return null;
+
+  const [existing] = await db
+    .select({ id: bookings.id })
+    .from(bookings)
+    .where(eq(bookings.requestId, record.requestId))
+    .limit(1);
+  return existing?.id ?? null;
 }
 
 /**

@@ -26,6 +26,7 @@ export const DEMO_LISTING: Listing = {
   shootDate: new Date('2026-08-14'),
   coverKey: '/demo/elevation-dusk.jpg',
   downloadLocked: true,
+  bookingId: null,
   createdAt: new Date('2026-08-14'),
 };
 
@@ -69,6 +70,26 @@ export const DEMO_MEDIA: Media[] = PHOTOS.map(([key, label, w, h], i) => ({
   highKey: null,
 }));
 
-export const DEMO_LISTINGS = [DEMO_LISTING, DEMO_LISTING_PAID];
+/**
+ * Third listing, booked but not shot yet: what a booking makes before Nick
+ * uploads anything (lib/booking-listing.ts). No cover and no media.
+ */
+export const DEMO_LISTING_BOOKED: Listing = {
+  ...DEMO_LISTING,
+  id: 3,
+  address: '4840 Serenity Trail',
+  slug: 'serenity-trail',
+  city: 'McKinney, TX',
+  shootDate: new Date('2026-09-29T12:00:00Z'),
+  coverKey: null,
+  bookingId: 3,
+};
+
+export const DEMO_LISTINGS = [DEMO_LISTING, DEMO_LISTING_PAID, DEMO_LISTING_BOOKED];
+
+/** The demo photos belong to the two shot listings; the booked one has none yet. */
+export function demoMediaFor(listing: Listing): Media[] {
+  return listing.id === DEMO_LISTING_BOOKED.id ? [] : DEMO_MEDIA;
+}
 
 export const IS_DEMO = !process.env.DATABASE_URL;

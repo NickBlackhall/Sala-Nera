@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { findOpenSlot, invalidateAvailability } from '@/lib/availability';
 import { DETAIL_QUESTIONS, cleanDetails } from '@/lib/booking-details';
+import { ensureBookingListing, type BookingListing } from '@/lib/booking-listing';
 import { claimSlot, ensureClient, saveBooking, setBookingEventId, type ClientAccount } from '@/lib/bookings';
 import { createBookingEvent } from '@/lib/calendar';
 import { isAdminEmail } from '@/lib/session';
@@ -239,6 +240,25 @@ export async function POST(req: Request) {
    */
   let booked: { startsAt: Date; endsAt: Date; date: string } | null = null;
 
+  /**
+   * The booking's listing, locked and empty until Nick uploads — see
+   * lib/booking-listing.ts. Like the calendar event, it is reporting on a
+   * booking that already exists, so a failure here is recorded and survived,
+   * never shown to the client. Nick can still make the listing by hand.
+   */
+  let listing: BookingListing | null = null;
+  const makeListing = async (bookingId: number, shootDate: string | null) => {
+    try {
+      return await ensureBookingListing({
+        bookingId, address, shootDate, clientId: account?.id ?? null,
+      });
+    } catch (error) {
+      await record({ kind: 'booking', outcome: 'failed', reason: 'listing_not_created',
+        detail: `Booking ${bookingId}: ${String(error).slice(0, 250)}`, email, requestId: reqId });
+      return null;
+    }
+  };
+
   if (slotRaw) {
     const startsAt = new Date(slotRaw);
     // Re-checked against the calendar rather than believed. A form can be
@@ -314,6 +334,8 @@ export async function POST(req: Request) {
         detail: `Booking ${claim.id} is confirmed but has no calendar event.`,
         email, requestId: reqId });
     }
+
+    listing = await makeListing(claim.id, open.date);
   }
 
   const when = (d: Date) =>
@@ -429,7 +451,7 @@ export async function POST(req: Request) {
    */
   if (!booked) {
     try {
-      await saveBooking({
+      const bookingId = await saveBooking({
         clientId: account?.id ?? null,
         email, name, address, sqft, details,
         phone: phone || null,
@@ -443,6 +465,8 @@ export async function POST(req: Request) {
         rateCardVersion: null, // quote() above prices from the built-in card
         requestId: requestId || null,
       });
+      // No slot, so no shoot date: that is Nick's to set once he confirms one.
+      if (bookingId !== null) listing = await makeListing(bookingId, null);
     } catch (error) {
       await record({ kind: 'booking', outcome: 'failed', reason: 'booking_not_saved',
         detail: String(error).slice(0, 300), email, requestId: reqId });
@@ -475,7 +499,7 @@ export async function POST(req: Request) {
     detail: confirmed
       ? `${address} — ${chosenLines(priced).length} service(s), ${money(priced.total)}. Both emails sent.${
           account ? (account.created ? ' New client account.' : ' Existing client.') : ''
-        }`
+        }${listing ? ` Listing /portal/${listing.slug}.` : ''}`
       : `${address} — the lead reached Nick, but the client's confirmation did not send.`,
     email,
     requestId: reqId,

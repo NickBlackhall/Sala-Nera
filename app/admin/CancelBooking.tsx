@@ -15,7 +15,7 @@ export default function CancelBooking({ id, when, address }: { id: number; when:
     <form
       action={cancelBookingAction}
       onSubmit={(e) => {
-        if (!confirm(`Cancel the shoot at ${address} on ${when}?\n\nThe day goes back on the market and can be booked by someone else.`)) {
+        if (!confirm(`Cancel the shoot at ${address} on ${when}?\n\nThe day goes back on the market and can be booked by someone else. Its listing is removed too, unless you have uploaded anything to it.`)) {
           e.preventDefault();
         }
       }}

@@ -6,6 +6,7 @@ import {
   getClientByEmail,
   getCoverRows,
   getListingsForViewer,
+  listingsWithMedia,
 } from '@/lib/portal-queries';
 import { getSession } from '@/lib/session';
 import { coverUrl } from '@/lib/storage';
@@ -31,6 +32,7 @@ export default async function PortalIndex() {
   const coverRows = await getCoverRows(
     listings.flatMap((l) => (l.coverKey ? [l.coverKey] : [])),
   );
+  const delivered = await listingsWithMedia(listings.map((l) => l.id));
 
   return (
     <div className="pindex">
@@ -86,8 +88,10 @@ export default async function PortalIndex() {
                         .filter(Boolean)
                         .join(' · ')}
                     </p>
-                    {l.downloadLocked && (
-                      <span className="pindex-lock">Downloads locked</span>
+                    {!delivered.has(l.id) ? (
+                      <span className="pindex-booked">Shoot booked</span>
+                    ) : (
+                      l.downloadLocked && <span className="pindex-lock">Downloads locked</span>
                     )}
                   </div>
                 </Link>
