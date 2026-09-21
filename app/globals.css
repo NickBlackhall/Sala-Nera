@@ -236,16 +236,21 @@ section{position:relative;border-top:1px solid var(--line)}
 .admin-media{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px}
 .admin-media li{border:1px solid var(--line);cursor:grab}
 .admin-media li:active{cursor:grabbing}
-.admin-media img{width:100%;aspect-ratio:3/2;object-fit:cover}
+.admin-media img{width:100%;aspect-ratio:3/2;object-fit:cover;display:block}
 .admin-media div{padding:12px 14px 14px;display:flex;flex-direction:column;gap:5px}
+.admin-media-thumb{position:relative;padding:0!important}
+.admin-media-select{position:absolute;top:8px;left:8px;width:20px;height:20px;margin:0;cursor:pointer;accent-color:var(--ember);outline:1px solid rgba(255,255,255,.8);outline-offset:1px}
 .admin-media button{font:inherit;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:none;border:0;padding:4px 0 0;cursor:pointer;text-align:left}
 .admin-media button:hover{color:var(--ember)}
 .admin-cover-flag{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ember);padding-top:4px}
 .admin-media-actions{padding:0;flex-direction:row;align-items:center;justify-content:space-between;gap:14px}
 .admin-media button.admin-media-delete:hover{color:var(--oxblood)}
 .admin-media-hint{font-size:.82rem;margin-bottom:14px}
+.admin-media-clear-selection{font:inherit;font-size:inherit;text-decoration:underline;background:none;border:0;padding:0;cursor:pointer;color:var(--ember)}
 .admin-media li.admin-media-dragging{opacity:.4}
 .admin-media li.admin-media-over{outline:2px solid var(--ember);outline-offset:-2px}
+.admin-media-endzone{margin-top:12px;padding:18px;text-align:center;font-size:.82rem;color:var(--muted);border:1px dashed var(--line)}
+.admin-media-endzone.admin-media-over{border-color:var(--ember);color:var(--ember);border-style:solid}
 .admin-upload{margin-bottom:26px}
 .admin-upload-rows{list-style:none;font-size:.88rem;margin-top:14px;max-width:520px}
 .admin-upload-row{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid var(--line)}
