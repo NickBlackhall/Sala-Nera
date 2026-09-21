@@ -10,8 +10,11 @@ import {
   cancelBookingRow,
   deleteClientRow,
   deleteListingRow,
+  deleteMediaRow,
   emailIsTaken,
+  firstMediaKey,
   getListingSlug,
+  getMediaRow,
   insertClient,
   insertListing,
   insertMediaRow,
@@ -21,7 +24,7 @@ import {
   updateClientRow,
   updateListingRow,
 } from '@/lib/admin-queries';
-import { uploadUrl } from '@/lib/storage';
+import { deleteUrl, isLocalKey, uploadUrl } from '@/lib/storage';
 
 /**
  * Every action starts with requireAdmin(). A server action is a POST endpoint
@@ -353,4 +356,52 @@ export async function addMediaAction(input: {
   revalidatePath(`/admin/listings/${input.listingId}`);
   revalidatePath('/admin');
   return {};
+}
+
+/**
+ * Remove one photo or video: the row first, then the object behind it.
+ *
+ * That order is deliberate and not the intuitive one. Deleting the object
+ * first would, if the row delete then failed, leave a row pointing at bytes
+ * that are gone — a broken image in a client's gallery. This way round the
+ * worst case is an orphaned object in a private bucket that nothing links
+ * to, which costs a fraction of a cent and is invisible to everyone.
+ */
+export async function deleteMediaAction(form: FormData): Promise<void> {
+  await requireAdmin();
+
+  const id = Number(form.get('id'));
+  if (!Number.isInteger(id)) return;
+
+  const row = await getMediaRow(id);
+  if (!row) return;
+
+  const { listingId, r2Key } = row.media;
+  await deleteMediaRow(id);
+
+  // A listing whose cover just disappeared falls back to whatever sorts
+  // first, or to no cover at all rather than a key pointing at nothing.
+  if (row.listingCoverKey === r2Key) {
+    await setListingCover(listingId, await firstMediaKey(listingId));
+  }
+
+  // Seeded demo rows keep their bytes under /public, where there is nothing
+  // to delete and no signed URL to do it with.
+  if (!isLocalKey(r2Key)) {
+    const url = deleteUrl(r2Key);
+    if (url) {
+      try {
+        const res = await fetch(url, { method: 'DELETE' });
+        // R2 answers 204 on success, and on deleting something already gone.
+        if (!res.ok && res.status !== 404) {
+          console.error(`media delete: R2 kept ${r2Key} (${res.status})`);
+        }
+      } catch (error) {
+        console.error(`media delete: R2 unreachable for ${r2Key}`, error);
+      }
+    }
+  }
+
+  revalidatePath(`/admin/listings/${listingId}`);
+  revalidatePath('/admin');
 }

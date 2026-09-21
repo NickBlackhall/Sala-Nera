@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/admin';
 import { getAdminListing, getClientOptions } from '@/lib/admin-queries';
 import DeleteListing from '../../DeleteListing';
+import DeleteMedia from '../../DeleteMedia';
 import ListingForm from '../../ListingForm';
 import { setCoverAction, updateListingAction } from '../../actions';
 import { isRemoteStorage, previewUrl } from '@/lib/storage';
@@ -73,15 +74,18 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
                     {item.kind}
                     {item.width && item.height ? ` · ${item.width}×${item.height}` : ''}
                   </span>
-                  {listing.coverKey === item.r2Key ? (
-                    <span className="admin-cover-flag">Cover</span>
-                  ) : (
-                    <form action={setCoverAction}>
-                      <input type="hidden" name="id" value={listing.id} />
-                      <input type="hidden" name="coverKey" value={item.r2Key} />
-                      <button type="submit">Use as cover</button>
-                    </form>
-                  )}
+                  <div className="admin-media-actions">
+                    {listing.coverKey === item.r2Key ? (
+                      <span className="admin-cover-flag">Cover</span>
+                    ) : (
+                      <form action={setCoverAction}>
+                        <input type="hidden" name="id" value={listing.id} />
+                        <input type="hidden" name="coverKey" value={item.r2Key} />
+                        <button type="submit">Use as cover</button>
+                      </form>
+                    )}
+                    <DeleteMedia id={item.id} filename={item.filename} />
+                  </div>
                 </div>
               </li>
             ))}

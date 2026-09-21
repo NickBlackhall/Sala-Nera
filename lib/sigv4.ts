@@ -65,8 +65,8 @@ export function presign(input: {
   secretAccessKey: string;
   region: string;
   expiresIn: number;
-  /** GET for a download/preview URL, PUT for a direct-upload URL. Defaults to GET. */
-  method?: 'GET' | 'PUT';
+  /** GET for a download/preview URL, PUT to upload, DELETE to remove. Defaults to GET. */
+  method?: 'GET' | 'PUT' | 'DELETE';
   extraParams?: Record<string, string>;
   now?: Date;
 }): string {
@@ -99,7 +99,7 @@ export function presign(input: {
     canonicalQuery,
     `host:${host}\n`, // canonical headers block ends with its own newline
     'host',
-    'UNSIGNED-PAYLOAD', // a presigned GET has no body to hash
+    'UNSIGNED-PAYLOAD', // no presigned request hashes its body, whatever the method
   ].join('\n');
 
   const stringToSign = [

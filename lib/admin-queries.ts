@@ -165,7 +165,7 @@ export async function setListingLock(id: number, locked: boolean): Promise<void>
   await db.update(listings).set({ downloadLocked: locked }).where(eq(listings.id, id));
 }
 
-export async function setListingCover(id: number, coverKey: string): Promise<void> {
+export async function setListingCover(id: number, coverKey: string | null): Promise<void> {
   const db = getDatabase();
   await db.update(listings).set({ coverKey }).where(eq(listings.id, id));
 }
@@ -199,6 +199,38 @@ export async function insertMediaRow(input: MediaInput): Promise<Media> {
   const sort = await nextMediaSort(input.listingId);
   const [row] = await db.insert(media).values({ ...input, sort }).returning();
   return row;
+}
+
+/** One media row plus the cover key of the listing it belongs to. */
+export async function getMediaRow(
+  id: number,
+): Promise<{ media: Media; listingCoverKey: string | null } | null> {
+  const db = getDatabase();
+  const [row] = await db
+    .select({ media, listingCoverKey: listings.coverKey })
+    .from(media)
+    .innerJoin(listings, eq(media.listingId, listings.id))
+    .where(eq(media.id, id));
+
+  return row ?? null;
+}
+
+export async function deleteMediaRow(id: number): Promise<void> {
+  const db = getDatabase();
+  await db.delete(media).where(eq(media.id, id));
+}
+
+/** Whatever now sorts first, for a listing that just lost its cover photo. */
+export async function firstMediaKey(listingId: number): Promise<string | null> {
+  const db = getDatabase();
+  const [row] = await db
+    .select({ r2Key: media.r2Key })
+    .from(media)
+    .where(eq(media.listingId, listingId))
+    .orderBy(asc(media.sort), asc(media.id))
+    .limit(1);
+
+  return row?.r2Key ?? null;
 }
 
 /** Media rows cascade; so do this listing's download records. */

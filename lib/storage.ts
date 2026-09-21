@@ -144,3 +144,32 @@ export function uploadUrl(key: string): string | null {
     method: 'PUT',
   });
 }
+
+/**
+ * A signed DELETE for one object, used server-side rather than handed to the
+ * browser: deleting is a bare request with no body, so there is nothing to
+ * gain from going direct, and keeping it on the server means the bucket's
+ * CORS policy never needs to allow DELETE from a browser origin.
+ *
+ * Null when R2 isn't configured, which also covers the seeded demo rows —
+ * their keys are /public paths, and there is no object to remove.
+ */
+export function deleteUrl(key: string): string | null {
+  const config = r2Config();
+  if (!config) return null;
+
+  return presign({
+    host: `${config.accountId}.r2.cloudflarestorage.com`,
+    canonicalUri: `/${encodeKey(config.bucket)}/${encodeKey(key.replace(/^\/+/, ''))}`,
+    accessKeyId: config.accessKeyId,
+    secretAccessKey: config.secretAccessKey,
+    region: R2_REGION,
+    expiresIn: DOWNLOAD_TTL,
+    method: 'DELETE',
+  });
+}
+
+/** True for a seeded demo row, whose bytes live under /public and not in R2. */
+export function isLocalKey(key: string): boolean {
+  return key.startsWith('/');
+}
