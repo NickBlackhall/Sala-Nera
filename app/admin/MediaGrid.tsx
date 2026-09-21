@@ -24,6 +24,7 @@ export default function MediaGrid({
 }) {
   const [items, setItems] = useState(media);
   const [dragId, setDragId] = useState<number | null>(null);
+  const [overId, setOverId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Uploads and deletes re-render this page with a different set of media, and
@@ -37,19 +38,26 @@ export default function MediaGrid({
     setItems(media);
   }
 
-  function moveTo(targetId: number) {
-    if (dragId === null || dragId === targetId) return;
+  /**
+   * Put the dragged photo in the dropped-on photo's slot, everything else
+   * closing up behind it.
+   *
+   * This runs once, on drop. Doing it continuously while dragging over — which
+   * is the obvious way to get live feedback — feeds back on itself: moving a
+   * tile under the cursor changes which tile is under the cursor, which moves
+   * it again. Short drags survived that; dragging across rows scrambled.
+   */
+  function reordered(list: MediaView[], targetId: number): MediaView[] {
+    if (dragId === null || dragId === targetId) return list;
 
-    setItems((prev) => {
-      const from = prev.findIndex((m) => m.id === dragId);
-      const to = prev.findIndex((m) => m.id === targetId);
-      if (from === -1 || to === -1) return prev;
+    const from = list.findIndex((m) => m.id === dragId);
+    const to = list.findIndex((m) => m.id === targetId);
+    if (from === -1 || to === -1) return list;
 
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next;
-    });
+    const next = [...list];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    return next;
   }
 
   async function save(order: MediaView[]) {
@@ -97,15 +105,32 @@ export default function MediaGrid({
             onDragOver={(e) => {
               e.preventDefault();
               e.dataTransfer.dropEffect = 'move';
-              moveTo(item.id);
+              if (dragId !== null && dragId !== item.id) setOverId(item.id);
             }}
-            onDrop={(e) => e.preventDefault()}
+            onDragLeave={() => setOverId((current) => (current === item.id ? null : current))}
+            onDrop={(e) => {
+              e.preventDefault();
+              const next = reordered(items, item.id);
+              setItems(next);
+              setDragId(null);
+              setOverId(null);
+              setError(null);
+              void save(next);
+            }}
+            // Fires whether or not the drop landed on a tile, so a photo let go
+            // over empty space simply puts itself back.
             onDragEnd={() => {
               setDragId(null);
-              setError(null);
-              void save(items);
+              setOverId(null);
             }}
-            className={dragId === item.id ? 'admin-media-dragging' : undefined}
+            className={
+              [
+                dragId === item.id ? 'admin-media-dragging' : '',
+                overId === item.id ? 'admin-media-over' : '',
+              ]
+                .filter(Boolean)
+                .join(' ') || undefined
+            }
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

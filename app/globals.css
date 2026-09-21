@@ -245,6 +245,7 @@ section{position:relative;border-top:1px solid var(--line)}
 .admin-media button.admin-media-delete:hover{color:var(--oxblood)}
 .admin-media-hint{font-size:.82rem;margin-bottom:14px}
 .admin-media li.admin-media-dragging{opacity:.4}
+.admin-media li.admin-media-over{outline:2px solid var(--ember);outline-offset:-2px}
 .admin-upload{margin-bottom:26px}
 .admin-upload-rows{list-style:none;font-size:.88rem;margin-top:14px;max-width:520px}
 .admin-upload-row{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid var(--line)}
