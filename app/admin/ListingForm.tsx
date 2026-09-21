@@ -79,16 +79,6 @@ export default function ListingForm({
         </select>
       </div>
 
-      <div className="field">
-        <label htmlFor="coverKey">Cover image</label>
-        <input
-          id="coverKey"
-          name="coverKey"
-          defaultValue={listing?.coverKey ?? ''}
-          placeholder="/demo/elevation-dusk.jpg"
-        />
-      </div>
-
       <label className="admin-check">
         <input
           type="checkbox"

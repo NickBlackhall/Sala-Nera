@@ -138,13 +138,13 @@ export async function updateClientRow(id: number, input: ClientInput): Promise<v
   await db.update(clients).set(input).where(eq(clients.id, id));
 }
 
+/** No coverKey: setListingCover is the only writer, so a listing save cannot stomp it. */
 export type ListingInput = {
   address: string;
   slug: string;
   city: string | null;
   clientId: number | null;
   shootDate: Date | null;
-  coverKey: string | null;
   downloadLocked: boolean;
 };
 

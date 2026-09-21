@@ -204,7 +204,9 @@ async function readListingForm(form: FormData, exceptId?: number) {
       city: optional(form, 'city', 120),
       clientId: parseClientId(text(form, 'clientId', 20)),
       shootDate: parseDate(text(form, 'shootDate', 20)),
-      coverKey: optional(form, 'coverKey', 500),
+      // coverKey is deliberately absent: setCoverAction owns that column. When
+      // this form also carried it, saving the form wrote back the value the
+      // page loaded with, silently undoing any "Use as cover" clicked since.
       // Locked unless the checkbox says otherwise. A new listing is never
       // downloadable until someone deliberately unlocks it.
       downloadLocked: form.get('downloadLocked') !== 'unlocked',
