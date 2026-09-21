@@ -157,10 +157,10 @@ section{position:relative;border-top:1px solid var(--line)}
 /* ================= CLIENT PORTAL ================= */
 .portal{background:var(--ink);min-height:100svh}
 .demo-flag{background:var(--ember);color:#1a0d07;font-size:12px;font-weight:600;letter-spacing:.04em;text-align:center;padding:9px 16px}
-.pcover{position:relative;min-height:62svh;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center;text-align:center}
-.pcover-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,14,13,.55),rgba(15,14,13,.9))}
-.pcover-inner{position:relative;z-index:2;padding:64px 24px}.pcover-logo{width:132px;margin:0 auto 28px;display:block}
-.pcover h1{font-size:clamp(2rem,5vw,3.4rem);margin-bottom:14px}.pcover p{color:#C9C4BA;font-size:.98rem;letter-spacing:.04em}
+.pcover{position:relative;min-height:80svh;display:flex;align-items:flex-end;justify-content:center;background-size:cover;background-position:center;text-align:center}
+.pcover-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,14,13,0) 0%,rgba(15,14,13,0) 55%,rgba(15,14,13,.62) 76%,rgba(15,14,13,.94) 100%)}
+.pcover-inner{position:relative;z-index:2;padding:64px 24px clamp(36px,6vw,64px);text-shadow:0 1px 18px rgba(15,14,13,.6)}
+.pcover h1{font-size:clamp(2rem,5vw,3.4rem);margin:14px 0 18px}.pcover-kicker,.pcover-by{margin:0;color:#E4DFD5;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}.pcover-by+.pcover-by{margin-top:6px}
 .gal-bar{position:sticky;top:0;z-index:40;background:rgba(15,14,13,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .gal-bar-inner{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-top:14px;padding-bottom:14px;flex-wrap:wrap}.gal-count{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.gal-lock{color:var(--ember);margin-left:8px;text-transform:none;letter-spacing:.02em}.gal-actions{display:flex;gap:10px;flex-wrap:wrap}
 .gal-error{margin:18px 0 0;padding:12px 14px;border:1px solid var(--ember);color:var(--paper);font-size:13px}

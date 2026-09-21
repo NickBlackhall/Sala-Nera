@@ -49,18 +49,10 @@ function render(data: ListingBundle) {
       >
         <div className="pcover-scrim" />
         <div className="pcover-inner">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            className="pcover-logo"
-            src="/brand/sala nera logo cropped dark.svg"
-            alt="Sala Nera"
-            width={1669}
-            height={1070}
-          />
+          {listing.city && <p className="pcover-kicker">{listing.city}</p>}
           <h1>{listing.address}</h1>
-          <p>
-            {[listing.city, client?.name].filter(Boolean).join(' · ')}
-          </p>
+          {client?.name && <p className="pcover-by">Shot for {client.name}</p>}
+          {client?.company && <p className="pcover-by">{client.company}</p>}
         </div>
       </header>
 
