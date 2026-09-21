@@ -1,5 +1,48 @@
 # Sala Nera — Handoff (Sep 21 2026)
 
+## Latest — Sep 21, night: High res / Low res download switch — LIVE (`97c3445`)
+
+> **Deployed on Nick's yes.** No migration was needed:
+> `downloads.resolution` already existed from `0005_media_copies`. Checked on
+> production (GET only, minted admin cookie): `/portal/rockwall-shores-drive`
+> renders the switch and the "MLS Photo Download" button is gone. **No real
+> low-res download has happened yet.** That's Nick's test, below.
+
+What it does, on the delivery page (`/portal/<slug>`), paid galleries only:
+- One **High res / Low res** switch beside Download Selected / Download All,
+  starting on High res. It replaces the disabled "MLS Photo Download" button.
+  Download All, Download Selected and the lightbox's single-file link all use
+  it. The lightbox link says "Download high res" / "Download low res" ("Download"
+  for a film).
+- **High** = the original, or `high_key` when set (original over 19MB or not a
+  JPEG), saved as `<name>.jpg`. **Low** = `large_key` (2400px), saved as
+  `<name>-low-res.jpg` so both sizes can sit in one folder. My call, not Nick's.
+- **Films** are the same file either way. So is a photo with no copies yet,
+  which falls back to its original.
+- `downloads.resolution` records what was **delivered**, not what was asked
+  for. The admin listing page's download history marks low res rows. The
+  activity event detail ends "…, low res" / "…, high res".
+- The logic is `chooseFile()` in `lib/downloads.ts`, used by both routes.
+  POST body takes `resolution`; the single-file route takes `?res=low`.
+  Anything unrecognised is high.
+
+**Measured on Rockwall Shores (live, read-only):** low res averages 0.6MB a
+photo (largest 1.2MB, ~21MB for the set), against 10.4MB (largest 16.5MB,
+332MB) for high.
+
+**Checks:** `reference/check-downloads.mjs` runs both real routes on a
+throwaway Postgres with fake R2 signing: which file, which save-as name, what
+gets logged, locked/other-client/signed-out refusals. All 33 pass.
+`reference/shoot-download-switch.mjs` drives the page in demo mode (`DATABASE_URL=
+npx next dev -p 3217`): starts on High, each button sends the size shown, the
+lightbox link follows it, no sideways scroll at 390px, and there's no switch on
+unpaid galleries. All pass.
+
+**Still owed:** Nick flips to Low res on Rockwall and downloads one photo and
+Download All. Check the files are ~0.6MB `-low-res.jpg` and the admin history
+shows "low res". Read-only: `select filename, resolution, at from downloads
+order by id desc limit 40`.
+
 ## Latest — Sep 21, later still: video plays, in our own player (`55ba776`) — vertical proven live
 
 > **Vertical film proven on production (Sep 21).** Nick uploaded
@@ -8,11 +51,12 @@
 > worked). Live `/p/rockwall-shores-drive` shows the films section with its player,
 > and the signed video URL answers a range request with 206 `video/mp4`.
 >
+> **Watched on his phone (Sep 21, 22:10 UTC):** Nick: "ok it looks good on my
+> phone." He didn't say which of the two pages he opened.
+>
 > **Still owed:**
-> 1. Nick watches it play on his phone: `salanera.com/p/rockwall-shores-drive` and
->    the delivery page (`/portal/rockwall-shores-drive`). Ask how it looked and felt.
-> 2. A **horizontal** film, same checks. Expect about 1920×1080 with a still.
-> 3. A fresh **photo** upload, to prove new photos make their copies (with the
+> 1. A **horizontal** film, same checks. Expect about 1920×1080 with a still.
+> 2. A fresh **photo** upload, to prove new photos make their copies (with the
 >    copyright notice) on their own. Rockwall's 32 older copies lack the notice.
 >
 > Read-only check used: `select m.id, l.slug, m.filename, m.width, m.height,
