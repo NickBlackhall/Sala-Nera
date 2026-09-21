@@ -1,5 +1,54 @@
 # Sala Nera — Handoff (Sep 21 2026)
 
+## Latest — Sep 21, late night: every booking creates its own listing — LIVE (`f9f203a`)
+
+> **Nick chose fully automatic**, over my recommended one-click "Create
+> listing" button on each booking. Migration `0006_booking_listings`
+> (`listings.booking_id`, unique, SET NULL) was shipped first (`fa3f4e1`).
+> Nick ran the migrate call himself at 23:12 UTC. I confirmed it in
+> `portal_migrations` and `information_schema`, then deployed the feature.
+> Live check (GET only, minted admin cookie): /admin, /admin/bookings,
+> /admin/listings/2, /portal, /portal/rockwall-shores-drive and the public
+> /p page all 200 and render as before. **No real booking has made a listing
+> yet.** The first real one is the proof: check `select id, slug, address,
+> city, client_id, booking_id from listings order by id desc limit 3`.
+
+What it does (`lib/booking-listing.ts`):
+- Both booking paths (confirmed slot, and the no-slot request fallback) call
+  `ensureBookingListing()` after the booking row exists. The listing is locked,
+  with street/city split from the form's free-text address, a slug from
+  `lib/slug.ts` (now shared with the admin form), `-2`, `-3`… when taken, the
+  agent's client id, and the shoot date at midday UTC (null for a request).
+  Retries can't make two (unique `booking_id`). A failure is recorded as
+  `booking/failed/listing_not_created` and never fails the booking.
+- Admin cancel calls `releaseBookingListing()`: deletes the listing only if it
+  has no media (the check is inside the DELETE). The cancel confirm says so.
+- The agent's delivery page with no media shows "Shoot booked", the date, and
+  "Your photos and film will appear here…", with no gallery bar and no invoice
+  button. The cover is 46svh without a cover image. "Booked for" replaces "Shot
+  for". Their /portal list says "Shoot booked" instead of "Downloads locked".
+- /admin/bookings links each booking to its listing.
+- Test bookings from an admin address still make a listing, with no client.
+- Demo mode gained a third listing, `serenity-trail`: booked, no media.
+
+**Known limits:** an address with no comma between street and city ("14628
+Flanders Ct Addison, TX 75001") keeps the city in the street and sets no city,
+for Nick to tidy. Creating a listing by hand for a booked shoot now makes a
+duplicate. The agent's confirmation email wording is unchanged.
+
+**Checks:** `reference/check-booking-listing.mjs` (32, all pass) runs the real
+booking route and admin cancel on a throwaway Postgres, with calendar, geocode
+and Resend stubbed. check-downloads, check-claim, check-copies-action and
+check-listing-delete re-run after the schema change: all pass.
+
+**Next, one gap at a time (Nick's order from the journey review):**
+1. **Payment on the site.** Also the "Pay Invoice →" / "View Invoice →" button
+   on the delivery page is `href="#"`, a dead button agents can see.
+2. **A "your media is ready" email** to the agent. Nothing tells them today.
+3. Real prices and terms (both still `…_ARE_PLACEHOLDER = true`).
+4. Agents cancelling/rescheduling their own booking.
+5. Verify Spiro reads the same calendar (possible double-booking).
+
 ## Latest — Sep 21, night: High res / Low res download switch — LIVE (`97c3445`)
 
 > **Deployed on Nick's yes.** No migration was needed:
