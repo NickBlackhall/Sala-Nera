@@ -1,4 +1,141 @@
-# Sala Nera — Handoff (Sep 18 2026)
+# Sala Nera — Handoff (Sep 21 2026)
+
+## Latest — Sep 21: real media is in the bucket, and the admin can finally manage it
+
+> **The R2 upload test is no longer owed — Nick put a real listing's worth of
+> files through it.** 31 photos and a 127MB video landed on the Rockwall
+> Shores listing, verified in the database with plausible byte counts (6.5–16.5MB
+> a photo), not taken on trust. What is still unconfirmed from the original
+> three-step test: the files being visible in the **Cloudflare dashboard**, and
+> the **`/portal/<slug>` client view** rendering them locked and unlocked.
+> Those are eyeball checks Nick has not reported back on yet.
+>
+> Three things were then built on top, each shipped and deployed on its own:
+> the cover-image bug, delete, and drag-and-drop reorder. All three are live.
+
+### The "broken images" were not broken
+
+Nick flagged some images as broken during the upload test. They are the
+**seeded demo photos** (`/demo/*.jpg` under `public/`) left over from before
+real uploads existed — not a fault. He can now delete them himself with the
+new button. Real uploads are distinguishable by key: `listings/<slug>/<uuid>-…`
+versus a demo row's leading-slash `/demo/…`, which is what `isLocalKey()` in
+`lib/storage.ts` keys off.
+
+### ⬜ A real bug found and NOT fixed: uploads never record their dimensions
+
+Every one of the 32 real uploads has `width`/`height` null, while the seeded
+rows have both. Traced to a genuine cause, not a mystery:
+`app/admin/UploadMedia.tsx` reads a photo's pixel size before upload by
+pointing an `<img>` at a `blob:` URL, and the site's own CSP (`next.config.mjs`)
+names only `'self'`, `data:` and the R2 host in `img-src` — **`blob:` is not
+allowed**, so the read fails silently and the row is saved with nulls.
+
+**The fix is one token: add `blob:` to `img-src`.** It was deliberately left
+undone to keep it out of unrelated work. Nothing is broken by the nulls —
+they only mean the admin grid shows no `1600×1067` next to a filename — but
+every future upload will keep recording nulls until this lands.
+
+### ✅ BUILT AND LIVE — the cover image stops reverting (`b862395`)
+
+Clicking "Use as cover" then "Save changes" silently put the old cover back.
+`coverKey` was writable from two places that never told each other:
+`setCoverAction` wrote it straight to the database, while `ListingForm` carried
+its own editable copy seeded once by `defaultValue` at page load. Saving the
+form wrote that stale copy back over it.
+
+**Fixed by deleting the field rather than syncing it** — removed from
+`ListingForm`, from `readListingForm`, and from `ListingInput`, so
+`setListingCover` is now the only writer and there is no second one left to
+fall out of step. A new listing simply has no cover until a photo is uploaded
+and chosen, which is all it could ever have had.
+
+**Confirmed working in production**: listing 2's cover is now a real uploaded
+drone photo, where it was `/demo/courtyard.jpg` before.
+
+### ✅ BUILT AND LIVE — delete a photo, bytes and all (`cd43ba5`)
+
+A "Delete" button per tile, gated by `confirm()` in `app/admin/DeleteMedia.tsx`
+— same shape as the existing `DeleteListing`.
+
+**The row is deleted first and the R2 object second, which is the opposite of
+the intuitive order.** Object-first risks a surviving row pointing at bytes
+that are gone, which the client sees as a broken gallery image. This way the
+worst case is an orphaned object in a private bucket that nothing links to.
+Keep that order.
+
+**Deleting the cover photo re-points the listing** at whatever now sorts first,
+or clears `coverKey` to null when nothing remains — never a key aimed at
+nothing. Demo rows skip the R2 call entirely via `isLocalKey()`.
+
+`presign()` in `lib/sigv4.ts` gained `DELETE` (it already took a method; only
+the union widened). **The delete is issued server-side, not from the browser** —
+so the bucket's CORS policy never needs a DELETE origin, and today's PUT/GET
+policy stays as it is. `npm run check:sigv4` now also proves GET, PUT and
+DELETE each sign differently, which catches a method being accepted and then
+dropped from the canonical request — a failure that otherwise only shows up
+against a real bucket.
+
+**Still true and still not done:** `deleteListingAction` deletes rows but not
+objects, so deleting a whole listing orphans its files (its own on-screen text
+admits this). Now that `deleteUrl()` exists, wiring it in is small.
+
+### ✅ BUILT AND LIVE — drag-and-drop reorder (`fc028c4`, fixed by `ad691e3`)
+
+`app/admin/MediaGrid.tsx`, a client component replacing the inline grid.
+`sort` and both queries that read it already existed; nothing could write it
+after upload, so a listing was stuck in upload order.
+
+**Native drag events, no library** — matching the dependency philosophy that
+`lib/sigv4.ts` spells out. **Mouse only as a direct result: touch fires none
+of these events.** Nick confirmed he does 99% of listing management on desktop
+and asked for finger-drag as a later, separate piece of work — do not treat it
+as a half-finished part of this one.
+
+**A bug worth not reintroducing.** The first version reordered on every
+`dragover`, which feeds back on itself: moving a tile under the cursor changes
+which tile is under the cursor, which moves it again. One-slot nudges survived
+it; **dragging across rows did nothing at all.** The order is now computed once
+on `drop`, with the hovered tile outlined to show where it lands. Do not
+"improve" this back into live reordering during the drag.
+
+The whole order is sent, not "this one moved" — a dropped request then leaves
+the old order intact instead of half-applied. `reorderMedia()` filters ids
+against the listing before writing, so a page left open while photos were
+deleted cannot stamp sort values onto rows that have moved on. A failed save
+puts the tiles back and says so, rather than showing an order the client's
+gallery would disagree with.
+
+### How this was verified without touching Nick's data
+
+Worth repeating, because `.env.local` points at the **production** database and
+a careless local test would have reordered a real listing:
+
+- **`reference/check-reorder.mjs`** — reorder, delete, and cover-reassignment
+  against a throwaway PGlite Postgres (`npm install --no-save @electric-sql/pglite`),
+  same resolve-hook harness as `check-claim.mjs`. Ten checks.
+- **`reference/shoot-media-grid.mjs`** and **`reference/shoot-drag-cases.mjs`** —
+  Playwright against a local dev server, **with the reorder request intercepted
+  and aborted every time**, so nothing was written. Production row order was
+  re-checked afterwards and confirmed untouched. An admin session is minted by
+  signing a JWT with `AUTH_SECRET` from `.env.local` — no magic-link needed.
+
+**A Playwright limitation that will waste an hour if rediscovered:**
+`dragTo()` cannot scroll mid-gesture, so any drag whose target is off-screen
+**silently does nothing** — no drop, no save — and looks exactly like a broken
+feature. `shoot-drag-cases.mjs` sets a 1400×3200 viewport so all 33 tiles are
+on screen; that is deliberate, not arbitrary. **Whether a real drag that needs
+the page to auto-scroll is comfortable on a 33-photo listing is therefore still
+unproven.** Nick chose to ship and find out rather than pre-emptively add a
+"send to front" button; if long drags turn out to be painful, that is the
+first thing to try.
+
+### ⬜ Pre-existing, unrelated: the admin nav overflows at 390px
+
+`nav.admin-nav` runs ~26px past the viewport on `/admin`, `/admin/clients` and
+`/admin/bookings` — pages this work never touched. Found while checking the
+media grid (which itself fits). Left alone deliberately; it predates all of
+this and Nick works on desktop.
 
 ## Latest — Sep 18: instant booking is live. A client can book a real slot and it lands on Nick's calendar
 
@@ -15,9 +152,8 @@
 > 1. **Clients cannot cancel their own booking.** They have to ring Nick, who
 >    cancels from `/admin`. Not broken, but it is the obvious next piece — see
 >    "What's left for instant booking" below.
-> 2. The **Sep 16 R2 upload test**, untouched by this session and predating it:
->    no real file has gone through the admin upload button, so media protection
->    still cannot honestly be described as working.
+> 2. ~~The **Sep 16 R2 upload test**~~ — **done Sep 21**, see the entry at the
+>    top of this file. Real media is in the bucket.
 >
 > No test bookings are holding days; Nick cancelled his.
 
@@ -626,13 +762,13 @@ the first one carrying both the R2 credentials and the upload button, so
 `isRemoteStorage()` is true in production for the first time and the admin
 "media is not on R2 yet" notice should now be gone.
 
-### ⬜ THE TEST STILL OWED — run this first, next session
+### ✅ THE TEST, mostly done Sep 21 — see the top of this file
 
-**Nobody has yet put a real file into the real bucket.** The feature was
-built and checked before any bucket existed, so this is the first contact
-between the two, and a typo in a pasted value (the bucket name especially)
-would only show up here. Nick asked for it to be marked outstanding — he
-wants to run it together rather than have it done for him:
+**Run Sep 21 with Nick**, who uploaded 31 photos and a video to the Rockwall
+Shores listing through the live admin button. Steps 1 and 2 below are done;
+the Cloudflare dashboard look and the `/portal/<slug>` client view are the
+parts he has not reported back on. Kept here because the failure notes at the
+end still apply to any future upload problem.
 
 1. ~~Check the CSP header picked up the R2 host.~~ **Done, and it passed.**
    Checked against the live site immediately after this deploy: `img-src`,
@@ -649,14 +785,16 @@ wants to run it together rather than have it done for him:
    curl -sSD - -o /dev/null https://salanera.com/ | grep -i content-security
    ```
 
-2. ⬜ **Upload one photo and one video** through
-   `/admin/listings/<id>` on the live site, and confirm: the row appears in
-   the media grid, the thumbnail renders (that proves `img-src` and a
-   working presigned GET), and the file is visible in the Cloudflare
-   dashboard under `listings/<slug>/`.
+2. ~~**Upload one photo and one video**~~ **Done Sep 21, and then some** — 31
+   photos and a 127MB video went through `/admin/listings/2` on the live site.
+   Rows appeared with real byte counts. ⬜ Still not eyeballed: the files in
+   the **Cloudflare dashboard** under `listings/rockwall-shores-drive/`.
 
-3. **Then open the listing in `/portal/<slug>` as the client** and confirm
-   the gallery renders the new media, locked and unlocked.
+3. ⬜ **Then open the listing in `/portal/<slug>` as the client** and confirm
+   the gallery renders the new media, locked and unlocked. Not done — listing
+   2 belongs to the seeded "Demo Agent" account, so seeing it as the client
+   means either reassigning it to one of Nick's own client rows or signing in
+   as that address.
 
 If an upload fails, read the CORS and CSP notes above *before* suspecting
 the credentials — both fail silently in the browser console rather than as
