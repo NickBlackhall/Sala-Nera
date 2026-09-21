@@ -18,6 +18,7 @@ import {
   insertClient,
   insertListing,
   insertMediaRow,
+  reorderMedia,
   setListingCover,
   setListingLock,
   slugIsTaken,
@@ -355,6 +356,27 @@ export async function addMediaAction(input: {
 
   revalidatePath(`/admin/listings/${input.listingId}`);
   revalidatePath('/admin');
+  return {};
+}
+
+/**
+ * Persist a new running order for one listing's media.
+ *
+ * Called with the whole order rather than "this moved from 3 to 7" so that a
+ * dropped request leaves the old order intact instead of a half-applied one.
+ */
+export async function reorderMediaAction(input: {
+  listingId: number;
+  orderedIds: number[];
+}): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  if (!Number.isInteger(input.listingId)) return { error: 'That listing no longer exists.' };
+  if (!input.orderedIds.every(Number.isInteger)) return { error: 'That order could not be read.' };
+
+  await reorderMedia(input.listingId, input.orderedIds);
+
+  revalidatePath(`/admin/listings/${input.listingId}`);
   return {};
 }
 

@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, asc, count, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
 import { bookings, clients, downloads, events, listings, media } from '@/lib/schema';
 import type { Booking, Event } from '@/lib/schema';
@@ -218,6 +218,32 @@ export async function getMediaRow(
 export async function deleteMediaRow(id: number): Promise<void> {
   const db = getDatabase();
   await db.delete(media).where(eq(media.id, id));
+}
+
+/**
+ * Write a new running order, position by position.
+ *
+ * Ids are filtered against the listing before anything is written, so a stale
+ * page holding ids that have since moved or been deleted reorders only what is
+ * genuinely still there rather than stamping sort values onto another
+ * listing's rows.
+ */
+export async function reorderMedia(listingId: number, orderedIds: number[]): Promise<void> {
+  const db = getDatabase();
+
+  const owned = await db
+    .select({ id: media.id })
+    .from(media)
+    .where(and(eq(media.listingId, listingId), inArray(media.id, orderedIds)));
+
+  const ownedIds = new Set(owned.map((r) => r.id));
+  const toWrite = orderedIds.filter((id) => ownedIds.has(id));
+
+  await Promise.all(
+    toWrite.map((id, index) =>
+      db.update(media).set({ sort: index }).where(eq(media.id, id)),
+    ),
+  );
 }
 
 /** Whatever now sorts first, for a listing that just lost its cover photo. */
