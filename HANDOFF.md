@@ -1,12 +1,28 @@
 # Sala Nera — Handoff (Sep 21 2026)
 
-## Latest — Sep 21, later still: video plays, in our own player (`55ba776`)
+## Latest — Sep 21, later still: video plays, in our own player (`55ba776`) — vertical proven live
 
-> **Built and deployed; not yet proven with a real video.** No video exists on the
-> site today (the 127MB Rockwall film was deleted earlier). **Next step: Nick
-> uploads one horizontal and one vertical film to any paid listing**, then verify
-> read-only that each row got `grid_key`/`large_key` (its still) and a real
-> width/height, and look at `/p/<slug>` and the delivery page on a phone.
+> **Vertical film proven on production (Sep 21).** Nick uploaded
+> `2027-Clairmount-Rockwell.mp4` to Rockwall Shores (paid). Checked read-only: media
+> row 56, `kind` video, **1080×1920**, `grid_key` and `large_key` both set (the still
+> worked). Live `/p/rockwall-shores-drive` shows the films section with its player,
+> and the signed video URL answers a range request with 206 `video/mp4`.
+>
+> **Still owed:**
+> 1. Nick watches it play on his phone: `salanera.com/p/rockwall-shores-drive` and
+>    the delivery page (`/portal/rockwall-shores-drive`). Ask how it looked and felt.
+> 2. A **horizontal** film, same checks. Expect about 1920×1080 with a still.
+> 3. A fresh **photo** upload, to prove new photos make their copies (with the
+>    copyright notice) on their own. Rockwall's 32 older copies lack the notice.
+>
+> Read-only check used: `select m.id, l.slug, m.filename, m.width, m.height,
+> m.grid_key is not null, m.large_key is not null from media m join listings l on
+> l.id = m.listing_id where m.kind = 'video'` (no `created_at` on `media`; order by
+> `id`). Run from a `.mjs` in the project root with `node --env-file=.env.local`
+> (`.env.local` is the **production** DB), then delete the file.
+>
+> **After that, next build:** the High res / Low res download switch (see the
+> gallery-copies section below).
 
 Nick asked whether video needs Vimeo. No: R2 serves partial requests (206,
 `Accept-Ranges`, CORS for salanera.com, all checked live), the CSP allowed R2 in
@@ -40,7 +56,8 @@ switch later (High = 4K master, Low = the 1080p that plays) if an agent asks.
 - The tile shows no running time (I told Nick it would): that needs a DB column
   and a migration, so it was skipped. The player shows the time once it plays.
 - Delivery bar still says "N images" when some are videos.
-- Existing videos without a still get no "Make previews" catch-up (none exist).
+- Existing videos without a still get no "Make previews" catch-up (the only video,
+  row 56, has its still).
 
 **Testing notes:** `ffmpeg-static` (`npm install --no-save`) makes test clips; its
 `-display_rotation 90` makes a phone-style sideways clip. Playwright's Chromium
