@@ -1,6 +1,55 @@
 # Sala Nera — Handoff (Sep 21 2026)
 
-## Latest — Sep 21, late: the public property website is live, branded and MLS
+## Latest — Sep 21, later still: video plays, in our own player (`55ba776`)
+
+> **Built and deployed; not yet proven with a real video.** No video exists on the
+> site today (the 127MB Rockwall film was deleted earlier). **Next step: Nick
+> uploads one horizontal and one vertical film to any paid listing**, then verify
+> read-only that each row got `grid_key`/`large_key` (its still) and a real
+> width/height, and look at `/p/<slug>` and the delivery page on a phone.
+
+Nick asked whether video needs Vimeo. No: R2 serves partial requests (206,
+`Accept-Ranges`, CORS for salanera.com, all checked live), the CSP allowed R2 in
+`media-src`, and uploads already took video. Egress is free, so hosting costs
+almost nothing. The trade-off, which Nick accepted: one quality per file, no
+automatic step-down on weak phone signal. **Recommendation given and taken: export
+1080p H.264 MP4, about 100–150MB for 2 minutes.** 4K would fit the High/Low res
+switch later (High = 4K master, Low = the 1080p that plays) if an agent asks.
+
+**What exists now:**
+- `app/components/VideoPlayer.tsx`: custom controls over `<video>` (play, seek,
+  time, mute, fullscreen, keys, fading controls, one film at a time).
+  `preload="none"`, so nothing is fetched before play. Sized to the video's shape,
+  capped at 85svh, so vertical stays vertical. iPhone fullscreen is Apple's player.
+- Property website: films first, above the photos. Consecutive verticals share a
+  row. A listing with only videos still gets a page.
+- Delivery gallery: a video tile shows the still with a play mark and opens the
+  player in the lightbox, already playing. The unpaid gallery shows the SALA NERA
+  watermark over the player.
+- Upload: `app/admin/probeVideo.ts` reads the displayed size (phone rotate flags
+  honoured) and takes a still 1s in, **in the browser, before upload** (Vercel has
+  no ffmpeg). `saveVideoFrameAction` makes the still into grid/large copies via
+  `makeCopies`, recording the video's own size. CSP `media-src` gained `blob:`.
+  A browser that can't decode the file (HEVC on some Windows, ProRes) uploads it
+  anyway, with no still; the player learns its shape on play.
+
+**Known gaps:**
+- **An unpaid gallery streams the full video file.** There's no smaller copy of a
+  video, unlike photos. The watermark overlay and a disabled right-click are
+  deterrents only. Belongs with the parked protection question in the polish pass.
+- The tile shows no running time (I told Nick it would): that needs a DB column
+  and a migration, so it was skipped. The player shows the time once it plays.
+- Delivery bar still says "N images" when some are videos.
+- Existing videos without a still get no "Make previews" catch-up (none exist).
+
+**Testing notes:** `ffmpeg-static` (`npm install --no-save`) makes test clips; its
+`-display_rotation 90` makes a phone-style sideways clip. Playwright's Chromium
+can't play H.264, so test with VP9 (webm, or VP9 in mp4). **`npm install --no-save
+X` removes other `--no-save` packages**, so install `playwright @electric-sql/pglite
+ffmpeg-static` together. A temporary test page under `app/` leaves stale types in
+`.next/dev`; `rm -rf .next` after deleting it.
+
+## Sep 21, late: the public property website is live, branded and MLS
 
 > **Start here next session.** Every paid listing now has a public show-off page
 > agents send to buyers: `salanera.com/p/<slug>`, and `/p/<slug>/mls` with no
