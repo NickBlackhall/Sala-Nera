@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { cache } from 'react';
 import { DEMO_CLIENT, DEMO_LISTINGS, DEMO_MEDIA, IS_DEMO } from '@/lib/demo';
 import { getListingBySlug, type ListingBundle } from '@/lib/portal-queries';
+import { SITE_ICONS, SITE_MANIFEST } from '@/lib/site-metadata';
 import { isLocalKey, mediaUrl, PUBLIC_TTL } from '@/lib/storage';
 
 /**
@@ -92,14 +93,15 @@ export const getPropertySite = cache(async (slug: string): Promise<PropertySite 
 
 /**
  * Link-only: kept out of search so a seller's home is not findable under
- * Nick's name long after it sells. The unbranded version also drops the site
- * name, icon and web-app manifest, each of which says "Sala Nera" somewhere a
- * viewer can see it — the tab, a link preview, a saved home-screen icon.
+ * Nick's name long after it sells. app/p/[slug]/layout.tsx starts every page
+ * here unbranded — no site name, icon or manifest, each of which says "Sala
+ * Nera" somewhere a viewer can see it — and the branded version puts the icon
+ * and manifest back. A not-found keeps the layout's neutral defaults: Next
+ * drops a page's own metadata when it calls notFound().
  */
 export function propertyMetadata(site: PropertySite | null, branded: boolean): Metadata {
+  if (!site) return {};
   const robots = { index: false, follow: false };
-  const unbranded: Metadata = branded ? {} : { icons: { icon: [], apple: [] }, manifest: null };
-  if (!site) return { title: 'Not found', robots, ...unbranded };
 
   const place = [site.address, site.city].filter(Boolean).join(', ');
   const presenter = site.agent && [site.agent.name, site.agent.company].filter(Boolean).join(', ');
@@ -120,6 +122,6 @@ export function propertyMetadata(site: PropertySite | null, branded: boolean): M
       ...(branded ? { siteName: 'Sala Nera' } : {}),
     },
     twitter: { card: 'summary_large_image', title: place, description, images: [site.coverUrl] },
-    ...unbranded,
+    ...(branded ? { icons: SITE_ICONS, manifest: SITE_MANIFEST } : {}),
   };
 }

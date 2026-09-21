@@ -5,6 +5,26 @@ import Nav from './components/Nav';
 const LOGO = '/brand/sala nera logo cropped dark.svg';
 const MARK = '/brand/mark.svg';
 
+// Who the business is, for search engines. Homepage only: that is where they
+// look for it, and a site-wide copy would put "Sala Nera" into the source of
+// the unbranded /p/<slug>/mls pages agents attach to MLS listings.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfessionalService',
+  name: 'Sala Nera',
+  description: 'Cinematic real estate media collection from Blackhall Media Group.',
+  url: 'https://salanera.com',
+  parentOrganization: {
+    '@type': 'Organization',
+    name: 'Blackhall Media Group',
+    url: 'https://www.blackhallmediagroup.com',
+  },
+  email: 'nblackhall@blackhallmediagroup.com',
+  areaServed: { '@type': 'Place', name: 'Dallas–Fort Worth, Texas' },
+  address: { '@type': 'PostalAddress', addressRegion: 'TX', addressCountry: 'US' },
+  serviceType: ['Real estate videography', 'Architectural photography', 'Aerial cinematography'],
+};
+
 const services = [
   { href: '/work#films', type: 'Motion', title: 'Feature Films', copy: 'Cinematic property stories, scored and cut with restraint.' },
   { href: '/work#stills', type: 'Photography', title: 'Editorial Stills', copy: 'Architecture, atmosphere, and detail held true.' },
@@ -15,6 +35,7 @@ const services = [
 export default function Home() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <a className="skip" href="#main">Skip to content</a>
       <Nav />
 
