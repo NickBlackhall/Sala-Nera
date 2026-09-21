@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
-import { authorizeListing, recordDownloads } from '@/lib/downloads';
+import { authorizeListing, chooseFile, parseResolution, recordDownloads } from '@/lib/downloads';
 import { DEMO_LISTINGS, DEMO_MEDIA, IS_DEMO } from '@/lib/demo';
 import { getListingBySlug, getMediaForListing } from '@/lib/portal-queries';
 import { DOWNLOAD_TTL, mediaUrl } from '@/lib/storage';
 import { record } from '@/lib/telemetry';
 
 /**
- * A selection, or a whole listing: POST { slug, ids? }, get back one signed URL
- * per file. Omitting `ids` means everything in the listing.
+ * A selection, or a whole listing: POST { slug, ids?, resolution? }, get back
+ * one signed URL per file. Omitting `ids` means everything in the listing;
+ * `resolution` is 'high' (the default) or 'low' — see chooseFile().
  *
  * This returns URLs instead of a zip. Zipping means either buffering gigabytes
  * in a serverless function or streaming an archive through it, and both undo
@@ -32,7 +33,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Expected JSON.' }, { status: 400 });
   }
 
-  const { slug, ids } = (body ?? {}) as { slug?: unknown; ids?: unknown };
+  const { slug, ids, resolution } = (body ?? {}) as {
+    slug?: unknown;
+    ids?: unknown;
+    resolution?: unknown;
+  };
+  const wanted = parseResolution(resolution);
   if (typeof slug !== 'string' || !slug) {
     return NextResponse.json({ error: 'Missing listing.' }, { status: 400 });
   }
@@ -53,7 +59,9 @@ export async function POST(request: Request) {
       ? DEMO_MEDIA.filter((m) => requested.includes(m.id))
       : DEMO_MEDIA;
     return NextResponse.json({
-      files: items.map((m) => ({ id: m.id, filename: m.filename, url: m.r2Key })),
+      files: items.map((m) => chooseFile(m, wanted)).map((d) => ({
+        id: d.item.id, filename: d.filename, url: d.key,
+      })),
     });
   }
 
@@ -79,19 +87,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Nothing to download.' }, { status: 404 });
   }
 
-  await recordDownloads(auth.listing, items, auth.session.email);
+  const deliveries = items.map((item) => chooseFile(item, wanted));
+
+  await recordDownloads(auth.listing, deliveries, auth.session.email);
   await record({
     kind: 'download', outcome: 'ok',
     reason: requested?.length ? 'selection' : 'whole_gallery',
-    detail: `${items.length} file(s) from ${auth.listing.address}`,
+    detail: `${items.length} file(s) from ${auth.listing.address}, ${wanted} res`,
     email: auth.session.email,
   });
 
   return NextResponse.json({
-    files: items.map((item) => ({
-      id: item.id,
-      filename: item.filename,
-      url: mediaUrl(item.r2Key, { expiresIn: DOWNLOAD_TTL, downloadAs: item.filename }),
+    files: deliveries.map((d) => ({
+      id: d.item.id,
+      filename: d.filename,
+      url: mediaUrl(d.key, { expiresIn: DOWNLOAD_TTL, downloadAs: d.filename }),
     })),
   });
 }

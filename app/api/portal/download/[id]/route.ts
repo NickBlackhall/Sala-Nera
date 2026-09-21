@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { authorizeListing, recordDownloads } from '@/lib/downloads';
+import { authorizeListing, chooseFile, parseResolution, recordDownloads } from '@/lib/downloads';
 import { DEMO_MEDIA, IS_DEMO } from '@/lib/demo';
 import { getMediaWithListing } from '@/lib/portal-queries';
 import { DOWNLOAD_TTL, mediaUrl } from '@/lib/storage';
 import { record } from '@/lib/telemetry';
 
 /**
- * One file, by media id.
+ * One file, by media id. `?res=low` asks for the smaller copy; anything else,
+ * or nothing, is the full file — see chooseFile().
  *
  * A redirect rather than a proxy: streaming the bytes through this function
  * would put a serverless invocation in front of every 40 MB RAW file and bill
@@ -36,13 +37,14 @@ export async function GET(
   const { id } = await params;
   const mediaId = Number(id);
   if (!Number.isInteger(mediaId) || mediaId <= 0) return new NextResponse(null, { status: 404 });
+  const wanted = parseResolution(new URL(request.url).searchParams.get('res'));
 
   // Demo mode has no database and no sessions. It serves the same local files
   // the gallery already shows, so the buttons are reviewable, and logs nothing.
   if (IS_DEMO) {
     const item = DEMO_MEDIA.find((m) => m.id === mediaId);
     if (!item) return new NextResponse(null, { status: 404 });
-    return NextResponse.redirect(absolute(item.r2Key, request), 302);
+    return NextResponse.redirect(absolute(chooseFile(item, wanted).key, request), 302);
   }
 
   const row = await getMediaWithListing(mediaId);
@@ -66,20 +68,23 @@ export async function GET(
     return new NextResponse(null, { status: 404 });
   }
 
-  const item = row!.item;
+  const delivery = chooseFile(row!.item, wanted);
 
   // Logged before redirecting, not after: once the client has the signed URL
   // the download is out of our hands, and a row written on a request we did not
   // authorise would be worse than a row for a download the client abandoned.
-  await recordDownloads(auth.listing, [item], auth.session.email);
+  await recordDownloads(auth.listing, [delivery], auth.session.email);
   await record({
     kind: 'download', outcome: 'ok', reason: 'single',
-    detail: `${item.filename} from ${auth.listing.address}`,
+    detail: `${delivery.item.filename} from ${auth.listing.address}, ${delivery.resolution} res`,
     email: auth.session.email,
   });
 
   return NextResponse.redirect(
-    absolute(mediaUrl(item.r2Key, { expiresIn: DOWNLOAD_TTL, downloadAs: item.filename }), request),
+    absolute(
+      mediaUrl(delivery.key, { expiresIn: DOWNLOAD_TTL, downloadAs: delivery.filename }),
+      request,
+    ),
     302,
   );
 }

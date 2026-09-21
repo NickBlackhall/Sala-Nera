@@ -51,6 +51,9 @@ export default function Gallery({
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState<null | 'selected' | 'all'>(null);
+  // Every download on the page — selected, all, or one from the lightbox —
+  // comes at this size. Starts on high: the full file is what agents expect.
+  const [resolution, setResolution] = useState<'high' | 'low'>('high');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -111,6 +114,7 @@ export default function Gallery({
         body: JSON.stringify({
           slug,
           ids: which === 'selected' ? [...selected] : undefined,
+          resolution,
         }),
       });
 
@@ -147,6 +151,26 @@ export default function Gallery({
             {locked && <span className="gal-lock">· previews — downloads unlock on payment</span>}
           </span>
           <div className="gal-actions">
+            {!locked && (
+              <div className="gal-res" role="group" aria-label="Download size">
+                <button
+                  type="button"
+                  aria-pressed={resolution === 'high'}
+                  onClick={() => setResolution('high')}
+                  title="Full size, under 19MB each: MLS and print"
+                >
+                  High res
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={resolution === 'low'}
+                  onClick={() => setResolution('low')}
+                  title="2400px, a fraction of the size: web, social and email"
+                >
+                  Low res
+                </button>
+              </div>
+            )}
             {selected.size > 0 && !locked && (
               <button
                 className="btn btn-primary btn-sm"
@@ -165,15 +189,6 @@ export default function Gallery({
                 disabled={busy !== null}
               >
                 {busy === 'all' ? 'Preparing…' : 'Download All'}
-              </button>
-            )}
-            {!locked && (
-              <button
-                className="btn btn-outline btn-sm"
-                disabled
-                title="MLS-size exports arrive with the upload pipeline — these are full resolution."
-              >
-                MLS Photo Download
               </button>
             )}
             {invoiceUrl && (
@@ -266,8 +281,13 @@ export default function Gallery({
             <span>{current.filename}</span>
             <span>{(lightbox ?? 0) + 1} / {media.length}</span>
             {/* Straight to the route, not the preview URL: it re-checks the lock
-                and records the download, which a link to the image would skip. */}
-            {!locked && <a href={`/api/portal/download/${current.id}`}>Download</a>}
+                and records the download, which a link to the image would skip.
+                A film has one size, so it gets no size in its label. */}
+            {!locked && (
+              <a href={`/api/portal/download/${current.id}${resolution === 'low' ? '?res=low' : ''}`}>
+                {current.kind === 'video' ? 'Download' : `Download ${resolution} res`}
+              </a>
+            )}
           </div>
         </div>
       )}

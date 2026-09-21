@@ -104,7 +104,11 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
           <ul className="admin-activity">
             {activity.map((row) => (
               <li key={row.id}>
-                <span>{row.filename ?? 'file'}</span>
+                <span>
+                  {row.filename ?? 'file'}
+                  {/* Rows from before the switch have none: all full-size originals. */}
+                  {row.resolution === 'low' && <span className="admin-muted"> · low res</span>}
+                </span>
                 <span className="admin-muted">{row.clientEmail ?? 'unknown'}</span>
                 <span className="admin-muted">
                   {new Date(row.at).toLocaleString('en-US')}

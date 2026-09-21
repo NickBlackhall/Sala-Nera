@@ -72,6 +72,59 @@ export async function authorizeListing(
 }
 
 /**
+ * The two sizes a client can take, from the switch beside the download
+ * buttons. Anything else — missing, misspelt — means high: the full file is
+ * what every download was before the choice existed.
+ */
+export type Resolution = 'high' | 'low';
+
+export function parseResolution(value: unknown): Resolution {
+  return value === 'low' ? 'low' : 'high';
+}
+
+/** What actually leaves: which stored object, under what name, at what size. */
+export type Delivery = {
+  item: Media;
+  key: string;
+  filename: string;
+  resolution: Resolution;
+};
+
+/**
+ * Which stored object answers a request for this item at this size.
+ *
+ *   high  the original, or the high copy when one exists — an original over
+ *         the MLS cap or not a JPEG (see lib/media-copies.ts)
+ *   low   the large copy, 2400px on the long edge
+ *
+ * A video has one file, so it is that file either way. A photo whose copies
+ * have not been made yet has only its original, so low falls back to it.
+ * `resolution` records what was delivered, not what was asked for, so the
+ * activity log never calls a full-size file low res.
+ */
+export function chooseFile(item: Media, wanted: Resolution): Delivery {
+  if (item.kind === 'photo' && wanted === 'low' && item.largeKey) {
+    return {
+      item,
+      key: item.largeKey,
+      // Suffixed, so a client who takes both sizes into one folder can tell
+      // them apart instead of getting "IMG_4233 (1).jpg".
+      filename: `${stem(item.filename)}-low-res.jpg`,
+      resolution: 'low',
+    };
+  }
+  if (item.kind === 'photo' && item.highKey) {
+    // The high copy is always a JPEG, whatever the original was.
+    return { item, key: item.highKey, filename: `${stem(item.filename)}.jpg`, resolution: 'high' };
+  }
+  return { item, key: item.r2Key, filename: item.filename, resolution: 'high' };
+}
+
+function stem(filename: string): string {
+  return filename.replace(/\.[^.]*$/, '') || 'photo';
+}
+
+/**
  * Write the activity rows the admin page reads.
  *
  * Logging never blocks a download. If this insert fails the client still gets
@@ -81,22 +134,24 @@ export async function authorizeListing(
  */
 export async function recordDownloads(
   listing: Listing,
-  items: Media[],
+  deliveries: Delivery[],
   clientEmail: string,
 ): Promise<void> {
-  if (items.length === 0) return;
+  if (deliveries.length === 0) return;
 
   try {
     await getDatabase()
       .insert(downloads)
       .values(
-        items.map((item) => ({
+        deliveries.map(({ item, resolution }) => ({
           mediaId: item.id,
           listingId: listing.id,
           clientEmail,
           // Denormalised on purpose — see lib/schema.ts. Re-uploading a listing
           // nulls mediaId, and without this the history would read "file".
+          // The original's name, not the delivered one: resolution says which.
           filename: item.filename,
+          resolution,
         })),
       );
   } catch (error) {
