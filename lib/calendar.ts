@@ -2,7 +2,7 @@ import 'server-only';
 
 import { SignJWT, importPKCS8 } from 'jose';
 
-import { TIME_ZONE, type Interval } from '@/lib/scheduling';
+import { TIME_ZONE, zonedDate, zonedTime, type Interval } from '@/lib/scheduling';
 
 /**
  * When Nick is busy, according to Google Calendar.
@@ -173,6 +173,43 @@ export async function busyIntervals(from: Date, to: Date): Promise<Interval[] | 
 }
 
 /**
+ * The local date after `date`, as YYYY-MM-DD, for Google's exclusive end date.
+ *
+ * Steps from noon rather than midnight so a day that is 23 or 25 hours long
+ * under daylight saving still lands on the following date.
+ */
+function dayAfter(date: string): string {
+  return zonedDate(new Date(zonedTime(date, 12).getTime() + 24 * 60 * 60 * 1000));
+}
+
+/** "10:00 AM" in Dallas, for the event's description. */
+function clockTime(instant: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: TIME_ZONE,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(instant);
+}
+
+/**
+ * "10am" for the title, where every character costs: a phone truncates it and
+ * the address matters more. Starts are always on the hour today, but a start
+ * that isn't reads "10:30am" rather than lying.
+ */
+function shortTime(instant: Date): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: TIME_ZONE,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).formatToParts(instant);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const minute = get('minute');
+  return `${get('hour')}${minute === '00' ? '' : `:${minute}`}${get('dayPeriod').toLowerCase()}`;
+}
+
+/**
  * Puts a confirmed shoot on Nick's calendar.
  *
  * Called only after the slot is claimed in the database, never before. The
@@ -189,6 +226,26 @@ export async function busyIntervals(from: Date, to: Date): Promise<Interval[] | 
  * The title carries the [Sala Nera] tag Nick asked for: this calendar is shared
  * with his other brand, and at a glance he needs to know which business a
  * booking came from without opening it.
+ *
+ * **The event blocks the whole day, not the shoot's hours** (Nick, Sep 22),
+ * while he works out how to run Sala Nera. A six-hour block left the rest of
+ * the day for sale on Spiro, which reads this same calendar: it offered 4pm
+ * the minute a Sala Nera block ended, with no pack-up or drive time. An
+ * all-day event takes the day off the market everywhere at once.
+ *
+ * Two details make that work, and both were proven against Spiro and our own
+ * free/busy read on Sep 22 with a hand-made event:
+ *
+ * 1. `transparency: 'opaque'` is set explicitly. Google's *UI* creates
+ *    all-day events as Free, which nothing treats as busy — including our own
+ *    availability, which reads free/busy. The API defaults to opaque, but this
+ *    is too important to leave to a default.
+ * 2. The start time moves into the title, because an all-day event shows no
+ *    time of its own and Nick needs to know when to turn up without opening
+ *    it. The description carries the full window as well.
+ *
+ * The booking's real hours are unchanged everywhere else: the database, the
+ * confirmation email and the portal all still say 10am–4pm.
  */
 export async function createBookingEvent(booking: {
   address: string;
@@ -208,9 +265,14 @@ export async function createBookingEvent(booking: {
   const token = await accessToken(config, SCOPES.write);
   if (!token) return null;
 
+  const day = zonedDate(booking.startsAt);
+
   // What Nick actually needs on his phone standing outside the house: who to
-  // call, how to get in, and what he agreed to shoot.
+  // call, how to get in, and what he agreed to shoot. The shoot window leads,
+  // because the all-day event itself no longer shows one.
   const description = [
+    `Shoot:    ${clockTime(booking.startsAt)} – ${clockTime(booking.endsAt)}`,
+    '',
     `Client:   ${booking.name}`,
     `Email:    ${booking.email}`,
     `Phone:    ${booking.phone || '—'}`,
@@ -234,11 +296,14 @@ export async function createBookingEvent(booking: {
       method: 'POST',
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
       body: JSON.stringify({
-        summary: `[Sala Nera] ${booking.address}`,
+        summary: `[Sala Nera] ${shortTime(booking.startsAt)} · ${booking.address}`,
         location: booking.address,
         description,
-        start: { dateTime: booking.startsAt.toISOString(), timeZone: TIME_ZONE },
-        end: { dateTime: booking.endsAt.toISOString(), timeZone: TIME_ZONE },
+        // All-day, in local dates. Google's end date is exclusive, so a
+        // one-day block ends on the morning after.
+        start: { date: day },
+        end: { date: dayAfter(day) },
+        transparency: 'opaque',
       }),
       signal: AbortSignal.timeout(8000),
     });

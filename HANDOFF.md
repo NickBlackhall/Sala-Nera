@@ -43,10 +43,18 @@ is `4abf141`. The working tree is clean.
 - **Zip Stage 2:** Download Selected (§4.6).
 - **Client-journey gaps, in Nick's order:**
   1. **Real prices and terms.** Both are placeholders
-     (`RATES_ARE_PLACEHOLDER`, `TERMS_ARE_PLACEHOLDER`). His real rates are on
-     his live Spiro page, `book.blackhallmediagroup.com/order/bmg/residential`.
-  2. **Check Spiro reads the same calendar.** This is load-bearing (§4.2).
-  3. **Payment through Stripe, "eventually"** (Nick, Sep 21). Parked.
+     (`RATES_ARE_PLACEHOLDER`, `TERMS_ARE_PLACEHOLDER`). **Sala Nera's rates
+     don't exist yet, and they are not the Spiro ones.** Nick's Spiro page
+     (`book.blackhallmediagroup.com/order/bmg/residential`: Silver $250, Gold
+     $400, Platinum $820) is Blackhall Media Group's volume-client pricing, a
+     different business aimed at a different buyer. Sala Nera is the premium
+     cinematic brand. Don't copy the Spiro numbers across, and don't start
+     this until Nick says the rates exist (Sep 22: "not ready to do rates
+     yet").
+  2. **Payment through Stripe, "eventually"** (Nick, Sep 21). Parked.
+
+  (The Spiro calendar check is done: Spiro won't double-book a Sala Nera
+  shoot. See §4.2, including the buffer it ignores.)
 
 ---
 
@@ -157,6 +165,8 @@ All pass at `4abf141`. Counts are included where known:
   - `check-booking-listing` (33).
   - `check-claim`.
   - `check-migration`.
+  - `check-calendar-allday` (16): the all-day date maths, across both
+    daylight-saving switches, and the time in the event title.
 - **Media and admin:**
   - `check-copies-action`.
   - `check-media-copies`.
@@ -195,6 +205,12 @@ All pass at `4abf141`. Counts are included where known:
   Nera calendar. (A "Sala Nera Bookings" calendar exists but is unused; leave
   it alone.) Events are titled `[Sala Nera] <address>`.
 - **Mon–Thu, 8am–5pm.** Starts at 8, 9, 10 or 11am.
+- **The calendar event blocks the whole day, all-day, not the shoot's hours**
+  (Nick, Sep 22): "record it as an all day appointment, at least while I work
+  out how to run Sala Nera more efficiently." The booking's real hours are
+  unchanged everywhere else — database, emails, portal. Only the calendar
+  entry is all-day. See §4.2 for why, and for the two details that make it
+  work.
 - **One Sala Nera booking a day, blocked at a flat six hours.** This is
   deliberate: don't replace it with a sqft or service duration model.
 - A flat 1-hour buffer, plus drive time (`lib/distance.ts`).
@@ -294,14 +310,39 @@ separate work.
   `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` (stored with **real newlines**, so don't
   `.replace(/\\n/g,…)` it) and `GOOGLE_CALENDAR_ID`. They are in Production
   only, as Secret, so they aren't pullable and local dev shows the fallback.
-- **Not verified:** that Spiro (Nick's other booking system) reads the same
-  calendar. If it doesn't, Spiro could sell a day Sala Nera has already sold.
-  To test: create an event by hand on that calendar, then see whether Spiro's
-  booking page still offers the slot. Nick believes it will block; nobody has
-  checked.
+- **Spiro reads the same calendar. Verified by Nick on Sep 22.** With Sala
+  Nera booking 5 holding Thu Oct 1, 10am–4pm, he tried to book that time on
+  Spiro. Spiro let him pick it, then refused at checkout ("that time isn't
+  available"), and on a reload offered only 4pm and later. So Spiro cannot
+  complete a booking over a Sala Nera shoot. Note that Spiro's *first* list of
+  times is stale; the gate is at checkout.
+  - **This is why bookings are all-day blocks.** Spiro offered 4pm, the minute
+    the six-hour Sala Nera block ended, with no pack-up or drive time: Spiro
+    knows nothing of our buffer. Rather than chase a buffer setting inside
+    Spiro, Nick chose to take the whole day off the market (§3). An all-day
+    event does that everywhere at once.
+  - **All-day blocks work on both sides. Proven Sep 22** with a hand-made
+    all-day event on Thu Oct 15: Spiro offered no times that day, and
+    salanera.com's availability dropped Oct 15 while leaving Oct 14 and Oct 19
+    open, so an all-day block doesn't bleed into the days either side. That
+    hand-made event is Nick's to delete in Google Calendar; the app knows
+    nothing about it.
+  - **The reverse is still unproven, and it is the dangerous direction.** A
+    Spiro shoot only blocks Sala Nera if Spiro writes its appointments onto
+    *this* calendar. If it writes them elsewhere, salanera.com will sell a day
+    Nick is already shooting for BMG. Thu Oct 8, which the site was blocking on
+    Sep 22, turned out to be a doctor's appointment, so it proves the
+    personal-hard-block rule live but says nothing about Spiro. **To check:
+    take a date Nick has a BMG shoot on and see whether the site offers it.**
+  - **A personal appointment costs the whole day**, confirmed live by Oct 8.
+    With six hours plus an hour of buffer either side, anything busy between
+    about 7am and 7pm overlaps all four start times. That is the hard-block
+    rule Nick set (§3), not a bug, but it is blunter than it looks.
 - **Which "Make changes" sharing tier** the service account has on the
   calendar was never visually confirmed. Any of them can write.
-- **No bookings are holding days** (Sep 22): rows 2–4 are cancelled, and row 1
+- **Bookings holding days** (Sep 22): row 5, `520 Cashmere Drive TEST`, is
+  confirmed and holds Thu Oct 1. It is Nick's Spiro test and can be cancelled
+  in /admin/bookings when he's done with it. Rows 2–4 are cancelled, and row 1
   is a pre-instant-booking request.
 
 ### 4.3 Agents reschedule or cancel their own booking
@@ -474,8 +515,8 @@ separate work.
 ## 5. Open items and known gaps
 
 **Nick's decisions or tasks:**
-- Real rates and terms (placeholders).
-- The Spiro calendar check (§4.2).
+- Real rates and terms (placeholders). Sala Nera's own rates don't exist
+  yet and aren't the Spiro ones; see §1.
 - Stripe, parked. The invoice button is hidden, and payment is arranged with
   Nick, who unlocks the listing.
 - **The privacy page is out of date.** It mentions only inquiries, Vercel and
@@ -487,6 +528,16 @@ separate work.
   `git push origin --delete portal-build nextjs-portal-foundation launch-readiness`
   then `git remote prune origin`. `MIGRATE_TOKEN` is now in Production, so the
   old worry about losing it with `portal-build` is gone.
+- **A test-data clean-out, at launch, in one pass.** Nothing costs anything
+  while it sits there, so this is a launch task, not a running chore — and
+  `npm run db:seed` would put Preston Hollow straight back. On Sep 22 the
+  leftovers were: listing 1 (Preston Hollow, seeded demo, fake agent
+  `agent@briggsfreeman.com` on a real brokerage domain), client 5
+  (`kvuenick@gmail.com`, no listings), and bookings 1–4 (one old request, three
+  cancelled). **Keep listing 2, Rockwall**: it is the real test property, with
+  32 photos and the film, and the outstanding tests need it. Note there is no
+  Delete for a booking, only Cancel, so clearing those rows means hand-editing
+  production.
 - Which Chrome extension blocks his downloads. His to find, if he wants.
 - **The Hobby plan:** needs Pro before commercial use. He knows.
 
