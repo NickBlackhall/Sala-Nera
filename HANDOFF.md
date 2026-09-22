@@ -502,9 +502,19 @@ separate work.
 - **The page:** a gallery with a header (cover, address, "Shot for"),
   uncropped tiles and a lightbox. Films play in our own player
   (`VideoPlayer.tsx`).
-- **Locked:** watermarked previews, a watermark over the player, no downloads
-  — and, when there is one, the invoice above the photos with what is owed and
-  a Pay button (§4.9). **Unpaid galleries still stream the full video file**
+- **Locked:** watermarked previews **on the grid and in the lightbox**, a
+  watermark over the player, no downloads — and, when there is one, the
+  invoice above the photos with what is owed and a Pay button (§4.9).
+  - The lightbox watermark was missing until Sep 22: the grid was protected
+    and opening a photo showed it clean at 2400px. A film was always covered,
+    through the player, so photos fell between the two cases.
+  - **It is cream at 50% with a hard dark shadow**, chosen by Nick on Sep 22
+    over a darker, prettier wordmark. The shadow is the point: a pale mark on
+    a white-walled interior and a dark mark on a twilight exterior each vanish
+    on half his work, and twilight is something he sells. The grid tiles are
+    still the older, fainter treatment — match them if he asks.
+  - Still an **overlay, not baked into the pixels**; see the parked
+    protection-strength item. **Unpaid galleries still stream the full video file**
   (a known gap, parked with the "protection strength" polish item).
 - **Paid:** a **High res / Low res switch** (High is the default) applies to
   every download on the page.
