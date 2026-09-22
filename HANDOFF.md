@@ -25,8 +25,8 @@ through the client portal. Now:
   covered every admin page signed out, as an agent and as admin, on laptop and
   phone. Live GET checks after deploy: all admin pages 307 → /admin/login for
   signed-out and agent, 200 for admin, and the client sign-in, agent portal and
-  public /p page unchanged. **Not yet proven:** the admin sign-in email reaching
-  Nick and opening /admin (he's signing in on the new computer).
+  public /p page unchanged. **Proven by Nick (Sep 22):** he signed in on the
+  new computer through /admin/login and the admin link opened /admin.
 
 **Incident during the double-check (Sep 21, ~23:59 UTC): I locked Rockwall
 Shores by accident for about a minute.** I replayed a recorded Locked/Unlocked
@@ -49,11 +49,14 @@ recipient. Afterwards `delivery_emails` and `delivery` events were both still
 button, signed-out /portal/rockwall-shores-drive → 307 to
 `/portal/login?next=%2Fportal%2Frockwall-shores-drive`, and the public /p page.
 
-**No real delivery email has been sent yet.** That's Nick's test, once he's
-signed in on the new computer: open Rockwall Shores (the button is near the
-bottom, under the photos; Nick was offered moving it to the top of the listing
-page and/or a Send link on the listings table, and hasn't answered) and press
-**Send delivery email** on **Rockwall Shores**. Its agent is client 6,
+**First real delivery email: sent and received (Sep 22, 00:00 UTC).** Nick
+pressed Send delivery email on **Rockwall Shores**, and it reached his Gmail.
+Read-only: `delivery_emails` row 1 (`ready`, `nickblackhall@gmail.com`), and a
+`delivery/ok/ready` event. **Still open:** the button sits near the bottom of
+the listing page, under all the photos, which is why Nick couldn't find it.
+He was offered moving it to the top of the listing page and/or a Send link
+on the listings table, and hasn't chosen. Earlier notes for this test:
+press **Send delivery email** on **Rockwall Shores**. Its agent is client 6,
 `nickblackhall@gmail.com`, so it lands in his own inbox. Then follow the link
 signed out, to prove sign-in returns to the gallery. Check read-only after:
 `select * from delivery_emails` and `events where kind = 'delivery'`. **Never
@@ -75,7 +78,7 @@ was still answering on :3217, and it looked like a 500 in the new code. Check
   on its own.
 
 **Client-journey gaps, in the order Nick is taking them:**
-1. ~~No "your photos are ready" email~~: LIVE, waiting on Nick's first send.
+1. ~~No "your photos are ready" email~~: LIVE, and proven with Nick's first send.
 2. **Payment: Stripe, "eventually"** (Nick, Sep 21). Parked. Until then the
    dead invoice button is hidden (live, `0b879e8`) and payment is
    arranged directly with Nick, who unlocks the listing in /admin.
