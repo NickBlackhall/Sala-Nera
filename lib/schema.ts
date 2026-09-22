@@ -142,6 +142,47 @@ export const deliveryEmails = pgTable(
 );
 
 /**
+ * The "Download all photos" zips — see lib/archives.ts. One row per build of
+ * one listing's photos at one size.
+ *
+ * `version` fingerprints exactly what went in: every entry's name (which
+ * carries the gallery order) and the stored object it came from. A zip is
+ * only ever handed out when its version matches the listing as it is now, so
+ * a photo deleted after a build can never leave in an old zip, whether or not
+ * the stale row has been cleaned up yet. Unique per listing, size and version,
+ * which is also the lock that stops two builds of the same zip running at once.
+ *
+ * `expires_at` is null for a whole-gallery zip. It is there for Stage 2's
+ * temporary zips of a selection, so that needs no second migration.
+ */
+export type ArchiveStatus = 'building' | 'ready' | 'failed';
+
+export const archives = pgTable(
+  'archives',
+  {
+    id: serial('id').primaryKey(),
+    listingId: integer('listing_id')
+      .references(() => listings.id, { onDelete: 'cascade' })
+      .notNull(),
+    resolution: text('resolution').$type<'high' | 'low'>().notNull(),
+    version: text('version').notNull(),
+    r2Key: text('r2_key').notNull(),
+    status: text('status').$type<ArchiveStatus>().notNull(),
+    photos: integer('photos').notNull(),
+    /** The finished zip's size. Null until it is ready. */
+    bytes: bigint('bytes', { mode: 'number' }),
+    /** Why the last attempt failed, in words Nick can act on. */
+    error: text('error'),
+    startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('archives_listing_version_key').on(t.listingId, t.resolution, t.version),
+  ],
+);
+
+/**
  * What happened, when, and why — the thing that was missing the day three
  * separate anti-spam rules threw away real bookings behind a success screen.
  *
@@ -285,3 +326,4 @@ export type DeliveryEmail = typeof deliveryEmails.$inferSelect;
 export type Event = typeof events.$inferSelect;
 export type RateCardRow = typeof rateCards.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
+export type Archive = typeof archives.$inferSelect;

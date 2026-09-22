@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0007_delivery_emails';
+export const PORTAL_MIGRATION_ID = '0008_archives';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -204,4 +204,30 @@ export const PORTAL_MIGRATION_STATEMENTS = [
       ON DELETE cascade ON UPDATE no action
   )`,
   `CREATE INDEX IF NOT EXISTS "delivery_emails_listing_idx" ON "delivery_emails" USING btree ("listing_id", "at")`,
+
+  /**
+   * 0008 — the "Download all photos" zips, one row per build (lib/archives.ts).
+   * The unique index is the lock: two requests to build the same zip at the
+   * same moment cannot both win it. Goes with the listing; the zip files
+   * themselves are deleted by the code that deletes the listing.
+   */
+  `CREATE TABLE IF NOT EXISTS "archives" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "listing_id" integer NOT NULL,
+    "resolution" text NOT NULL,
+    "version" text NOT NULL,
+    "r2_key" text NOT NULL,
+    "status" text NOT NULL,
+    "photos" integer NOT NULL,
+    "bytes" bigint,
+    "error" text,
+    "started_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "finished_at" timestamp with time zone,
+    "expires_at" timestamp with time zone,
+    CONSTRAINT "archives_listing_id_listings_id_fk"
+      FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id")
+      ON DELETE cascade ON UPDATE no action
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "archives_listing_version_key"
+    ON "archives" USING btree ("listing_id", "resolution", "version")`,
 ] as const;
