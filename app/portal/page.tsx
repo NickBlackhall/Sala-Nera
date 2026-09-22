@@ -17,13 +17,20 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-export default async function PortalIndex() {
+export default async function PortalIndex({
+  searchParams,
+}: {
+  searchParams: Promise<{ cancelled?: string }>;
+}) {
+  // Where an agent lands after cancelling a booking: its listing went with it.
   const session = await getSession();
   if (!session) redirect('/portal/login');
 
   // Admins see the whole library; clients see their own plus their team's.
   const viewer = await getClientByEmail(session.email);
   if (!viewer && !session.isAdmin) redirect('/portal/login');
+
+  const { cancelled } = await searchParams;
 
   const listings = session.isAdmin
     ? await getAllListings()
@@ -57,6 +64,12 @@ export default async function PortalIndex() {
           {session.isAdmin ? 'All listings' : 'Your listings'}
         </span>
         <h1>{viewer?.company || viewer?.name || session.email}</h1>
+
+        {cancelled === '1' && (
+          <p className="pindex-flash" role="status">
+            Your booking is cancelled, and the time has been released. We&rsquo;ve emailed you to confirm.
+          </p>
+        )}
 
         {listings.length === 0 ? (
           <p className="pindex-empty">

@@ -2,13 +2,18 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import Gallery from '@/app/components/Gallery';
 import PropertyLinks from '@/app/components/PropertyLinks';
-import { DEMO_CLIENT, DEMO_LISTINGS, IS_DEMO, demoMediaFor } from '@/lib/demo';
+import { DEMO_BOOKING, DEMO_CLIENT, DEMO_LISTINGS, IS_DEMO, demoMediaFor } from '@/lib/demo';
 import {
+  getBookingSummary,
   getClientByEmail,
   getListingBySlug,
   ownsListing,
+  type BookingSummary,
   type ListingBundle,
 } from '@/lib/portal-queries';
+import { canChangeBooking, CHANGE_CUTOFF_HOURS, shootWhen } from '@/lib/booking-changes';
+import ManageBooking from './ManageBooking';
+import { TIME_ZONE } from '@/lib/scheduling';
 import { getSession } from '@/lib/session';
 import { coverUrl, withPreviewUrls } from '@/lib/storage';
 
@@ -33,9 +38,28 @@ const shootDay = (d: Date | string) =>
   new Date(d).toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC',
   });
+/** A booking's real start, shown as Nick's local day and time. */
+const bookedDay = (d: Date | string) =>
+  new Date(d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: TIME_ZONE });
+const bookedTime = (d: Date | string) =>
+  new Date(d).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TIME_ZONE });
 
-function render(data: ListingBundle) {
+/**
+ * The booking behind a listing that has nothing delivered yet — the only
+ * state in which the agent can move or cancel it. Null for a listing Nick made
+ * by hand, or once anything is uploaded.
+ */
+async function bookingFor(data: ListingBundle): Promise<BookingSummary | null> {
+  const { listing, media } = data;
+  if (media.length > 0 || !listing.bookingId) return null;
+  if (IS_DEMO) return listing.bookingId === DEMO_BOOKING.id ? DEMO_BOOKING : null;
+  return getBookingSummary(listing.bookingId);
+}
+
+function render(data: ListingBundle, booking: BookingSummary | null) {
   const { listing, media, client } = data;
+  // A confirmed booking with a real time is one the agent may manage here.
+  const scheduled = booking?.status === 'confirmed' && booking.startsAt ? booking.startsAt : null;
   const locked = listing.downloadLocked;
   // Nothing uploaded yet: a booking made this listing and the shoot is still
   // to come (lib/booking-listing.ts). No gallery bar, no invoice button.
@@ -69,10 +93,26 @@ function render(data: ListingBundle) {
       {booked ? (
         <section className="pbooked wrap">
           <p className="kicker kicker--accent">Shoot booked</p>
-          {listing.shootDate && <p className="pbooked-date">{shootDay(listing.shootDate)}</p>}
+          {scheduled ? (
+            <>
+              <p className="pbooked-date">{bookedDay(scheduled)}</p>
+              <p className="pbooked-time">{bookedTime(scheduled)} · allow around six hours on site</p>
+            </>
+          ) : (
+            listing.shootDate && <p className="pbooked-date">{shootDay(listing.shootDate)}</p>
+          )}
           <p className="pbooked-note">
             Your photos and film will appear here as soon as they&rsquo;re ready.
           </p>
+          {scheduled && (
+            <ManageBooking
+              slug={listing.slug}
+              address={listing.address}
+              when={shootWhen(scheduled)}
+              canChange={canChangeBooking(booking!)}
+              cutoffHours={CHANGE_CUTOFF_HOURS}
+            />
+          )}
         </section>
       ) : (
         <>
@@ -120,12 +160,12 @@ export default async function PortalListing({
       // A listing you may not see is reported as missing, not as forbidden —
       // otherwise the 403 itself confirms which addresses we have shot.
       if (!viewer || !bundle || !ownsListing(viewer, bundle.client)) notFound();
-      return render(bundle);
+      return render(bundle, await bookingFor(bundle));
     }
   }
 
   const data = await getListing(slug);
   if (!data) notFound();
 
-  return render(data);
+  return render(data, await bookingFor(data));
 }

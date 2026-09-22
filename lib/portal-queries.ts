@@ -2,8 +2,8 @@ import 'server-only';
 
 import { and, asc, desc, eq, inArray, isNotNull, or } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
-import { clients, listings, media } from '@/lib/schema';
-import type { Client, Listing, Media } from '@/lib/schema';
+import { bookings, clients, listings, media } from '@/lib/schema';
+import type { Booking, Client, Listing, Media } from '@/lib/schema';
 
 /**
  * What a portal page needs to render one listing. Shaped to match the demo
@@ -133,6 +133,22 @@ export async function listingsWithMedia(ids: number[]): Promise<Set<number>> {
     .from(media)
     .where(inArray(media.listingId, ids));
   return new Set(rows.map((r) => r.id));
+}
+
+/**
+ * What the agent's listing page needs to know about the booking that made it:
+ * whether it is still on, and when. Nothing else — the booking row also holds
+ * the price and Nick's notes, which the page has no business carrying.
+ */
+export type BookingSummary = Pick<Booking, 'id' | 'status' | 'startsAt'>;
+
+export async function getBookingSummary(id: number): Promise<BookingSummary | null> {
+  const [row] = await getDatabase()
+    .select({ id: bookings.id, status: bookings.status, startsAt: bookings.startsAt })
+    .from(bookings)
+    .where(eq(bookings.id, id))
+    .limit(1);
+  return row ?? null;
 }
 
 /** One media row with the listing it belongs to, for the download route. */

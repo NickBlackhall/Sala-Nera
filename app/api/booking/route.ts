@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { findOpenSlot, invalidateAvailability } from '@/lib/availability';
 import { DETAIL_QUESTIONS, cleanDetails } from '@/lib/booking-details';
+import { CHANGE_CUTOFF_HOURS } from '@/lib/booking-changes';
 import { ensureBookingListing, type BookingListing } from '@/lib/booking-listing';
 import { claimSlot, ensureClient, saveBooking, setBookingEventId, type ClientAccount } from '@/lib/bookings';
 import { createBookingEvent } from '@/lib/calendar';
@@ -489,6 +490,11 @@ export async function POST(req: Request) {
       name, address, desiredDate, priced,
       shoot: booked ? `${when(booked.startsAt)} – ${when(booked.endsAt)}` : null,
       portalLogin: account ? `${process.env.PORTAL_URL ?? new URL(req.url).origin}/portal/login` : null,
+      // Only a confirmed slot can be changed, and only by a client account.
+      manageUrl:
+        account && booked && listing
+          ? `${process.env.PORTAL_URL ?? new URL(req.url).origin}/portal/${listing.slug}`
+          : null,
     }),
   });
 
@@ -515,7 +521,7 @@ export async function POST(req: Request) {
  * an argument later.
  */
 function clientConfirmation({
-  name, address, desiredDate, shoot, priced, portalLogin,
+  name, address, desiredDate, shoot, priced, portalLogin, manageUrl,
 }: {
   name: string;
   address: string;
@@ -525,6 +531,8 @@ function clientConfirmation({
   priced: ReturnType<typeof quote>;
   /** Only when the account really exists — never promise a sign-in that won't work. */
   portalLogin: string | null;
+  /** The booking's own listing in the client portal, where it can be moved or cancelled. */
+  manageUrl: string | null;
 }): string {
   const firstName = name.split(/\s+/)[0] || 'there';
   const travel = priced.lines.find((l) => l.id === 'travel');
@@ -585,19 +593,33 @@ function clientConfirmation({
           'This is an estimate from the details you gave us, not a final invoice.',
         ]),
     '',
-    ...(portalLogin
+    ...(manageUrl
       ? [
-          'Your galleries will be delivered to your Sala Nera client account for this',
-          "email address. There's no password — sign in any time here and we'll email",
-          'you a link:',
-          portalLogin,
+          `This shoot is in your Sala Nera client account. You can reschedule or cancel it there up to ${CHANGE_CUTOFF_HOURS} hours before, and your photos will be delivered there too:`,
+          manageUrl,
+          '',
+          "There's no password — sign in with this email address and we'll email you a link.",
           '',
         ]
-      : []),
-    shoot
-      ? 'Need to move it, or something to change? Just reply to this email.'
-      : 'Nothing is booked until you hear back from us.',
-    '',
+      : portalLogin
+        ? [
+            'Your galleries will be delivered to your Sala Nera client account for this',
+            "email address. There's no password — sign in any time here and we'll email",
+            'you a link:',
+            portalLogin,
+            '',
+          ]
+        : []),
+    // With a listing link, the paragraph above already says how to move it,
+    // and the reply line below covers inside the cutoff.
+    ...(manageUrl
+      ? []
+      : [
+          shoot
+            ? 'Need to move it, or something to change? Just reply to this email.'
+            : 'Nothing is booked until you hear back from us.',
+          '',
+        ]),
     'Questions, or something to change? Just reply to this email.',
     '',
     '— Sala Nera',

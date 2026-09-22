@@ -87,6 +87,17 @@ export const DEMO_LISTING_BOOKED: Listing = {
 
 export const DEMO_LISTINGS = [DEMO_LISTING, DEMO_LISTING_PAID, DEMO_LISTING_BOOKED];
 
+/**
+ * The booking behind DEMO_LISTING_BOOKED: 9am Central on its shoot day, a week
+ * or more out, so the demo page shows Reschedule and Cancel. Nothing in demo
+ * mode can actually change it.
+ */
+export const DEMO_BOOKING = {
+  id: 3,
+  status: 'confirmed' as const,
+  startsAt: new Date('2026-09-29T14:00:00Z'),
+};
+
 /** The demo photos belong to the two shot listings; the booked one has none yet. */
 export function demoMediaFor(listing: Listing): Media[] {
   return listing.id === DEMO_LISTING_BOOKED.id ? [] : DEMO_MEDIA;

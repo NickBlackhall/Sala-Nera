@@ -28,23 +28,32 @@ const VISIBLE_DAYS = 8;
 export function SlotPicker({
   value,
   onChange,
-  fallbackDate,
-  onFallbackDate,
-  onLive,
-  today,
+  fallbackDate = '',
+  onFallbackDate = () => {},
+  onLive = () => {},
+  today = '',
+  purpose = 'book',
 }: {
   value: string;
   onChange: (slot: string) => void;
-  fallbackDate: string;
-  onFallbackDate: (date: string) => void;
+  fallbackDate?: string;
+  onFallbackDate?: (date: string) => void;
   /**
    * Whether real times are on offer. The form needs this to know if a missing
    * slot is something to stop the client for, or simply the fallback doing its
    * job — in which case there is no slot to pick and never was.
    */
-  onLive: (live: boolean) => void;
-  today: string;
+  onLive?: (live: boolean) => void;
+  today?: string;
+  /**
+   * 'reschedule' is an agent moving a booking they already have, from their
+   * listing in the client portal. It has no fallback: a move is only ever to a
+   * real open slot, and a request-by-date makes no sense for a booking that
+   * already holds one.
+   */
+  purpose?: 'book' | 'reschedule';
 }) {
+  const moving = purpose === 'reschedule';
   const [state, setState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [availability, setAvailability] = useState<Availability | null>(null);
   const [openDate, setOpenDate] = useState<string | null>(null);
@@ -82,9 +91,18 @@ export function SlotPicker({
   if (state === 'loading') {
     return (
       <div className="field">
-        <p className="bk-slot-label">Choose a date</p>
+        <p className="bk-slot-label">{moving ? 'Choose a new date' : 'Choose a date'}</p>
         <p className="field-hint">Checking which dates are open…</p>
       </div>
+    );
+  }
+
+  if (moving && (state === 'unavailable' || !availability)) {
+    return (
+      <p className="field-hint">
+        We can&rsquo;t load open times right now. Try again in a few minutes, or reply to your
+        confirmation email and we&rsquo;ll move it for you.
+      </p>
     );
   }
 
@@ -111,7 +129,7 @@ export function SlotPicker({
 
   return (
     <div className="field">
-      <p className="bk-slot-label">Choose a date</p>
+      <p className="bk-slot-label">{moving ? 'Choose a new date' : 'Choose a date'}</p>
 
       <div className="bk-slot-days">
         {days.map((day) => (
@@ -160,7 +178,17 @@ export function SlotPicker({
       )}
 
       <p className="field-hint">
-        {value ? (
+        {moving ? (
+          value ? (
+            <>
+              Moving to <strong>{chosen?.label}</strong> at{' '}
+              <strong>{chosen?.starts.find((s) => s.at === value)?.label}</strong>. Your current
+              time stays booked until you confirm.
+            </>
+          ) : (
+            <>Pick a new date, then a start time.</>
+          )
+        ) : value ? (
           <>
             Booking <strong>{chosen?.label}</strong> at{' '}
             <strong>{chosen?.starts.find((s) => s.at === value)?.label}</strong>. This is{' '}
