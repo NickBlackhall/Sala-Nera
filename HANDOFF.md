@@ -20,9 +20,10 @@ Sep 22 unless it says otherwise.
 
 **State:** everything is committed, pushed and deployed. The last code change
 is `05e3297`, the all-day calendar block, and **it is now proven live end to
-end** (§4.2). The working tree is clean. That push was not confirmed Ready:
-auto mode blocked `npx vercel ls` in that session, so it was checked by
-serving salanera.com instead.
+end** (§4.2). The working tree is clean. `npx vercel ls` works under auto
+mode — it was blocked in one earlier session, but it ran fine on Sep 22 and
+showed Production Ready, so use it to confirm a deploy rather than only
+serving salanera.com.
 
 **Waiting on Nick (his test, then my read-only check):**
 1. **Download all photos on his phone.** Open Rockwall
