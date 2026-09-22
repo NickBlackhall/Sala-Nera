@@ -26,11 +26,14 @@ showed Production Ready, so use it to confirm a deploy rather than only
 serving salanera.com.
 
 **Waiting on Nick (his test, then my read-only check):**
-1. **Run migration 0009, for invoices** (§4.9). POST to `/api/portal/migrate`
-   with `MIGRATE_TOKEN`, the same way he ran 0008. Until he does, the invoice
-   editor says so and everything else carries on working — the code is
-   deliberately safe to deploy first. Then: fill in an invoice on Rockwall,
-   paste a Stripe payment link, and send it to himself.
+1. **The first real invoice end to end** (§4.9). Migration 0009 is applied and
+   verified (Sep 22, 20:38 UTC: right columns, the unique index, the legacy
+   Stripe columns gone, 0 rows). What is untested is the feature itself. On
+   Rockwall: add lines, paste a Stripe payment link, Save, Send invoice, then
+   pay it and check Mark paid unlocks the downloads. Rockwall is currently
+   **unlocked**, so relock it first to see the "Amount due" state that
+   matters. Check read-only with `select lines, tax_rate_bp, payment_url,
+   paid_at from invoices`.
 2. **Download all photos on his phone.** Open Rockwall
    (`/portal/rockwall-shores-drive`) signed in as his Gmail and download both
    zips. On an iPhone they should land in Files and open as a folder of 32
