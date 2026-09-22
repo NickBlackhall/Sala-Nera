@@ -26,15 +26,20 @@ showed Production Ready, so use it to confirm a deploy rather than only
 serving salanera.com.
 
 **Waiting on Nick (his test, then my read-only check):**
-1. **Download all photos on his phone.** Open Rockwall
+1. **Run migration 0009, for invoices** (§4.9). POST to `/api/portal/migrate`
+   with `MIGRATE_TOKEN`, the same way he ran 0008. Until he does, the invoice
+   editor says so and everything else carries on working — the code is
+   deliberately safe to deploy first. Then: fill in an invoice on Rockwall,
+   paste a Stripe payment link, and send it to himself.
+2. **Download all photos on his phone.** Open Rockwall
    (`/portal/rockwall-shores-drive`) signed in as his Gmail and download both
    zips. On an iPhone they should land in Files and open as a folder of 32
    photos. Then check read-only:
    `select reason, detail, at from events where kind='download' order by at desc limit 5`.
-2. **A horizontal film upload.** It should record about 1920×1080 and get a
+3. **A horizontal film upload.** It should record about 1920×1080 and get a
    still (`grid_key`/`large_key` set). The only film so far is vertical (media
    56). Check: `select id, width, height, grid_key is not null from media where kind='video'`.
-3. **A fresh photo upload that makes its own copies** without pressing Make
+4. **A fresh photo upload that makes its own copies** without pressing Make
    previews. That proves new photos get copies, and the copyright notice, on
    their own; Rockwall's 32 existing copies predate the notice. The latest
    media id is 56, so anything above it is new.
@@ -44,8 +49,20 @@ serving salanera.com.
   - The download area, now the zips work.
   - The agent's reschedule/cancel screens. UI only; see the rule in §3.
   - The Low res label (a second agent suggested "Best for phone, web and social").
-- **Client-journey gaps, in Nick's order:**
-  1. **Real prices and terms.** Both are placeholders
+- **Client-journey gaps** (the payment dead end is closed — §4.9):
+  1. **No reminder before the shoot.** A booking can be 60 days out and the
+     agent hears nothing in between: no reminder, no prompt to confirm access.
+     Nothing in the code sends one. This is the gap most likely to cost a real
+     shoot day, and it is not blocked on anything. **Nick agreed gap 1 (the
+     payment dead end) first, Sep 22; this was the other half of that
+     recommendation.**
+  2. **The agent can never see what they ordered** — fixed for anyone with an
+     invoice (§4.9), still true for a listing that has none.
+  3. **The confirmation email's subject says "booking request"** even when the
+     slot is confirmed and the body says so. Instant booking is the selling
+     point; the subject gives it away. It reads that way because one subject
+     covers the fallback request path too. Make it conditional.
+  4. **Real prices and terms.** Both are placeholders
      (`RATES_ARE_PLACEHOLDER`, `TERMS_ARE_PLACEHOLDER`). **Sala Nera's rates
      don't exist yet, and they are not the Spiro ones.** Nick's Spiro page
      (`book.blackhallmediagroup.com/order/bmg/residential`: Silver $250, Gold
@@ -53,8 +70,12 @@ serving salanera.com.
      different business aimed at a different buyer. Sala Nera is the premium
      cinematic brand. Don't copy the Spiro numbers across, and don't start
      this until Nick says the rates exist (Sep 22: "not ready to do rates
-     yet").
-  2. **Payment through Stripe, "eventually"** (Nick, Sep 21). Parked.
+     yet"). **Invoices unblock the money without it** (§4.9): a number Nick
+     types per job is his real price, not a placeholder, so he can quote and
+     collect on real shoots while the card catches up.
+  5. **Stripe stages 2 and 3** — the app creating payment links, and a
+     webhook that unlocks downloads on payment without Nick touching
+     anything (§4.9). Stage 1 is live.
 
   (**The Spiro calendar question is fully closed** (Sep 22): Spiro won't
   double-book a Sala Nera shoot, and Spiro's own shoots land on this calendar
@@ -107,7 +128,7 @@ serving salanera.com.
   `node --env-file=.env.local -e "fetch('https://salanera.com/api/portal/migrate',{method:'POST',headers:{Authorization:'Bearer '+process.env.MIGRATE_TOKEN}}).then(r=>r.text()).then(console.log)"`.
   Confirm in `portal_migrations`, and only then push code that uses it. The
   endpoint runs the *deployed* code, so push and wait first. Applied so far:
-  `0001`–`0008` (`0008_archives` on Sep 22).
+  `0001`–`0009` (`0009_invoices` on Sep 22).
 - Vercel team `bmg11` is on **Hobby**:
   - 300s function limit and 10 GB/month Fast Origin Transfer.
   - Hobby is for non-commercial use only. Nick knows and will upgrade before
@@ -439,6 +460,8 @@ separate work.
     deletes the listing if it's empty).
   - Activity (events, with plain-English reasons).
 - **Listing page** (`/admin/listings/[id]`, `maxDuration = 300`):
+  - **Invoice editor** (`InvoiceEditor.tsx`), under the delivery panel — see
+    §4.9. Editable lines, tax, payment link, Mark paid, Send invoice.
   - **Delivery panel at the top** (`SendDelivery.tsx`):
     - Each zip's status: Not made yet / Being made / Ready · size / Couldn't
       be made.
@@ -476,9 +499,10 @@ separate work.
 - **The page:** a gallery with a header (cover, address, "Shot for"),
   uncropped tiles and a lightbox. Films play in our own player
   (`VideoPlayer.tsx`).
-- **Locked:** watermarked previews, a watermark over the player, no downloads.
-  **Unpaid galleries still stream the full video file** (a known gap, parked
-  with the "protection strength" polish item).
+- **Locked:** watermarked previews, a watermark over the player, no downloads
+  — and, when there is one, the invoice above the photos with what is owed and
+  a Pay button (§4.9). **Unpaid galleries still stream the full video file**
+  (a known gap, parked with the "protection strength" polish item).
 - **Paid:** a **High res / Low res switch** (High is the default) applies to
   every download on the page.
   - **High** is the original, or `high_key` when there is one.
@@ -568,6 +592,62 @@ separate work.
 - **Not logged:** the sign-in route doesn't record events, so use the Vercel
   logs or Resend's sent list for those.
 
+### 4.9 Invoices and payment
+- **The invoice is Nick's document, not a copy of Stripe's.** One per listing
+  (`invoices`, migration 0009). He edits the lines, the tax rate, a note and a
+  payment link; the client sees the result in the portal and by email. The
+  table it replaced was keyed on `stripe_invoice_id` and held only what Stripe
+  reported, which can't answer "add the twilight shoot we agreed on site".
+- **The booking is never edited.** A new invoice seeds from the booking that
+  made the listing, then goes its own way. What someone asked for
+  (`bookings.lines`) and what they were billed (`invoices.lines`) stay separate
+  facts — the same reason `desired_date` survives next to `starts_at`.
+  - **While rates are placeholders it seeds names with zero amounts**, using
+    the booking's own `rates_are_placeholder`. Copying 999s across would put
+    Nick one missed edit from billing someone $999 for a floor plan.
+- **Money is cents here**, not the whole dollars `lib/quote.ts` uses: 8.25% of
+  $999 is $82.42. The arithmetic is in `lib/invoice-math.ts`, which has **no
+  server imports**, so the editor, the portal and the email all total the same
+  way rather than three ways.
+- **Tax:** a per-invoice rate in basis points, defaulting to **825 (8.25%)** —
+  6.25% Texas state plus 2% local, confirmed by Nick on Sep 22. Zero it for an
+  exempt client. Tax is taken on the subtotal as a whole, so a discount (a
+  negative line) reduces the tax with it. Per-line exemptions are not built.
+- **The editor** is `InvoiceEditor.tsx` on `/admin/listings/[id]`, under the
+  delivery panel. Totals update as he types. Three separate actions:
+  - **Save** — lines, tax, note, payment link. Never touches paid.
+  - **Mark paid** — records the payment **and unlocks the downloads in one
+    action**, because remembering to do both is what a person forgets on a
+    Friday. `listings.download_locked` is still the gate every download path
+    reads; the lock is written **first**, so a half-failure leaves a client able
+    to download what they paid for rather than the reverse.
+  - **Send invoice / Send updated invoice** — nothing reaches the client until
+    it is pressed, the same rule as the delivery emails. History shares the
+    `delivery_emails` table, kind `'invoice'`.
+- **What the client sees** (`app/portal/[slug]/Invoice.tsx`), the same document
+  answering three questions:
+  - Before the shoot: **"Your order"** — what they booked and what it costs.
+  - On a locked gallery: **"Amount due"**, above the photos, with a Pay button.
+  - Once paid: **"Your invoice"**, below the photos, marked Paid. **A paid
+    invoice never renders a Pay button** — that is how people pay twice.
+- **An invoice with no priced lines is treated as absent** (`invoiceIsReady`).
+  Showing an agent "$0.00 due" reads as a promise and is worse than silence.
+  A deliberately comped job is caught by the same rule and shows nothing.
+- **The preview email carries the money.** It names the total and links to
+  payment. The ready email does not: by then they have paid.
+- **Stripe, in three stages.** Nick has an account (Sep 22).
+  1. **Live now:** he makes a payment link in Stripe's dashboard and pastes it
+     onto the invoice.
+  2. **Not built:** the app creates the link from the invoice lines.
+  3. **Not built, and the real prize:** a webhook marks the invoice paid and
+     unlocks the downloads with nobody pressing anything.
+  `clients.stripe_customer_id` and `invoices.stripe_invoice_id` exist unused,
+  for stages 2 and 3.
+- **The code is safe to deploy before migration 0009 is run.** `getInvoice()`
+  answers null on Postgres `42P01`/`42703` only, so the window where the code
+  is newer than the database costs the invoice, not the listing page. Verified
+  against production on Sep 22. Any other database error is re-thrown.
+
 ---
 
 ## 5. Open items and known gaps
@@ -575,8 +655,10 @@ separate work.
 **Nick's decisions or tasks:**
 - Real rates and terms (placeholders). Sala Nera's own rates don't exist
   yet and aren't the Spiro ones; see §1.
-- Stripe, parked. The invoice button is hidden, and payment is arranged with
-  Nick, who unlocks the listing.
+- **Stripe stage 1 is live** (§4.9): Nick pastes a payment link onto an
+  invoice and the client gets a Pay button. Stages 2 and 3 — the app creating
+  the link, and a webhook that unlocks downloads on payment — are not built,
+  and need his Stripe keys in Vercel.
 - **The privacy page is out of date.** It mentions only inquiries, Vercel and
   Resend, not saved bookings, client accounts, Neon or R2. The wording is his
   call.
@@ -602,7 +684,8 @@ separate work.
 **Built pieces still missing:**
 - **Zip Stage 2** (Download Selected), described in §4.6.
 - **A rate card editor** (`/admin/rates`). Only the table, loader and
-  validator exist. A sketch and the `rates.md` question are in the old
+  validator exist. Less urgent since invoices (§4.9): Nick can charge real
+  money per job without it. A sketch and the `rates.md` question are in the old
   handoff. Recommended: render the rates document from the live card on
   request, rather than committing a generated file.
 - **Video:**
