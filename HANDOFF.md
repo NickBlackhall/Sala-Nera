@@ -25,18 +25,15 @@ auto mode blocked `npx vercel ls` in that session, so it was checked by
 serving salanera.com instead.
 
 **Waiting on Nick (his test, then my read-only check):**
-1. **The dates of any BMG shoots he has booked.** The untested direction: if
-   Spiro doesn't write onto this calendar, salanera.com will sell a day he is
-   already shooting (§4.2). Compare a known BMG date against availability.
-2. **Download all photos on his phone.** Open Rockwall
+1. **Download all photos on his phone.** Open Rockwall
    (`/portal/rockwall-shores-drive`) signed in as his Gmail and download both
    zips. On an iPhone they should land in Files and open as a folder of 32
    photos. Then check read-only:
    `select reason, detail, at from events where kind='download' order by at desc limit 5`.
-3. **A horizontal film upload.** It should record about 1920×1080 and get a
+2. **A horizontal film upload.** It should record about 1920×1080 and get a
    still (`grid_key`/`large_key` set). The only film so far is vertical (media
    56). Check: `select id, width, height, grid_key is not null from media where kind='video'`.
-4. **A fresh photo upload that makes its own copies** without pressing Make
+3. **A fresh photo upload that makes its own copies** without pressing Make
    previews. That proves new photos get copies, and the copyright notice, on
    their own; Rockwall's 32 existing copies predate the notice. The latest
    media id is 56, so anything above it is new.
@@ -59,8 +56,10 @@ serving salanera.com instead.
      yet").
   2. **Payment through Stripe, "eventually"** (Nick, Sep 21). Parked.
 
-  (The Spiro calendar check is done: Spiro won't double-book a Sala Nera
-  shoot. See §4.2, including the buffer it ignores.)
+  (**The Spiro calendar question is fully closed** (Sep 22): Spiro won't
+  double-book a Sala Nera shoot, and Spiro's own shoots land on this calendar
+  so salanera.com won't double-book Nick either. See §4.2, including the one
+  fragility — Spiro writes through Nick's Google account, not its own.)
 
 ---
 
@@ -361,18 +360,34 @@ separate work.
     market is not contingent on Nick acting on the mail, and there is no
     pending request that could lapse and quietly hand the day back. Nothing
     to do when one arrives.
-  - **The reverse is still unproven, and it is the dangerous direction.** A
-    Spiro shoot only blocks Sala Nera if Spiro writes its appointments onto
-    *this* calendar. If it writes them elsewhere, salanera.com will sell a day
-    Nick is already shooting for BMG. Two things now point the right way — the
-    calendar's own description ("This is your personal Blackhall Media Group
-    appointments calendar for the Spiro platform. All of your appointments and
-    days off will be available here!") and the time-off email above, which
-    shows Spiro reading this calendar. Neither is proof that it *writes* here.
-    Thu Oct 8, which the site was blocking on Sep 22, turned out to be a
-    doctor's appointment, so it proves the personal-hard-block rule live but
-    says nothing about Spiro. **To check: take a date Nick has a BMG shoot on
-    and see whether the site offers it.**
+  - **The reverse direction is settled too: Spiro writes its shoots onto this
+    calendar** (checked Sep 22). Nick's BMG shoot on Wed Sep 23 is on it as a
+    normal timed, busy event:
+
+    ```
+    Keith Redelsperger - 4840 Serenity Trail, McKinney, TX 75071
+    Sep 23, 1:30 PM – 5:30 PM
+    ```
+
+    Spiro wrote it: the description holds the Gold Media Package, the order's
+    questions and answers, and links to Spiro's photographer and admin
+    portals. So a BMG shoot does reach the calendar `lib/availability.ts`
+    reads, and salanera.com will not sell a day Nick is already shooting.
+    With a 1:30–5:30pm block, all four start times fail the buffer check
+    (8am guards 7am–3pm, 11am guards 10am–6pm; every one overlaps), so the
+    whole day goes — before drive time is even considered.
+    - **Not observed live end to end**, because Sep 23 is inside the 48-hour
+      notice window and never appears in `/api/booking/availability`. What was
+      checked is that the busy block exists on the calendar, and that the
+      rules in `lib/scheduling.ts` reject all four starts against it.
+    - **The one fragility:** the event's creator is
+      `nblackhall@blackhallmediagroup.com`, not a Spiro service account — Spiro
+      writes through Nick's connected Google account. If that integration is
+      ever disconnected in Spiro, BMG shoots stop reaching this calendar and
+      salanera.com starts selling days Nick is booked, silently. Worth
+      re-checking if he ever reconnects or changes Google accounts in Spiro.
+  - Thu Oct 8, which the site was blocking on Sep 22, turned out to be a
+    doctor's appointment, so it proves the personal-hard-block rule live.
   - **A personal appointment costs the whole day**, confirmed live by Oct 8.
     With six hours plus an hour of buffer either side, anything busy between
     about 7am and 7pm overlaps all four start times. That is the hard-block
