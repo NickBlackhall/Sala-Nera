@@ -19,29 +19,24 @@ Sep 22 unless it says otherwise.
 ## 1. Start here
 
 **State:** everything is committed, pushed and deployed. The last code change
-is `05e3297`, the all-day calendar block. The working tree is clean. That
-push was not confirmed Ready: auto mode blocked `npx vercel ls` in that
-session, so it was checked by serving salanera.com instead.
+is `05e3297`, the all-day calendar block, and **it is now proven live end to
+end** (§4.2). The working tree is clean. That push was not confirmed Ready:
+auto mode blocked `npx vercel ls` in that session, so it was checked by
+serving salanera.com instead.
 
 **Waiting on Nick (his test, then my read-only check):**
-1. **A fresh booking, to prove the all-day block live** (§3, §4.2). He first
-   deletes the hand-made ALL DAY TEST event on Thu Oct 15, and cancels booking
-   5 on /admin/bookings. Then one new booking: the calendar should show an
-   all-day `[Sala Nera] 10am · <address>` block, and Spiro should refuse that
-   day outright — not just the shoot's hours. Check read-only with
-   `/api/booking/availability` and the `bookings` row.
-2. **The dates of any BMG shoots he has booked.** The untested direction: if
+1. **The dates of any BMG shoots he has booked.** The untested direction: if
    Spiro doesn't write onto this calendar, salanera.com will sell a day he is
    already shooting (§4.2). Compare a known BMG date against availability.
-3. **Download all photos on his phone.** Open Rockwall
+2. **Download all photos on his phone.** Open Rockwall
    (`/portal/rockwall-shores-drive`) signed in as his Gmail and download both
    zips. On an iPhone they should land in Files and open as a folder of 32
    photos. Then check read-only:
    `select reason, detail, at from events where kind='download' order by at desc limit 5`.
-4. **A horizontal film upload.** It should record about 1920×1080 and get a
+3. **A horizontal film upload.** It should record about 1920×1080 and get a
    still (`grid_key`/`large_key` set). The only film so far is vertical (media
    56). Check: `select id, width, height, grid_key is not null from media where kind='video'`.
-5. **A fresh photo upload that makes its own copies** without pressing Make
+4. **A fresh photo upload that makes its own copies** without pressing Make
    previews. That proves new photos get copies, and the copyright notice, on
    their own; Rockwall's 32 existing copies predate the notice. The latest
    media id is 56, so anything above it is new.
@@ -332,12 +327,30 @@ separate work.
     knows nothing of our buffer. Rather than chase a buffer setting inside
     Spiro, Nick chose to take the whole day off the market (§3). An all-day
     event does that everywhere at once.
-  - **All-day blocks work on both sides. Proven Sep 22** with a hand-made
-    all-day event on Thu Oct 15: Spiro offered no times that day, and
-    salanera.com's availability dropped Oct 15 while leaving Oct 14 and Oct 19
-    open, so an all-day block doesn't bleed into the days either side. That
-    hand-made event is Nick's to delete in Google Calendar; the app knows
-    nothing about it.
+  - **All-day blocks work on both sides. Proven Sep 22** — first with a
+    hand-made event on Thu Oct 15, then **end to end with a real booking the
+    app wrote itself**. Nick booked 520 Cashmere Drive for Mon Oct 5, 11am. The
+    event the service account created reads:
+
+    ```
+    summary: [Sala Nera] 11am · 520 Cashmere Drive, garland texas test
+    start:   { date: 2026-10-05 }
+    end:     { date: 2026-10-06 }
+    ```
+
+    `date` rather than `dateTime` is what makes it all-day, and Google's
+    exclusive end date means one day with no bleed. Google omits
+    `transparency` from the API response when an event is opaque, and the
+    event editor showed Busy. Spiro then offered no times at all on Oct 5 —
+    including 5pm, the gap the old six-hour block left open — and
+    salanera.com dropped all four of Oct 5's start times while leaving Oct 6
+    and Oct 7 open. The hand-made Oct 15 test event has been deleted.
+  - **It doesn't look all-day at a glance, and that's Google, not a bug.**
+    Google never prints "All day" on the chip: in month view the event is a
+    filled bar, in week and day view it sits in the thin strip above the
+    hourly grid. Our title leading with "11am ·" makes it read like a timed
+    appointment. Opening the event shows All day + Busy. Nick raised this on
+    Sep 22 thinking the block had failed; it hadn't.
   - **The reverse is still unproven, and it is the dangerous direction.** A
     Spiro shoot only blocks Sala Nera if Spiro writes its appointments onto
     *this* calendar. If it writes them elsewhere, salanera.com will sell a day
@@ -351,10 +364,12 @@ separate work.
     rule Nick set (§3), not a bug, but it is blunter than it looks.
 - **Which "Make changes" sharing tier** the service account has on the
   calendar was never visually confirmed. Any of them can write.
-- **Bookings holding days** (Sep 22): row 5, `520 Cashmere Drive TEST`, is
-  confirmed and holds Thu Oct 1. It is Nick's Spiro test and can be cancelled
-  in /admin/bookings when he's done with it. Rows 2–4 are cancelled, and row 1
-  is a pre-instant-booking request.
+- **Bookings holding days** (Sep 22, end of day): the all-day test booking,
+  `520 Cashmere Drive, garland texas test`, is confirmed and holds **Mon Oct
+  5, 11am–5pm**. It is Nick's to cancel in /admin/bookings now that the
+  all-day block is proven. The earlier row 5 on Thu Oct 1 was cancelled, and
+  its calendar event went with it. Thu Oct 8 is blocked by a real ortho
+  appointment of Nick's, not by us.
 
 ### 4.3 Agents reschedule or cancel their own booking
 - **Where:** the listing's "Shoot booked" page (`ManageBooking.tsx`) has
