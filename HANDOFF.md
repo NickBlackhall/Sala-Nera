@@ -2,6 +2,47 @@
 
 ## Start here — state at end of Sep 21/22
 
+**Agents can reschedule or cancel their own booking — LIVE (`7e5cc6e`).**
+Nick's rules (asked directly, Sep 22): **up to 48 hours before the shoot**
+(`CHANGE_CUTOFF_HOURS = MIN_NOTICE_HOURS`), and **only signed in to the client
+portal** (no signed email link). He chose both recommendations.
+- **Where:** the listing's "Shoot booked" page (`app/portal/[slug]/ManageBooking.tsx`)
+  shows the booked day and time with **Reschedule** (the booking form's
+  `SlotPicker` in its new `purpose="reschedule"` mode, with no date-request
+  fallback) and **Cancel booking**. Inside 48h it says to reply to the
+  confirmation or email Nick. The buttons show only on a listing a booking made,
+  with nothing uploaded, whose booking is confirmed with a time.
+- **Who:** `app/portal/[slug]/actions.ts` re-checks the session and ownership
+  (team-aware, like downloads; the admin passes too), then calls
+  `lib/booking-changes.ts`.
+- **Move = one UPDATE** of the same booking row (new starts_at/ends_at/shoot_date),
+  guarded on still confirmed, same old time and still ≥48h out. The one-a-day
+  unique index refuses a day someone else took (23505 → "that time has just been
+  taken"), and the agent keeps their time. Then the listing's shoot date is
+  updated, a new calendar event is created, the id saved (null if the create
+  failed, so /admin/bookings flags it), and the old event deleted.
+- **Cancel** uses the same guarded UPDATE to 'cancelled', deletes the event, calls
+  `releaseBookingListing()`, and redirects to `/portal?cancelled=1` (notice).
+- **Emails:** Nick gets "Booking moved/cancelled by the agent — <address>" (was/now,
+  who did it, a loud line if the calendar couldn't be updated), reply-to the agent.
+  The agent gets "Your shoot is moved/cancelled". Logged as `booking/ok/client_rescheduled`
+  and `client_cancelled`, with `change_email_failed` if a send fails.
+- **The booking confirmation email** now links to `/portal/<slug>` and says it can
+  be changed there up to 48 hours before.
+- **Limitation:** no moving to another time on the same day. The agent's own
+  booking makes that day show as taken.
+- **Checks:** `reference/check-booking-changes.mjs` (42, all pass, calendar and
+  Resend captured). check-booking-listing gained 2 confirmation-email checks (33).
+  Browser run in demo mode (demo booking `DEMO_BOOKING`, 9am Sep 29) on laptop
+  and phone. Live GET checks after deploy: /book, availability (32 open days),
+  the agent portal, the cancelled notice, /admin/bookings and /p all fine.
+- **Being tested by Nick now:** book with his Gmail (the agent account, not the
+  admin address, which gets no client account) more than 48h out, then
+  reschedule and cancel from the portal and watch his Google Calendar. Check
+  after, read-only: `bookings` status/starts_at, `events where reason in
+  ('client_rescheduled','client_cancelled','change_email_failed')`, and that the
+  listing is gone.
+
 **The admin has its own sign-in now — LIVE (`9803434`).** Nick opened
 salanera.com/admin on a new computer and got a 404: the admin gate answered 404
 to anyone not signed in as the admin, and there was no admin sign-in, only the
@@ -83,7 +124,7 @@ was still answering on :3217, and it looked like a 500 in the new code. Check
    dead invoice button is hidden (live, `0b879e8`) and payment is
    arranged directly with Nick, who unlocks the listing in /admin.
 3. Real prices and terms (both still `…_ARE_PLACEHOLDER = true`).
-4. Agents cancelling/rescheduling their own booking.
+4. ~~Agents cancelling/rescheduling their own booking~~: LIVE (`7e5cc6e`), Nick testing.
 5. Verify Spiro reads the same calendar (possible double-booking).
 
 ## Sep 21, near midnight: the delivery email button — LIVE (`0b879e8`, migration `49f1d8b`)
@@ -174,7 +215,7 @@ check-listing-delete re-run after the schema change: all pass.
    on the delivery page is `href="#"`, a dead button agents can see.
 2. **A "your media is ready" email** to the agent. Nothing tells them today.
 3. Real prices and terms (both still `…_ARE_PLACEHOLDER = true`).
-4. Agents cancelling/rescheduling their own booking.
+4. ~~Agents cancelling/rescheduling their own booking~~: LIVE (`7e5cc6e`), Nick testing.
 5. Verify Spiro reads the same calendar (possible double-booking).
 
 ## Latest — Sep 21, night: High res / Low res download switch — LIVE (`97c3445`)
