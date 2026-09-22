@@ -1,8 +1,71 @@
-# Sala Nera — Handoff (Sep 21 2026)
+# Sala Nera — Handoff (updated Sep 22 2026)
 
-## Start here — state at end of Sep 21/22
+## Start here — state at Sep 22, 00:25 UTC
 
-**Agents can reschedule or cancel their own booking — LIVE (`7e5cc6e`).**
+**Everything is committed, pushed and deployed. The working tree is clean.**
+The latest code deploy is `7e5cc6e`. Checked read-only just now: no bookings,
+downloads or uploads since that deploy.
+
+**Built and live, Sep 21–22** (details in the dated sections below):
+
+| What | Commit | Proven live by Nick? |
+|---|---|---|
+| High res / Low res download switch | `97c3445` | Not yet |
+| Every booking creates its own listing (migration 0006) | `f9f203a` | Not yet: no real booking since |
+| "Send delivery email" button (migration 0007) | `0b879e8` | **Yes**, Sep 22 00:00 UTC, Rockwall → his Gmail |
+| Admin has its own sign-in at /admin/login | `9803434` | **Yes**, on his new computer |
+| Agents reschedule or cancel their own booking | `7e5cc6e` | Not yet: he was about to test |
+
+**Waiting on Nick (his tests, then my read-only check):**
+1. **Reschedule and cancel** (he said "I'll test it"; not started at 00:24 UTC).
+   Steps given to him: book at /book with **his Gmail** (the agent account; his
+   admin address gets no client account, so no buttons) for a date several days
+   out. Open the confirmation email's link **in a private window**, sign in as
+   the Gmail, then Reschedule → Move my shoot, then Cancel booking, watching his
+   Google Calendar. Check after, read-only: the new `bookings` row (status,
+   starts_at, calendar_event_id), `events where reason in ('client_rescheduled',
+   'client_cancelled', 'change_email_failed')`, and that its listing is gone.
+   The same test also proves "booking creates its listing" live.
+2. **Low res download** on Rockwall: one photo, then Download All. Expect ~0.6MB
+   `-low-res.jpg` files and "low res" in /admin/listings/2's download history.
+3. **A horizontal film upload**, and **a fresh photo upload** that makes its own
+   copies (`grid_key` set without pressing Make previews). Latest media id is 56.
+
+**Open decision:** where the "Send delivery email" button goes. Today it's near
+the bottom of the listing page, under all the photos, which is why Nick couldn't
+find it. Offered: move it to the top of the listing page, and/or a Send link on
+each row of /admin. No answer yet.
+
+**Client-journey gaps left, in Nick's order:**
+1. **Real prices and terms.** Both are still placeholders (`RATES_ARE_PLACEHOLDER`,
+   `TERMS_ARE_PLACEHOLDER`). His real rates are on his live Spiro page.
+2. **Check Spiro reads the same calendar.** If it doesn't, Spiro could sell a day
+   Sala Nera already booked. Test: block a time by hand on "Blackhall Media Group
+   Appointments", then see if Spiro still offers it.
+3. **Payment: Stripe, "eventually"** (Nick, Sep 21). Parked. The dead invoice
+   button is hidden, and payment is arranged with Nick, who unlocks the listing.
+
+**Rules and gotchas from this session:**
+- **`.env.local` is the production database.** Never send a write-capable
+  request as the admin to a local dev server (see the Sep 21 incident below).
+  Prove action gating in the pglite harness instead.
+- Migrations: ship the `lib/portal-migration.ts` change first, have **Nick** run
+  the migrate one-liner (auto mode refuses it for me), confirm in
+  `portal_migrations`, then deploy the code that uses it:
+  `node --env-file=.env.local -e "fetch('https://salanera.com/api/portal/migrate',{method:'POST',headers:{Authorization:'Bearer '+process.env.MIGRATE_TOKEN}}).then(r=>r.text()).then(console.log)"`
+- `.env.local` has `PORTAL_URL=http://localhost:3000`. Running `next dev` on
+  another port, set `PORTAL_URL=http://localhost:<port>`, or sign-out and email
+  links point at the wrong place.
+- `kill`ing the `npx next dev` PID leaves its `next-server` child holding the
+  port, and an old server keeps answering. Check `ss -ltnp | grep 3217` and kill
+  both PIDs.
+- Check scripts (all in `reference/`, run with `node --import
+  ./scripts/ts-alias-hook.mjs`): check-booking-changes (42), check-admin-signin
+  (29), check-delivery-email (35), check-booking-listing (33), check-downloads,
+  check-listing-delete, check-copies-action, check-claim. All pass at `7e5cc6e`.
+
+## Sep 22: agents reschedule or cancel their own booking — LIVE (`7e5cc6e`)
+
 Nick's rules (asked directly, Sep 22): **up to 48 hours before the shoot**
 (`CHANGE_CUTOFF_HOURS = MIN_NOTICE_HOURS`), and **only signed in to the client
 portal** (no signed email link). He chose both recommendations.
@@ -36,18 +99,13 @@ portal** (no signed email link). He chose both recommendations.
   Browser run in demo mode (demo booking `DEMO_BOOKING`, 9am Sep 29) on laptop
   and phone. Live GET checks after deploy: /book, availability (32 open days),
   the agent portal, the cancelled notice, /admin/bookings and /p all fine.
-- **Being tested by Nick now:** book with his Gmail (the agent account, not the
-  admin address, which gets no client account) more than 48h out, then
-  reschedule and cancel from the portal and watch his Google Calendar. Check
-  after, read-only: `bookings` status/starts_at, `events where reason in
-  ('client_rescheduled','client_cancelled','change_email_failed')`, and that the
-  listing is gone.
 
-**The admin has its own sign-in now — LIVE (`9803434`).** Nick opened
-salanera.com/admin on a new computer and got a 404: the admin gate answered 404
-to anyone not signed in as the admin, and there was no admin sign-in, only the
-client portal's. He said, rightly, that the admin is his CMS and must not go
-through the client portal. Now:
+## Sep 22: the admin has its own sign-in page — LIVE (`9803434`)
+
+Nick opened salanera.com/admin on a new computer and got a 404: the admin gate
+answered 404 to anyone not signed in as the admin, and there was no admin
+sign-in, only the client portal's. He said, rightly, that the admin is his CMS
+and must not go through the client portal. Now:
 - `requireAdmin()` (`lib/admin.ts`) **redirects** non-admins (signed out, or an
   agent's session) to **/admin/login** instead of `notFound()`. Every admin page
   and all 16 actions call it on their first line (checked, none inside a try).
@@ -80,6 +138,8 @@ window and unchanged counts (2 listings, 43 media, 3 bookings, 3 clients). Nick
 was told. **Rule: never send a write-capable request as admin to the
 prod-backed local server.** Prove action gating in the pglite harness.
 
+## Sep 21, near midnight: the delivery email button — LIVE (`0b879e8`, migration `49f1d8b`)
+
 **The delivery email button is LIVE (`0b879e8`).** Nick ran the 0007 migrate
 call at 23:30 UTC. I confirmed `delivery_emails` exists, then looked at
 /admin/listings/2 on a local server reading production, with every non-GET
@@ -96,38 +156,10 @@ Read-only: `delivery_emails` row 1 (`ready`, `nickblackhall@gmail.com`), and a
 `delivery/ok/ready` event. **Still open:** the button sits near the bottom of
 the listing page, under all the photos, which is why Nick couldn't find it.
 He was offered moving it to the top of the listing page and/or a Send link
-on the listings table, and hasn't chosen. Earlier notes for this test:
-press **Send delivery email** on **Rockwall Shores**. Its agent is client 6,
-`nickblackhall@gmail.com`, so it lands in his own inbox. Then follow the link
-signed out, to prove sign-in returns to the gallery. Check read-only after:
-`select * from delivery_emails` and `events where kind = 'delivery'`. **Never
-send on Preston Hollow** (listing 1): its demo agent is
-`agent@briggsfreeman.com`, a made-up address on a real brokerage's domain.
-
-Gotcha from this session: `kill`ing the `npx next dev` PID leaves its
-`next-server` child holding the port. A demo-mode server from an hour earlier
-was still answering on :3217, and it looked like a 500 in the new code. Check
-`ss -ltnp | grep 3217` and kill both PIDs.
-
-**Waiting on Nick (nothing to build, just his test, then my read-only check):**
-- Low res download on Rockwall: one photo, then Download All. Expect ~0.6MB
-  `-low-res.jpg` files and "low res" in the admin download history.
-- First real booking since `f9f203a`: its listing should appear in /admin with
-  a "Listing →" link on /admin/bookings. Latest ids at 23:30 were listing 2,
-  booking 3.
-- A horizontal film upload, and a fresh photo upload that makes its copies
-  on its own.
-
-**Client-journey gaps, in the order Nick is taking them:**
-1. ~~No "your photos are ready" email~~: LIVE, and proven with Nick's first send.
-2. **Payment: Stripe, "eventually"** (Nick, Sep 21). Parked. Until then the
-   dead invoice button is hidden (live, `0b879e8`) and payment is
-   arranged directly with Nick, who unlocks the listing in /admin.
-3. Real prices and terms (both still `…_ARE_PLACEHOLDER = true`).
-4. ~~Agents cancelling/rescheduling their own booking~~: LIVE (`7e5cc6e`), Nick testing.
-5. Verify Spiro reads the same calendar (possible double-booking).
-
-## Sep 21, near midnight: the delivery email button — LIVE (`0b879e8`, migration `49f1d8b`)
+on the listings table, and hasn't chosen. Rockwall's agent is client 6,
+`nickblackhall@gmail.com`, so test sends land in his own inbox. **Never send
+on Preston Hollow** (listing 1): its demo agent is `agent@briggsfreeman.com`, a
+made-up address on a real brokerage's domain.
 
 Nick asked for "a delivery email button on my side". I recommended a button
 over sending automatically, since uploads land in batches and he checks the
