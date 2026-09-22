@@ -22,6 +22,26 @@ export const DEFAULT_TAX_RATE_BP = 825;
  */
 export { invoiceMoney, invoiceTotals, taxRateLabel, type InvoiceTotals } from '@/lib/invoice-math';
 
+/**
+ * True for the two errors Postgres raises when this code is newer than the
+ * database: `42P01` undefined_table and `42703` undefined_column.
+ *
+ * It exists so a deploy that lands before migration 0009 is run degrades
+ * instead of breaking. Without it the admin listing page — the page Nick runs
+ * a shoot from — would 500 outright in that window, which is a bad trade for
+ * a feature nobody is using yet. Deliberately narrow: any other database error
+ * is re-thrown, because "the invoice could not be read" must never quietly
+ * become "there is no invoice".
+ */
+function notYetMigrated(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code;
+  return code === '42P01' || code === '42703';
+}
+
+/** The message Nick sees if he reaches an invoice before running the migration. */
+export const NEEDS_MIGRATION =
+  'Invoices need migration 0009 — run it from /admin, then try again.';
+
 /** A new line, ready to be filled in. */
 export function blankLine(): InvoiceLine {
   return { id: randomUUID(), name: '', amount: 0 };
@@ -89,11 +109,20 @@ export async function getOrCreateInvoice(
   return won[0];
 }
 
-/** The invoice if there is one. Never creates: for read paths, including the client's. */
+/**
+ * The invoice if there is one. Never creates: for read paths, including the
+ * client's. Answers null rather than throwing on a database that has not had
+ * migration 0009 yet — see notYetMigrated().
+ */
 export async function getInvoice(listingId: number): Promise<Invoice | null> {
   const db = getDatabase();
-  const rows = await db.select().from(invoices).where(eq(invoices.listingId, listingId)).limit(1);
-  return rows[0] ?? null;
+  try {
+    const rows = await db.select().from(invoices).where(eq(invoices.listingId, listingId)).limit(1);
+    return rows[0] ?? null;
+  } catch (error) {
+    if (notYetMigrated(error)) return null;
+    throw error;
+  }
 }
 
 /**

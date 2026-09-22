@@ -42,6 +42,7 @@ import {
   saveInvoice,
   setInvoicePaid,
   taxRateLabel,
+  NEEDS_MIGRATION,
 } from '@/lib/invoices';
 import { invoiceEmail } from '@/lib/invoice-email';
 import type { InvoiceLine } from '@/lib/schema';
@@ -487,15 +488,20 @@ export async function saveInvoiceAction(
     return { error: 'A payment link has to start with https://.' };
   }
 
-  // Creating here as well as on read means a Save works even on a listing
-  // whose invoice row was never opened.
-  await getOrCreateInvoice(detail.listing, detail.booking);
-  await saveInvoice(detail.listing.id, {
-    lines: read.lines,
-    taxRateBp: Math.round(percent * 100),
-    note: String(form.get('note') ?? '').trim() || null,
-    paymentUrl: payUrl || null,
-  });
+  try {
+    // Creating here as well as on read means a Save works even on a listing
+    // whose invoice row was never opened.
+    await getOrCreateInvoice(detail.listing, detail.booking);
+    await saveInvoice(detail.listing.id, {
+      lines: read.lines,
+      taxRateBp: Math.round(percent * 100),
+      note: String(form.get('note') ?? '').trim() || null,
+      paymentUrl: payUrl || null,
+    });
+  } catch (error) {
+    console.error('admin: could not save the invoice', { listingId: id, error });
+    return { error: NEEDS_MIGRATION };
+  }
 
   revalidatePath(`/admin/listings/${id}`);
   revalidatePath(`/portal/${detail.listing.slug}`);
@@ -518,8 +524,16 @@ export async function setInvoicePaidAction(
   if (!detail) return { error: 'That listing no longer exists.' };
 
   const paid = form.get('paid') === 'true';
-  await getOrCreateInvoice(detail.listing, detail.booking);
-  await setInvoicePaid(detail.listing.id, paid, String(form.get('method') ?? '').trim() || null);
+  try {
+    // Before setInvoicePaid, which writes the download lock: if the invoice
+    // table is not there yet this throws having changed nothing, rather than
+    // leaving the lock moved and no invoice to show for it.
+    await getOrCreateInvoice(detail.listing, detail.booking);
+    await setInvoicePaid(detail.listing.id, paid, String(form.get('method') ?? '').trim() || null);
+  } catch (error) {
+    console.error('admin: could not set the invoice paid', { listingId: id, error });
+    return { error: NEEDS_MIGRATION };
+  }
 
   await record({
     kind: 'delivery',
