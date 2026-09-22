@@ -44,7 +44,6 @@ serving salanera.com.
   - The download area, now the zips work.
   - The agent's reschedule/cancel screens. UI only; see the rule in §3.
   - The Low res label (a second agent suggested "Best for phone, web and social").
-- **Zip Stage 2:** Download Selected (§4.6).
 - **Client-journey gaps, in Nick's order:**
   1. **Real prices and terms.** Both are placeholders
      (`RATES_ARE_PLACEHOLDER`, `TERMS_ARE_PLACEHOLDER`). **Sala Nera's rates
@@ -525,8 +524,10 @@ separate work.
   `/api/portal/download/<id>`.
 - **Single photos:** open one, then use "Download high/low res" at the bottom.
   This path is proven live.
-- **Stage 2, not built:** Download Selected. The tick boxes are hidden in
-  Stage 1. The agreed design:
+- **Stage 2, not built, and parked** (Nick, Sep 22): "lets hold off on stage 2
+  for now — possibly in the polish pass." With Stage 1 live, selecting a
+  subset is convenience only, so don't build it unprompted. Download Selected.
+  The tick boxes are hidden in Stage 1. The agreed design:
   - One photo downloads directly.
   - Two or more become a **temporary zip** under a temp prefix, using the
     `archives.expires_at` column, which already exists, so no migration is
