@@ -19,18 +19,29 @@ Sep 22 unless it says otherwise.
 ## 1. Start here
 
 **State:** everything is committed, pushed and deployed. The last code change
-is `4abf141`. The working tree is clean.
+is `05e3297`, the all-day calendar block. The working tree is clean. That
+push was not confirmed Ready: auto mode blocked `npx vercel ls` in that
+session, so it was checked by serving salanera.com instead.
 
 **Waiting on Nick (his test, then my read-only check):**
-1. **Download all photos on his phone.** Open Rockwall
+1. **A fresh booking, to prove the all-day block live** (§3, §4.2). He first
+   deletes the hand-made ALL DAY TEST event on Thu Oct 15, and cancels booking
+   5 on /admin/bookings. Then one new booking: the calendar should show an
+   all-day `[Sala Nera] 10am · <address>` block, and Spiro should refuse that
+   day outright — not just the shoot's hours. Check read-only with
+   `/api/booking/availability` and the `bookings` row.
+2. **The dates of any BMG shoots he has booked.** The untested direction: if
+   Spiro doesn't write onto this calendar, salanera.com will sell a day he is
+   already shooting (§4.2). Compare a known BMG date against availability.
+3. **Download all photos on his phone.** Open Rockwall
    (`/portal/rockwall-shores-drive`) signed in as his Gmail and download both
    zips. On an iPhone they should land in Files and open as a folder of 32
    photos. Then check read-only:
    `select reason, detail, at from events where kind='download' order by at desc limit 5`.
-2. **A horizontal film upload.** It should record about 1920×1080 and get a
+4. **A horizontal film upload.** It should record about 1920×1080 and get a
    still (`grid_key`/`large_key` set). The only film so far is vertical (media
    56). Check: `select id, width, height, grid_key is not null from media where kind='video'`.
-3. **A fresh photo upload that makes its own copies** without pressing Make
+5. **A fresh photo upload that makes its own copies** without pressing Make
    previews. That proves new photos get copies, and the copyright notice, on
    their own; Rockwall's 32 existing copies predate the notice. The latest
    media id is 56, so anything above it is new.
