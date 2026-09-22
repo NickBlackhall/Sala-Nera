@@ -308,8 +308,21 @@ export default function Gallery({
               />
             </div>
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img className="lb-img" src={current.largeUrl ?? undefined} alt="" />
+            /*
+             * Wrapped so the watermark can sit over the photo rather than over
+             * the whole black backdrop: the wrapper shrinks to the rendered
+             * image, whatever shape it is.
+             *
+             * Without this a locked gallery protected the grid and left the
+             * lightbox open — every tile carried SALA NERA, and opening one
+             * showed it clean at 2400px. A film was always watermarked here,
+             * through the player; a photo fell between the two.
+             */
+            <div className="lb-photo">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="lb-img" src={current.largeUrl ?? undefined} alt="" />
+              {locked && <span className="lb-wm" aria-hidden="true">SALA NERA</span>}
+            </div>
           )}
           <button className="lb-next" onClick={() => step(1)} aria-label="Next">›</button>
           <div className="lb-meta">
