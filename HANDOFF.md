@@ -1,14 +1,21 @@
 # Sala Nera — Handoff (updated Sep 22 2026)
 
-## Start here — state at Sep 22, 15:40 UTC
+## Start here — state at Sep 22, 15:35 UTC
 
-**Zip Stage 1 is BUILT and committed but NOT pushed**, because migration 0008
-has to be applied first. The table's code went live as `a7a5b2c` (schema only,
+**Zip Stage 1 is LIVE** (`11e8976`, migration 0008 applied by Nick first). The table's code went live as `a7a5b2c` (schema only,
 nothing uses it). **Next steps, in order:**
 1. ~~Nick runs the migrate one-liner.~~ **Done, Sep 22 15:16 UTC**: confirmed
    read-only, `0008_archives` applied, table and unique index present, empty.
-2. **Push the Stage 1 commit** (the one after `a7a5b2c`). It is the deploy.
-3. **Nick's live test**, then my read-only check. Steps are in the zip section.
+2. ~~Push the Stage 1 commit.~~ **Live, Sep 22 ~15:25 UTC** (`11e8976`).
+   Checked read-only as admin (page views only, no POSTs):
+   - `/admin/listings/2` shows the Delivery panel at the top, with both zips
+     "Not made yet" and Prepare downloads. Its history is grouped ("33 files
+     at once" ×2).
+   - `/portal/rockwall-shores-drive` shows High/Low res, Download all photos
+     and "Download film · 127 MB", with no checkboxes.
+   - There is no sideways scroll at 390px.
+3. **Nick's live test** is next, then my read-only check. Steps are in the zip
+   section. No zip has been built yet: `archives` is empty.
 
 **Built and live, Sep 21–22** (details in the dated sections below):
 
@@ -75,7 +82,7 @@ and the reschedule/cancel screens (UI only, never the wiring).
   (29), check-delivery-email (35), check-booking-listing (33), check-downloads,
   check-listing-delete, check-copies-action, check-claim. All pass at `7e5cc6e`.
 
-## Sep 22: Download All becomes zips — STAGE 1 BUILT, NOT YET DEPLOYED
+## Sep 22: Download All becomes zips — STAGE 1 LIVE (`11e8976`), NICK TO TEST
 
 ### Stage 1 as built (Sep 22, afternoon)
 
