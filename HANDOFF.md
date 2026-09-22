@@ -1,9 +1,15 @@
 # Sala Nera — Handoff (updated Sep 22 2026)
 
-## Start here — state at Sep 22, 15:00 UTC
+## Start here — state at Sep 22, 15:40 UTC
 
-**Everything is committed, pushed and deployed.** The latest code deploy is
-`7e5cc6e`. Since then only this file has changed.
+**Zip Stage 1 is BUILT and committed but NOT pushed**, because migration 0008
+has to be applied first. The table's code went live as `a7a5b2c` (schema only,
+nothing uses it). **Next steps, in order:**
+1. **Nick runs the migrate one-liner** (below, under Rules). Confirm read-only:
+   `portal_migrations` has `0008_archives` and `to_regclass('public.archives')`
+   is not null. At 15:40 it had not been run.
+2. **Push the Stage 1 commit** (the one after `a7a5b2c`). It is the deploy.
+3. **Nick's live test**, then my read-only check. Steps are in the zip section.
 
 **Built and live, Sep 21–22** (details in the dated sections below):
 
@@ -29,15 +35,15 @@ the guarded UPDATEs, calendar and email calls). It works as is.
 page "freaked out" and only the **first** file arrived, at both sizes. The
 switch itself works: he got the photo at both sizes with the right names. The
 logs (32 `low` + the film `high`, then 33 `high`) record links handed out, not
-files received, so I wrongly called this proven at first. **Next build: Download
-All becomes zips.** Plan agreed, not built: see the next section.
+files received, so I wrongly called this proven at first. **Fixed by Download
+all photos zips, Stage 1: built, waiting on the migration** (next section).
 
 **Still waiting on Nick (his test, then my read-only check):**
 1. **A horizontal film upload**, and **a fresh photo upload** that makes its own
    copies (`grid_key` set without pressing Make previews). Latest media id is 56.
 
-**Decided:** the "Send delivery email" button moves to the **top** of the listing
-page, with a downloads status line. This is part of zip Stage 1.
+**Decided and built (Stage 1):** the "Send delivery email" button is now at the
+**top** of the listing page, in a Delivery panel with the zips' status.
 
 **UI tweaks Nick wants, not yet discussed:** the download area (after the zips)
 and the reschedule/cancel screens (UI only, never the wiring).
@@ -70,7 +76,91 @@ and the reschedule/cancel screens (UI only, never the wiring).
   (29), check-delivery-email (35), check-booking-listing (33), check-downloads,
   check-listing-delete, check-copies-action, check-claim. All pass at `7e5cc6e`.
 
-## Sep 22: Download All becomes zips — PLAN AGREED, NOT BUILT
+## Sep 22: Download All becomes zips — STAGE 1 BUILT, NOT YET DEPLOYED
+
+### Stage 1 as built (Sep 22, afternoon)
+
+Waiting on migration 0008, then a push. The agreed plan is below this
+subsection, and the build follows it except where noted.
+
+**Where things are:**
+- `lib/zip.ts` is the ZIP writer.
+- `lib/archives.ts` holds build, claim, reuse, discard, fallback and notify.
+- `app/api/portal/download/archive/route.ts` is the client endpoint, plus a
+  demo-mode zip made on the spot.
+- `lib/storage.ts` gained `objectSize` (HEAD), `readObject`,
+  `putObjectStream`, `ARCHIVE_TTL`, and `deleteObjects` (moved from
+  actions.ts).
+- `app/admin/SendDelivery.tsx` is the Delivery panel, now at the top.
+- In `app/admin/actions.ts`: `sendDeliveryAction` builds first for ready
+  emails, and `prepareDownloadsAction` is new. Add, copies, reorder and delete
+  call `discardStaleArchives`, and deleting a listing removes its zips.
+- `app/components/Gallery.tsx` has "Download all photos", film buttons and
+  sizes. Selection is removed.
+- The admin listing page's `maxDuration` is 60 → 300. Its download history is
+  now grouped into one line per download ("33 files at once").
+
+**Changes from the plan, and why:**
+- **One streamed PUT, not a multipart upload.** R2 accepts only GET, HEAD, PUT
+  and DELETE through presigned URLs (checked in Cloudflare's docs), so multipart
+  would need new header-based signing that can't be tested here. A single PUT
+  uses the proven signing path:
+  - The exact length is computed first: HEAD every photo, then `zipLength()`.
+    The body streams with `duplex: 'half'`.
+  - The limit is 4.995 GiB. Builds refuse above 5 GB with a clear message.
+  - It is all or nothing, so there is nothing to abort.
+  - If galleries ever outgrow it, move the builder to a Worker (as planned) or
+    add multipart then.
+- **The ZIP writer is our own, not client-zip.** Each photo is read whole
+  (under 20 MB) before its header, so there are no data descriptors and the
+  archive says ZIP 2.0. ZIP64 is used only past 4 GB or 65,535 entries.
+  Streaming libraries mark every archive 4.5, and some unzippers balk at that.
+- **Zip keys are unique per attempt:**
+  `archives/<slug>/<version>/<8-hex>/photos-<res>.zip`. That way a slow, stale
+  attempt can only ever delete its own file. Every row update is guarded on
+  id, `r2_key` and `status = 'building'`.
+- **Out-of-date zips are deleted, not just marked.** The version fingerprint is
+  the real guard, since only a zip matching the current version is handed out.
+- **Nick is emailed** (`NOTIFY_EMAIL`) when a client-triggered build fails.
+  After a failure a client can't retry for 10 minutes; Nick's button retries at
+  once. A row stuck in "building" for over 6 minutes counts as dead.
+- **The `archives` table has `expires_at` already**, for Stage 2, so Stage 2
+  needs no migration.
+
+**Checks.** These scripts live in `reference/`, which is gitignored, so they
+are in this workspace only:
+- `check-zip.mjs` (33): Python zipfile, `unzip -t`, `unzip` and `bsdtar`
+  extract identical bytes. It also forces ZIP64 on small files and tests the
+  refusals.
+- `check-archives.mjs` (75): the Stage 1 test list on pglite with a fake R2.
+  Python opens every zip.
+- `shoot-download-all.mjs` (23): demo-mode browser run. It downloads real zips
+  and checks they're byte-identical, then covers preparing/failed states, the
+  locked gallery and a 390px phone.
+- `check-delivery-email` now seeds up-to-date zips before its ready email.
+- `check-copies-action` gained a session stub.
+- `next-server-stub.mjs` can collect `after()` work.
+- All pass, as do check-downloads, listing-delete, reorder, claim,
+  admin-signin, booking-changes, booking-listing, media-copies, property-site,
+  sigv4, rates and scheduling. `npm run build` is clean.
+
+**Nick's live test, after the push** (Rockwall's agent is his Gmail):
+1. Open `/admin/listings/2`. The Delivery panel at the top should say "Not made
+   yet" for both zips. Press **Prepare downloads** and wait (it should take
+   well under a minute). Both should then say Ready, about 332 MB and 21 MB.
+2. As his Gmail, in a private window, open `/portal/rockwall-shores-drive`.
+   Press **Download all photos** on High res: one zip, 32 photos named
+   "01 - …". Then do the same on Low res.
+3. Do step 2 on his phone. The zip should land in Files and open there.
+4. Press **Download film · 127 MB**.
+
+Then I check read-only:
+- `archives` rows and their bytes.
+- The `archive_built` events: the build time is in their detail, and this is
+  the first real timing.
+- `downloads` grouped by timestamp.
+- The `archive` events.
+
 
 Agreed by Nick on Sep 22. He had a second agent review it twice, and its points
 are folded in below. **Build it in two stages.** Nick said to plan only, so

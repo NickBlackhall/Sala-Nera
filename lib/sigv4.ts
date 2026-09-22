@@ -65,8 +65,8 @@ export function presign(input: {
   secretAccessKey: string;
   region: string;
   expiresIn: number;
-  /** GET for a download/preview URL, PUT to upload, DELETE to remove. Defaults to GET. */
-  method?: 'GET' | 'PUT' | 'DELETE';
+  /** GET for a download/preview URL, HEAD for its size, PUT to upload, DELETE to remove. Defaults to GET. */
+  method?: 'GET' | 'HEAD' | 'PUT' | 'DELETE';
   extraParams?: Record<string, string>;
   now?: Date;
 }): string {

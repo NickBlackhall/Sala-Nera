@@ -24,3 +24,15 @@ export type MediaView = Media & {
   /** A video's own file, for <video>. Null for photos. */
   videoUrl: string | null;
 };
+
+/**
+ * A file size as people say it: "332 MB", "21 MB", "1.2 GB". Decimal units,
+ * like macOS and phones, and like the sizes Nick quotes.
+ */
+export function formatSize(bytes: number): string {
+  const mb = bytes / 1_000_000;
+  if (mb >= 1000) return `${(mb / 1000).toFixed(1)} GB`;
+  if (mb >= 10) return `${Math.round(mb)} MB`;
+  if (mb >= 1) return `${mb.toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1000))} KB`;
+}

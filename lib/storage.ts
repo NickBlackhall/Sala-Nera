@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { readFile, stat } from 'node:fs/promises';
+import { join, normalize } from 'node:path';
 import type { MediaView } from '@/lib/media-view';
 import { encodeKey, presign, R2_REGION } from '@/lib/sigv4';
 import type { Media } from '@/lib/schema';
@@ -32,6 +34,10 @@ export const DOWNLOAD_TTL = 60 * 5; // 5 minutes
 export const PUBLIC_TTL = 60 * 60 * 24; // 24 hours
 // Generous: a big property film on a slow upload should not race the clock.
 export const UPLOAD_TTL = 60 * 30; // 30 minutes
+// A finished "Download all photos" zip: hundreds of MB on a phone, so a
+// dropped connection that picks up again should still find its link good.
+// Only zips get this; every other download keeps DOWNLOAD_TTL.
+export const ARCHIVE_TTL = 60 * 60; // 1 hour
 
 type R2Config = {
   accountId: string;
@@ -238,6 +244,150 @@ export function deleteUrl(key: string): string | null {
     expiresIn: DOWNLOAD_TTL,
     method: 'DELETE',
   });
+}
+
+/**
+ * Remove the bytes behind one key, best effort. Shared by deleting one photo,
+ * deleting a whole listing, and throwing away a zip that is out of date.
+ *
+ * Never throws: the row it belonged to is already gone by the time this runs,
+ * so a failure here leaves an orphaned object in a private bucket that nothing
+ * links to. That costs a fraction of a cent and is invisible to clients, which
+ * is why it is logged rather than surfaced.
+ */
+async function deleteObject(r2Key: string): Promise<void> {
+  // Seeded demo rows keep their bytes under /public, where there is nothing
+  // to delete and no signed URL to do it with.
+  if (isLocalKey(r2Key)) return;
+
+  const url = deleteUrl(r2Key);
+  if (!url) return;
+
+  try {
+    const res = await fetch(url, { method: 'DELETE' });
+    // R2 answers 204 on success, and on deleting something already gone.
+    if (!res.ok && res.status !== 404) {
+      console.error(`media delete: R2 kept ${r2Key} (${res.status})`);
+    }
+  } catch (error) {
+    console.error(`media delete: R2 unreachable for ${r2Key}`, error);
+  }
+}
+
+/** A few objects at a time, so a 200-photo listing neither crawls nor floods R2. */
+const DELETE_CONCURRENCY = 8;
+
+export async function deleteObjects(keys: string[]): Promise<void> {
+  for (let i = 0; i < keys.length; i += DELETE_CONCURRENCY) {
+    await Promise.all(keys.slice(i, i + DELETE_CONCURRENCY).map(deleteObject));
+  }
+}
+
+/** A seeded demo file under /public, refusing anything that climbs out of it. */
+function localPath(key: string): string {
+  const root = join(process.cwd(), 'public');
+  const path = normalize(join(root, key));
+  if (!path.startsWith(root + '/')) throw new Error(`${key}: not a local media path`);
+  return path;
+}
+
+/** Thrown when storage says an object is not there, so callers can say which file. */
+export class MissingObjectError extends Error {}
+
+function signedFor(key: string, method: 'GET' | 'HEAD'): string {
+  const config = r2Config();
+  if (!config) throw new Error('R2 is not configured');
+  return presign({
+    host: `${config.accountId}.r2.cloudflarestorage.com`,
+    canonicalUri: `/${encodeKey(config.bucket)}/${encodeKey(key.replace(/^\/+/, ''))}`,
+    accessKeyId: config.accessKeyId,
+    secretAccessKey: config.secretAccessKey,
+    region: R2_REGION,
+    expiresIn: DOWNLOAD_TTL,
+    method,
+  });
+}
+
+/**
+ * An object's size in bytes, without fetching it. A zip's length has to be
+ * known before its upload starts, and the copies' sizes are not in the
+ * database — only the originals' are.
+ *
+ * Demo rows are read from /public, so the demo gallery can zip too.
+ */
+export async function objectSize(key: string): Promise<number> {
+  if (isLocalKey(key)) {
+    try {
+      return (await stat(localPath(key))).size;
+    } catch {
+      throw new MissingObjectError(key);
+    }
+  }
+  const res = await fetch(signedFor(key, 'HEAD'), { method: 'HEAD' });
+  if (res.status === 404) throw new MissingObjectError(key);
+  if (!res.ok) throw new Error(`R2 HEAD ${key} answered ${res.status}`);
+  const length = Number(res.headers.get('content-length'));
+  if (!Number.isSafeInteger(length)) throw new Error(`R2 HEAD ${key} gave no size`);
+  return length;
+}
+
+/** One object's bytes. Photos only — every caller holds the whole file in memory. */
+export async function readObject(key: string): Promise<Uint8Array> {
+  if (isLocalKey(key)) {
+    try {
+      return await readFile(localPath(key));
+    } catch {
+      throw new MissingObjectError(key);
+    }
+  }
+  const res = await fetch(signedFor(key, 'GET'));
+  if (res.status === 404) throw new MissingObjectError(key);
+  if (!res.ok) throw new Error(`R2 GET ${key} answered ${res.status}`);
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+/**
+ * Upload an object that is being made as it goes — a zip — without ever
+ * holding it whole. One signed PUT, the same kind every upload already uses,
+ * streamed with its length declared up front.
+ *
+ * Deliberately not a multipart upload. R2 only accepts GET, HEAD, PUT and
+ * DELETE through signed URLs, so multipart would need a second way of signing
+ * requests. A single PUT takes up to 4.995 GiB, far more than a gallery's
+ * photos come to, and it is all or nothing: if it fails part way, R2 keeps
+ * nothing, so there is no half-written object to abort or clean up.
+ */
+export async function putObjectStream(
+  key: string,
+  length: number,
+  contentType: string,
+  chunks: AsyncIterable<Uint8Array>,
+): Promise<void> {
+  const url = uploadUrl(key);
+  if (!url) throw new Error('R2 is not configured');
+
+  // Pulled one chunk at a time, so the zip is only made as fast as R2 takes
+  // it. An error while making it errors the stream, and with it the upload.
+  const iterator = chunks[Symbol.asyncIterator]();
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const { value, done } = await iterator.next();
+      if (done) controller.close();
+      else controller.enqueue(value);
+    },
+    async cancel(reason) {
+      await iterator.return?.(reason);
+    },
+  });
+
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType, 'Content-Length': String(length) },
+    body,
+    // Required by fetch for a streamed request body.
+    duplex: 'half',
+  } as RequestInit);
+  if (!res.ok) throw new Error(`R2 PUT ${key} answered ${res.status}`);
 }
 
 /** True for a seeded demo row, whose bytes live under /public and not in R2. */

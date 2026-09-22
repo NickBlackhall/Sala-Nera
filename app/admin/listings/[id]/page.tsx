@@ -8,15 +8,65 @@ import MediaGrid from '../../MediaGrid';
 import { updateListingAction } from '../../actions';
 import { isLocalKey, isRemoteStorage, withPreviewUrls } from '@/lib/storage';
 import MakePreviews from '../../MakePreviews';
-import SendDelivery from '../../SendDelivery';
+import SendDelivery, { type ZipStatus } from '../../SendDelivery';
+import { planArchives } from '@/lib/archives';
+import type { AdminListingDetail } from '@/lib/admin-queries';
 import UploadMedia from '../../UploadMedia';
 import { TIME_ZONE } from '@/lib/scheduling';
 
 export const dynamic = 'force-dynamic';
 
-// Server actions on this page make photo copies — a few photos per call, a
-// second or two each. Set explicitly so it never depends on the plan default.
-export const maxDuration = 60;
+// Server actions on this page make photo copies (a few photos per call, a
+// second or two each) and the "Download all photos" zips, which can take a
+// minute or two on a big gallery. 300s is the most the Hobby plan allows;
+// set explicitly so it never depends on the plan default.
+export const maxDuration = 300;
+
+/**
+ * Where each zip stands, for the delivery panel. Null while the listing is
+ * locked or has no photos: nobody can download yet, so there is nothing to
+ * report. A failure to read is shown as "not made yet" rather than breaking
+ * the page Nick manages the listing from.
+ */
+async function zipStatus({ listing, media }: AdminListingDetail): Promise<ZipStatus[] | null> {
+  if (listing.downloadLocked || !media.some((m) => m.kind === 'photo')) return null;
+  try {
+    const plans = await planArchives(listing, media);
+    return [plans.high, plans.low].map((plan) => ({
+      label: plan.resolution === 'high' ? 'High res' : 'Low res',
+      state: plan.state === 'none' ? 'missing' : plan.state,
+      bytes: plan.row?.bytes ?? null,
+      error: plan.error,
+    }));
+  } catch (error) {
+    console.error('admin: could not read the download zips', error);
+    return null;
+  }
+}
+
+type DownloadRow = AdminListingDetail['activity'][number];
+
+/**
+ * The download history, one line per download rather than per file. Every
+ * file a single download handed out — a zip's photos — was written in one
+ * statement, so the rows share their timestamp to the microsecond.
+ */
+function downloadsOnce(rows: DownloadRow[]) {
+  const groups: { id: number; filename: string | null; count: number; low: boolean; clientEmail: string | null; at: Date }[] = [];
+  for (const row of rows) {
+    const last = groups.at(-1);
+    if (last && last.at.getTime() === new Date(row.at).getTime() && last.clientEmail === row.clientEmail) {
+      last.count++;
+      last.low ||= row.resolution === 'low';
+      continue;
+    }
+    groups.push({
+      id: row.id, filename: row.filename, count: 1, low: row.resolution === 'low',
+      clientEmail: row.clientEmail, at: new Date(row.at),
+    });
+  }
+  return groups.slice(0, 20);
+}
 
 export default async function EditListing({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -32,6 +82,7 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
   if (!detail) notFound();
 
   const { listing, client, media, activity, delivered } = detail;
+  const zips = await zipStatus(detail);
 
   // Photos still served as full-size originals: uploaded before copies
   // existed, or whose copies failed. Demo rows are small files already.
@@ -62,6 +113,23 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
           Back
         </Link>
       </div>
+
+      <SendDelivery
+        id={listing.id}
+        address={listing.address}
+        to={client?.email ?? null}
+        locked={listing.downloadLocked}
+        mediaCount={media.length}
+        zips={zips}
+        history={delivered.map((row) => ({
+          id: row.id,
+          what: row.kind === 'preview' ? 'Preview email' : 'Delivery email',
+          sentTo: row.sentTo,
+          when: new Date(row.at).toLocaleString('en-US', {
+            timeZone: TIME_ZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+          }),
+        }))}
+      />
 
       <ListingForm
         action={updateListingAction}
@@ -95,21 +163,6 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
         )}
       </section>
 
-      <SendDelivery
-        id={listing.id}
-        address={listing.address}
-        to={client?.email ?? null}
-        locked={listing.downloadLocked}
-        mediaCount={media.length}
-        history={delivered.map((row) => ({
-          id: row.id,
-          what: row.kind === 'preview' ? 'Preview email' : 'Delivery email',
-          sentTo: row.sentTo,
-          when: new Date(row.at).toLocaleString('en-US', {
-            timeZone: TIME_ZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-          }),
-        }))}
-      />
 
       <section className="admin-section">
         <h2>Download activity</h2>
@@ -120,12 +173,12 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
           </p>
         ) : (
           <ul className="admin-activity">
-            {activity.map((row) => (
+            {downloadsOnce(activity).map((row) => (
               <li key={row.id}>
                 <span>
-                  {row.filename ?? 'file'}
+                  {row.count > 1 ? `${row.count} files at once` : row.filename ?? 'file'}
                   {/* Rows from before the switch have none: all full-size originals. */}
-                  {row.resolution === 'low' && <span className="ev-dim"> · low res</span>}
+                  {row.low && <span className="ev-dim"> · low res</span>}
                 </span>
                 <span className="admin-muted">{row.clientEmail ?? 'unknown'}</span>
                 <span className="admin-muted">

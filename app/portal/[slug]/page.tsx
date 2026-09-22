@@ -16,6 +16,7 @@ import ManageBooking from './ManageBooking';
 import { TIME_ZONE } from '@/lib/scheduling';
 import { getSession } from '@/lib/session';
 import { coverUrl, withPreviewUrls } from '@/lib/storage';
+import { planArchives } from '@/lib/archives';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false }, // client galleries stay out of search
@@ -56,7 +57,27 @@ async function bookingFor(data: ListingBundle): Promise<BookingSummary | null> {
   return getBookingSummary(listing.bookingId);
 }
 
-function render(data: ListingBundle, booking: BookingSummary | null) {
+type ZipSizes = { high: number | null; low: number | null };
+const NO_SIZES: ZipSizes = { high: null, low: null };
+
+/**
+ * The size of each "Download all photos" zip that has been made, shown beside
+ * the High res / Low res switch. Unknown until made. A failure to read them
+ * costs the sizes, never the page.
+ */
+async function zipSizesFor({ listing, media }: ListingBundle): Promise<ZipSizes> {
+  if (IS_DEMO || listing.downloadLocked || !media.some((m) => m.kind === 'photo')) return NO_SIZES;
+  try {
+    const plans = await planArchives(listing, media);
+    const size = (p: typeof plans.high) => (p.state === 'ready' ? p.row?.bytes ?? null : null);
+    return { high: size(plans.high), low: size(plans.low) };
+  } catch (error) {
+    console.error('portal: could not read the download zips', error);
+    return NO_SIZES;
+  }
+}
+
+function render(data: ListingBundle, booking: BookingSummary | null, zipSizes: ZipSizes) {
   const { listing, media, client } = data;
   // A confirmed booking with a real time is one the agent may manage here.
   const scheduled = booking?.status === 'confirmed' && booking.startsAt ? booking.startsAt : null;
@@ -126,6 +147,7 @@ function render(data: ListingBundle, booking: BookingSummary | null) {
             // No invoice link until Stripe exists: a button that goes nowhere is
             // worse than none. Payment is arranged directly with Nick for now.
             invoiceUrl={null}
+            zipSizes={zipSizes}
           />
         </>
       )}
@@ -160,12 +182,12 @@ export default async function PortalListing({
       // A listing you may not see is reported as missing, not as forbidden —
       // otherwise the 403 itself confirms which addresses we have shot.
       if (!viewer || !bundle || !ownsListing(viewer, bundle.client)) notFound();
-      return render(bundle, await bookingFor(bundle));
+      return render(bundle, await bookingFor(bundle), await zipSizesFor(bundle));
     }
   }
 
   const data = await getListing(slug);
   if (!data) notFound();
 
-  return render(data, await bookingFor(data));
+  return render(data, await bookingFor(data), await zipSizesFor(data));
 }

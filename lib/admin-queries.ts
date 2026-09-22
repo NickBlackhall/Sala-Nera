@@ -75,14 +75,14 @@ export async function getAdminListing(id: number): Promise<AdminListingDetail | 
     .where(eq(media.listingId, listing.id))
     .orderBy(asc(media.sort), asc(media.id));
 
-  // Empty until the signed-download route lands; the section is here so the
-  // first real download shows up without another admin change.
+  // One row per file, and a zip is one row per photo in it, so this reads
+  // far enough back for the page to group them into its last 20 downloads.
   const activity = await db
     .select()
     .from(downloads)
     .where(eq(downloads.listingId, listing.id))
-    .orderBy(desc(downloads.at))
-    .limit(20);
+    .orderBy(desc(downloads.at), desc(downloads.id))
+    .limit(1000);
 
   let owner: Client | null = null;
   if (listing.clientId !== null) {

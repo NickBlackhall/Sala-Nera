@@ -45,6 +45,9 @@ const REASON = {
   single: 'One file',
   selection: 'Selected files',
   whole_gallery: 'Whole gallery',
+  archive: 'All photos (zip)',
+  archive_built: 'Zip made',
+  archive_failed: 'Zip could not be made',
 };
 
 const rows = await sql`

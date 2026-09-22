@@ -29,6 +29,7 @@ import {
   updateClientRow,
   updateListingRow,
 } from '@/lib/admin-queries';
+import { discardStaleArchives, getListingArchiveKeys, prepareArchives } from '@/lib/archives';
 import { copyKey, makeCopies, type Copies } from '@/lib/media-copies';
 import { releaseBookingListing } from '@/lib/booking-listing';
 import { deliveryEmail } from '@/lib/delivery-email';
@@ -37,7 +38,7 @@ import { record } from '@/lib/telemetry';
 import { slugify } from '@/lib/slug';
 import { COPIES_BATCH } from '@/lib/media-view';
 import {
-  deleteUrl,
+  deleteObjects,
   getObject,
   isLocalKey,
   isRemoteStorage,
@@ -202,43 +203,6 @@ export async function deleteClientAction(form: FormData): Promise<void> {
 
 // ------------------------------------------------------------ stored files
 
-/**
- * Remove the bytes behind one key, best effort. Shared by deleting one photo
- * and deleting a whole listing.
- *
- * Never throws: the row it belonged to is already gone by the time this runs,
- * so a failure here leaves an orphaned object in a private bucket that nothing
- * links to. That costs a fraction of a cent and is invisible to clients, which
- * is why it is logged rather than surfaced.
- */
-async function deleteObject(r2Key: string): Promise<void> {
-  // Seeded demo rows keep their bytes under /public, where there is nothing
-  // to delete and no signed URL to do it with.
-  if (isLocalKey(r2Key)) return;
-
-  const url = deleteUrl(r2Key);
-  if (!url) return;
-
-  try {
-    const res = await fetch(url, { method: 'DELETE' });
-    // R2 answers 204 on success, and on deleting something already gone.
-    if (!res.ok && res.status !== 404) {
-      console.error(`media delete: R2 kept ${r2Key} (${res.status})`);
-    }
-  } catch (error) {
-    console.error(`media delete: R2 unreachable for ${r2Key}`, error);
-  }
-}
-
-/** A few objects at a time, so a 200-photo listing neither crawls nor floods R2. */
-const DELETE_CONCURRENCY = 8;
-
-async function deleteObjects(keys: string[]): Promise<void> {
-  for (let i = 0; i < keys.length; i += DELETE_CONCURRENCY) {
-    await Promise.all(keys.slice(i, i + DELETE_CONCURRENCY).map(deleteObject));
-  }
-}
-
 // ----------------------------------------------------------------- listings
 
 async function readListingForm(form: FormData, exceptId?: number) {
@@ -336,6 +300,12 @@ export type DeliveryState = { error?: string; sent?: string };
  * itself, because uploads land in batches and a half-uploaded gallery is not
  * something to announce.
  *
+ * The download version first makes sure both "Download all photos" zips
+ * exist (lib/archives.ts), reusing them if they are already up to date, and
+ * does not send if they cannot be made: an email saying "ready to download"
+ * about a download we already know is broken would be worse than none. The
+ * preview version builds nothing — a locked gallery can still change.
+ *
  * Recorded only once Resend has accepted it, so the listing never claims an
  * email went out that did not.
  */
@@ -343,7 +313,7 @@ export async function sendDeliveryAction(
   _prev: DeliveryState,
   form: FormData,
 ): Promise<DeliveryState> {
-  await requireAdmin();
+  const session = await requireAdmin();
 
   const id = Number(form.get('id'));
   const detail = Number.isInteger(id) ? await getAdminListing(id) : null;
@@ -354,6 +324,18 @@ export async function sendDeliveryAction(
   if (media.length === 0) return { error: 'Upload the photos first.' };
 
   const kind = listing.downloadLocked ? 'preview' : 'ready';
+
+  if (kind === 'ready') {
+    const prepared = await prepareArchives(listing, media, session.email);
+    if (!prepared.ok) {
+      await record({
+        kind: 'delivery', outcome: 'failed', reason: 'archive_failed', email: client.email,
+        detail: `${listing.address} — ready email not sent, the downloads could not be made: ${prepared.error}`,
+      });
+      revalidatePath(`/admin/listings/${listing.id}`);
+      return { error: `The downloads couldn't be prepared, so the email wasn't sent. ${prepared.error}` };
+    }
+  }
   const { subject, text } = deliveryEmail({
     kind,
     name: client.name,
@@ -386,6 +368,28 @@ export async function sendDeliveryAction(
   return { sent: `Sent to ${client.email}.` };
 }
 
+export type PrepareState = { error?: string; prepared?: string };
+
+/**
+ * Make, or remake, a listing's "Download all photos" zips without emailing
+ * anyone: for a listing delivered before zips existed, after changing its
+ * photos, or after a failure. Anything already up to date is left alone.
+ */
+export async function prepareDownloadsAction(
+  _prev: PrepareState,
+  form: FormData,
+): Promise<PrepareState> {
+  const session = await requireAdmin();
+
+  const id = Number(form.get('id'));
+  const detail = Number.isInteger(id) ? await getAdminListing(id) : null;
+  if (!detail) return { error: 'That listing no longer exists.' };
+
+  const prepared = await prepareArchives(detail.listing, detail.media, session.email);
+  revalidatePath(`/admin/listings/${id}`);
+  return prepared.ok ? { prepared: 'Downloads ready.' } : { error: prepared.error };
+}
+
 /** Media rows and this listing's download history go with it — and the files. */
 export async function deleteListingAction(form: FormData): Promise<void> {
   await requireAdmin();
@@ -393,9 +397,9 @@ export async function deleteListingAction(form: FormData): Promise<void> {
   const id = Number(form.get('id'));
   if (!Number.isInteger(id)) return;
 
-  // Read the keys first: the media rows cascade with the listing, and once
-  // they are gone nothing records which objects used to be its.
-  const keys = await getListingMediaKeys(id);
+  // Read the keys first: the media and zip rows cascade with the listing, and
+  // once they are gone nothing records which objects used to be its.
+  const keys = [...(await getListingMediaKeys(id)), ...(await getListingArchiveKeys(id))];
 
   await deleteListingRow(id);
   await deleteObjects(keys);
@@ -472,6 +476,8 @@ export async function addMediaAction(input: {
     width: null,
     height: null,
   });
+  // A new photo means the listing's zips are missing it. Films are not in them.
+  if (kind === 'photo') await discardStaleArchives(input.listingId);
 
   // No revalidatePath: the upload component refreshes once, after every file
   // is up and its preview made. Refreshing per file would show the new
@@ -526,7 +532,14 @@ async function makeCopiesFor(mediaId: number): Promise<{ error?: string }> {
     return { error: `${filename}: this file could not be read as a photo.` };
   }
 
-  return storeCopies(mediaId, row.media, copies, copies);
+  const stored = await storeCopies(mediaId, row.media, copies, copies);
+  if (!stored.error) {
+    // New copies change what the low-res zip (and maybe the high) holds.
+    // Remade over copies it already had, they land on the same keys, which
+    // the zips' fingerprint cannot see, so every zip goes.
+    await discardStaleArchives(row.media.listingId, { all: Boolean(row.media.largeKey) });
+  }
+  return stored;
 }
 
 /**
@@ -624,6 +637,8 @@ export async function reorderMediaAction(input: {
   if (!input.orderedIds.every(Number.isInteger)) return { error: 'That order could not be read.' };
 
   await reorderMedia(input.listingId, input.orderedIds);
+  // The zips number photos in gallery order. Moving only a film leaves them be.
+  await discardStaleArchives(input.listingId);
 
   revalidatePath(`/admin/listings/${input.listingId}`);
   return {};
@@ -658,6 +673,9 @@ export async function deleteMediaAction(form: FormData): Promise<void> {
 
   // The original and its copies.
   await deleteObjects(mediaObjectKeys(row.media));
+  // And any zip it was in. Until this finishes, the zips' fingerprint already
+  // stops them being handed out.
+  await discardStaleArchives(listingId);
 
   revalidatePath(`/admin/listings/${listingId}`);
   revalidatePath('/admin');
