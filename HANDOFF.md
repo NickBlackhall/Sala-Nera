@@ -1,34 +1,37 @@
 # Sala Nera — Handoff (updated Sep 22 2026)
 
-## Start here — state at Sep 22, 00:25 UTC
+## Start here — state at Sep 22, 13:50 UTC
 
-**Everything is committed, pushed and deployed. The working tree is clean.**
-The latest code deploy is `7e5cc6e`. Checked read-only just now: no bookings,
-downloads or uploads since that deploy.
+**Everything is committed, pushed and deployed.** The latest code deploy is
+`7e5cc6e`. Since then only this file has changed.
 
 **Built and live, Sep 21–22** (details in the dated sections below):
 
 | What | Commit | Proven live by Nick? |
 |---|---|---|
-| High res / Low res download switch | `97c3445` | Not yet |
-| Every booking creates its own listing (migration 0006) | `f9f203a` | Not yet: no real booking since |
+| High res / Low res download switch | `97c3445` | **Yes, Download All**, Sep 22 13:35 UTC (see below) |
+| Every booking creates its own listing (migration 0006) | `f9f203a` | **Yes**, Sep 22 13:40 UTC (booking 4) |
 | "Send delivery email" button (migration 0007) | `0b879e8` | **Yes**, Sep 22 00:00 UTC, Rockwall → his Gmail |
 | Admin has its own sign-in at /admin/login | `9803434` | **Yes**, on his new computer |
-| Agents reschedule or cancel their own booking | `7e5cc6e` | Not yet: he was about to test |
+| Agents reschedule or cancel their own booking | `7e5cc6e` | **Yes**, Sep 22 13:40–13:46 UTC (booking 4) |
 
-**Waiting on Nick (his tests, then my read-only check):**
-1. **Reschedule and cancel** (he said "I'll test it"; not started at 00:24 UTC).
-   Steps given to him: book at /book with **his Gmail** (the agent account; his
-   admin address gets no client account, so no buttons) for a date several days
-   out. Open the confirmation email's link **in a private window**, sign in as
-   the Gmail, then Reschedule → Move my shoot, then Cancel booking, watching his
-   Google Calendar. Check after, read-only: the new `bookings` row (status,
-   starts_at, calendar_event_id), `events where reason in ('client_rescheduled',
-   'client_cancelled', 'change_email_failed')`, and that its listing is gone.
-   The same test also proves "booking creates its listing" live.
-2. **Low res download** on Rockwall: one photo, then Download All. Expect ~0.6MB
-   `-low-res.jpg` files and "low res" in /admin/listings/2's download history.
-3. **A horizontal film upload**, and **a fresh photo upload** that makes its own
+**Reschedule and cancel: proven by Nick, Sep 22.** He booked 5910 Firecrest Dr
+as his Gmail (booking 4, listing `firecrest-dr`), moved it Wed Oct 7 9am → Mon
+Oct 5 11am, then cancelled. He saw it move and then vanish on his Google
+Calendar, vanish from the agent portal, and got both admin emails. Checked
+read-only: events `sent` → `client_rescheduled` → `client_cancelled`, no
+`change_email_failed`, booking 4 `cancelled`, its listing gone (only listings 1
+and 2 remain). **Nick's rule: the UI of this may be tweaked later, but do not
+touch the wiring** (`lib/booking-changes.ts`, `app/portal/[slug]/actions.ts`,
+the guarded UPDATEs, calendar and email calls). It works as is.
+
+**Low res Download All: proven by Nick, Sep 22 13:35 UTC** on Rockwall, as the
+admin: 32 photos logged `low` plus the one film logged `high` (films have no
+low res), then a high res Download All (33 `high`). Not yet tried: a single
+low res photo, and checking the file size (~0.6MB) on disk.
+
+**Still waiting on Nick (his test, then my read-only check):**
+1. **A horizontal film upload**, and **a fresh photo upload** that makes its own
    copies (`grid_key` set without pressing Make previews). Latest media id is 56.
 
 **Open decision:** where the "Send delivery email" button goes. Today it's near
