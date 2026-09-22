@@ -5,9 +5,8 @@
 **Zip Stage 1 is BUILT and committed but NOT pushed**, because migration 0008
 has to be applied first. The table's code went live as `a7a5b2c` (schema only,
 nothing uses it). **Next steps, in order:**
-1. **Nick runs the migrate one-liner** (below, under Rules). Confirm read-only:
-   `portal_migrations` has `0008_archives` and `to_regclass('public.archives')`
-   is not null. At 15:40 it had not been run.
+1. ~~Nick runs the migrate one-liner.~~ **Done, Sep 22 15:16 UTC**: confirmed
+   read-only, `0008_archives` applied, table and unique index present, empty.
 2. **Push the Stage 1 commit** (the one after `a7a5b2c`). It is the deploy.
 3. **Nick's live test**, then my read-only check. Steps are in the zip section.
 
