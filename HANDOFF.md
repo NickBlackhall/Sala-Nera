@@ -14,8 +14,21 @@
    - `/portal/rockwall-shores-drive` shows High/Low res, Download all photos
      and "Download film · 127 MB", with no checkboxes.
    - There is no sideways scroll at 390px.
-3. **Nick's live test** is next, then my read-only check. Steps are in the zip
-   section. No zip has been built yet: `archives` is empty.
+3. **Nick's first live test (Sep 22, ~15:40 UTC):**
+   - Prepare downloads built both zips on the live site, in R2: **High res
+     332 MB in 17s, Low res 21 MB in 5s.**
+   - His Chrome then **never started the High res download**. The tab spun and
+     nothing appeared in chrome://downloads.
+   - His signed link, fetched from here, answered in 0.24s. The whole 332 MB
+     came down in 8s, and `unzip -t` passed all 32 photos.
+   - The old page's script click, and a real click, on that exact R2 link both
+     started the download in Chromium (Playwright) within 0.3s.
+   - So the stall was on his machine, not the code. Suspects: a hidden
+     "Save as" dialog, or antivirus holding a large download. His Low res
+     result was never reported.
+4. **Change after that (by the other agent, finished by me):** zips now download
+   the way single photos already do for him. Details under "Stage 1 as built".
+   **Nick to test again**, starting with Low res.
 
 **Built and live, Sep 21–22** (details in the dated sections below):
 
@@ -105,6 +118,20 @@ subsection, and the build follows it except where noted.
   sizes. Selection is removed.
 - The admin listing page's `maxDuration` is 60 → 300. Its download history is
   now grouped into one line per download ("33 files at once").
+
+**How the download itself works now (changed Sep 22 afternoon):**
+- A ready zip's button is an ordinary link to `GET /api/portal/download/archive?slug=&res=`.
+- That GET re-checks sign-in, ownership, the lock and that the zip is current.
+  It then logs the download (the per-photo rows plus an `archive` event) and
+  302s to the signed R2 URL. This is the same path as single photos and films.
+- If the zip is stale or missing, the GET sends a 303 back to `/portal/<slug>`.
+  Locked gets 403, and a stranger or signed-out visitor gets 404.
+- The POST now only prepares and reports status. It logs no download.
+- When a client's click had to start a build, the page shows "Your photos are
+  ready. Download them now" when it finishes. The client clicks once more; there
+  is no automatic click.
+- Checks: `check-archives` is now 81, adding link gating and the stale link.
+  `shoot-download-all` is 24.
 
 **Changes from the plan, and why:**
 - **One streamed PUT, not a multipart upload.** R2 accepts only GET, HEAD, PUT

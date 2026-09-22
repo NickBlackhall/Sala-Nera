@@ -10,7 +10,7 @@ import { zipLength, zipStream } from '@/lib/zip';
 /**
  * "Download all photos": POST { slug, resolution }, get back one of
  *
- *   { status: 'ready', url, filename, bytes }  a signed link to the zip in R2
+ *   { status: 'ready', url, filename, bytes }  a same-origin download link
  *   { status: 'preparing' }                    being made; ask again shortly
  *   { status: 'failed', error }                could not be made; say so
  *
@@ -19,7 +19,10 @@ import { zipLength, zipStream } from '@/lib/zip';
  * before zips existed, or one changed since — this request starts the build
  * and returns at once, and the build carries on after the response (after()).
  * The page asks again every few seconds, and only the request that gets the
- * link records the download.
+ * link records the download. The ready URL comes back through GET on this
+ * same route, which authorises again and redirects to R2. That ordinary link
+ * is deliberate: the browser `download` attribute does not work reliably on
+ * the cross-origin R2 URL that POST used to hand directly to client code.
  *
  * Same gate as every other download: authorizeListing() first, so a locked,
  * someone else's or signed-out request never learns whether a zip exists.
@@ -80,17 +83,12 @@ export async function POST(request: Request) {
   }
 
   if (plan.state === 'ready' && plan.row) {
-    // Logged when the link is handed over, like every other download: what
-    // was authorised and started, not proof the transfer finished.
-    await recordDownloads(listing, plan.items.map((item) => item.delivery), email);
-    await record({
-      kind: 'download', outcome: 'ok', reason: 'archive', email,
-      detail: `${plan.items.length} photos from ${listing.address}, ${wanted} res zip`,
-    });
     const filename = archiveFilename(listing.address, wanted);
     return answer({
       status: 'ready',
-      url: mediaUrl(plan.row.r2Key, { expiresIn: ARCHIVE_TTL, downloadAs: filename }),
+      // Keep the browser on this origin until a real link is followed. GET
+      // checks permission and freshness again before minting the R2 URL.
+      url: `/api/portal/download/archive?slug=${encodeURIComponent(slug)}&res=${wanted}`,
       filename,
       bytes: plan.row.bytes,
     });
@@ -141,13 +139,71 @@ async function demoAnswer(slug: string, wanted: 'high' | 'low') {
   });
 }
 
-/** The demo zip itself. Nothing outside demo mode is served from here. */
+/**
+ * The actual download navigation.
+ *
+ * Production uses the same proven shape as a single-photo download: a normal
+ * same-origin link, another authorization/freshness check, then a 302 to R2.
+ * The bytes never pass through Vercel. Demo mode has no R2, so it streams its
+ * small local sample zip directly instead.
+ */
 export async function GET(request: Request) {
-  if (!IS_DEMO) return new NextResponse(null, { status: 404 });
-
   const params = new URL(request.url).searchParams;
   const wanted = parseResolution(params.get('res'));
-  const demo = await demoFiles(params.get('slug') ?? '', wanted);
+  const slug = params.get('slug') ?? '';
+
+  if (!IS_DEMO) {
+    if (!slug) return new NextResponse(null, { status: 404 });
+
+    const bundle = await getListingBySlug(slug);
+    const auth = await authorizeListing(bundle?.listing ?? null);
+    if (!auth.ok) {
+      await record({
+        kind: 'download', outcome: 'rejected', reason: auth.reason,
+        detail: `Listing "${slug}", all photos (zip)`,
+      });
+      if (auth.reason === 'locked') {
+        return NextResponse.json(
+          { error: 'This gallery is awaiting payment.' },
+          { status: 403, headers: { 'Cache-Control': 'no-store' } },
+        );
+      }
+      return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    const plan = (await planArchives(auth.listing, bundle!.media))[wanted];
+    if (plan.state !== 'ready' || !plan.row) {
+      // The page only renders a link for a ready version, but a photo can be
+      // changed between render and click. Never redirect to the stale object:
+      // send them back to the gallery, which now offers to prepare it again,
+      // rather than leave them looking at an error in an empty tab.
+      const back = NextResponse.redirect(new URL(`/portal/${encodeURIComponent(slug)}`, request.url), 303);
+      back.headers.set('Cache-Control', 'no-store');
+      return back;
+    }
+
+    // As with a single file, this records authorization/start, not proof that
+    // the browser completed every byte after the redirect.
+    await recordDownloads(
+      auth.listing,
+      plan.items.map((item) => item.delivery),
+      auth.session.email,
+    );
+    await record({
+      kind: 'download', outcome: 'ok', reason: 'archive', email: auth.session.email,
+      detail: `${plan.items.length} photos from ${auth.listing.address}, ${wanted} res zip`,
+    });
+
+    const filename = archiveFilename(auth.listing.address, wanted);
+    const response = NextResponse.redirect(
+      mediaUrl(plan.row.r2Key, { expiresIn: ARCHIVE_TTL, downloadAs: filename }),
+      302,
+    );
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  }
+
+  const demo = await demoFiles(slug, wanted);
   if (!demo || demo.listing.downloadLocked) return new NextResponse(null, { status: 404 });
 
   const chunks = zipStream(demo.sized, (item) => readObject(item.key));

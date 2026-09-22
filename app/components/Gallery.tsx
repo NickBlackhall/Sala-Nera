@@ -21,20 +21,7 @@ type ZipAnswer =
   | { status: 'failed'; error: string };
 
 type Sizes = { high: number | null; low: number | null };
-
-/**
- * One file, one navigation. The signed link carries a Content-Disposition
- * that names the file and makes it a download, so the page stays put.
- */
-function save(url: string, filename: string) {
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.rel = 'noopener';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
+type Available = { high: boolean; low: boolean };
 
 /** How often to ask whether a zip being made is ready, and for how long. */
 const POLL_MS = 3000;
@@ -60,9 +47,13 @@ export default function Gallery({
   // at this size. Starts on high: the full file is what agents expect.
   const [resolution, setResolution] = useState<'high' | 'low'>('high');
   const [sizes, setSizes] = useState<Sizes>(zipSizes);
+  const [available, setAvailable] = useState<Available>({
+    high: zipSizes.high !== null,
+    low: zipSizes.low !== null,
+  });
   const [busy, setBusy] = useState(false);
   const [preparing, setPreparing] = useState(false);
-  const [started, setStarted] = useState<{ url: string; filename: string; bytes: number | null } | null>(null);
+  const [prepared, setPrepared] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const photos = media.filter((m) => m.kind === 'photo');
@@ -114,7 +105,7 @@ export default function Gallery({
     if (busy) return;
     setBusy(true);
     setError(null);
-    setStarted(null);
+    setPrepared(false);
     const giveUp = Date.now() + GIVE_UP_MS;
 
     try {
@@ -138,9 +129,13 @@ export default function Gallery({
 
         const answer = (await response.json()) as ZipAnswer;
         if (answer.status === 'ready') {
-          save(answer.url, answer.filename);
-          setStarted(answer);
+          // Do not synthesize a click on the cross-origin R2 URL. Once this
+          // status request says it is ready, render a real same-origin link;
+          // the user follows it and the route redirects to R2 like every
+          // working single-photo and film download.
+          setAvailable((a) => ({ ...a, [resolution]: true }));
           if (answer.bytes) setSizes((s) => ({ ...s, [resolution]: answer.bytes }));
+          setPrepared(true);
           return;
         }
         if (answer.status === 'failed') {
@@ -165,6 +160,7 @@ export default function Gallery({
 
   const columns = intoColumns(media, cols);
   const current = lightbox === null ? null : media[lightbox];
+  const archiveUrl = `/api/portal/download/archive?slug=${encodeURIComponent(slug)}&res=${resolution}`;
 
   return (
     <>
@@ -181,7 +177,10 @@ export default function Gallery({
                   <button
                     type="button"
                     aria-pressed={resolution === 'high'}
-                    onClick={() => setResolution('high')}
+                    onClick={() => {
+                      setResolution('high');
+                      setPrepared(false);
+                    }}
                     disabled={busy}
                     title="Full size, under 19MB each: MLS and print"
                   >
@@ -190,16 +189,28 @@ export default function Gallery({
                   <button
                     type="button"
                     aria-pressed={resolution === 'low'}
-                    onClick={() => setResolution('low')}
+                    onClick={() => {
+                      setResolution('low');
+                      setPrepared(false);
+                    }}
                     disabled={busy}
                     title="2400px, a fraction of the size: web, social and email"
                   >
                     Low res{sizes.low ? ` · ${formatSize(sizes.low)}` : ''}
                   </button>
                 </div>
-                <button className="btn btn-primary btn-sm" onClick={downloadAllPhotos} disabled={busy}>
-                  {preparing ? 'Preparing your photos…' : busy ? 'Starting…' : 'Download all photos'}
-                </button>
+                {available[resolution] ? (
+                  <a
+                    className="btn btn-primary btn-sm"
+                    href={archiveUrl}
+                  >
+                    Download all photos
+                  </a>
+                ) : (
+                  <button className="btn btn-primary btn-sm" onClick={downloadAllPhotos} disabled={busy}>
+                    {preparing ? 'Preparing your photos…' : busy ? 'Starting…' : 'Download all photos'}
+                  </button>
+                )}
               </>
             )}
             {/* A film is one file, so it downloads on its own, never in the zip. */}
@@ -231,13 +242,11 @@ export default function Gallery({
           </p>
         </div>
       )}
-      {started && !error && (
+      {prepared && available[resolution] && !error && (
         <div className="wrap">
           <p className="gal-note" role="status">
-            Downloading {started.filename}
-            {started.bytes ? ` (${formatSize(started.bytes)})` : ''}. Didn&rsquo;t start?{' '}
-            <a href={started.url} download={started.filename}>Download it again</a>.
-            {' '}On an iPhone it&rsquo;s saved to the Files app.
+            Your photos are ready. <a href={archiveUrl}>Download them now</a>.
+            {' '}On an iPhone the zip is saved to the Files app.
           </p>
         </div>
       )}
