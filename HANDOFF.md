@@ -1,6 +1,6 @@
 # Sala Nera — Handoff (updated Sep 22 2026)
 
-## Start here — state at Sep 22, 13:50 UTC
+## Start here — state at Sep 22, 15:00 UTC
 
 **Everything is committed, pushed and deployed.** The latest code deploy is
 `7e5cc6e`. Since then only this file has changed.
@@ -9,7 +9,7 @@
 
 | What | Commit | Proven live by Nick? |
 |---|---|---|
-| High res / Low res download switch | `97c3445` | **Yes, Download All**, Sep 22 13:35 UTC (see below) |
+| High res / Low res download switch | `97c3445` | Sizes and names **yes**; **Download All is broken in Chrome** (see below) |
 | Every booking creates its own listing (migration 0006) | `f9f203a` | **Yes**, Sep 22 13:40 UTC (booking 4) |
 | "Send delivery email" button (migration 0007) | `0b879e8` | **Yes**, Sep 22 00:00 UTC, Rockwall → his Gmail |
 | Admin has its own sign-in at /admin/login | `9803434` | **Yes**, on his new computer |
@@ -25,19 +25,22 @@ and 2 remain). **Nick's rule: the UI of this may be tweaked later, but do not
 touch the wiring** (`lib/booking-changes.ts`, `app/portal/[slug]/actions.ts`,
 the guarded UPDATEs, calendar and email calls). It works as is.
 
-**Low res Download All: proven by Nick, Sep 22 13:35 UTC** on Rockwall, as the
-admin: 32 photos logged `low` plus the one film logged `high` (films have no
-low res), then a high res Download All (33 `high`). Not yet tried: a single
-low res photo, and checking the file size (~0.6MB) on disk.
+**Download All does not work in Chrome (Nick, Sep 22 13:35 UTC, Rockwall).** The
+page "freaked out" and only the **first** file arrived, at both sizes. The
+switch itself works: he got the photo at both sizes with the right names. The
+logs (32 `low` + the film `high`, then 33 `high`) record links handed out, not
+files received, so I wrongly called this proven at first. **Next build: Download
+All becomes zips.** Plan agreed, not built: see the next section.
 
 **Still waiting on Nick (his test, then my read-only check):**
 1. **A horizontal film upload**, and **a fresh photo upload** that makes its own
    copies (`grid_key` set without pressing Make previews). Latest media id is 56.
 
-**Open decision:** where the "Send delivery email" button goes. Today it's near
-the bottom of the listing page, under all the photos, which is why Nick couldn't
-find it. Offered: move it to the top of the listing page, and/or a Send link on
-each row of /admin. No answer yet.
+**Decided:** the "Send delivery email" button moves to the **top** of the listing
+page, with a downloads status line. This is part of zip Stage 1.
+
+**UI tweaks Nick wants, not yet discussed:** the download area (after the zips)
+and the reschedule/cancel screens (UI only, never the wiring).
 
 **Client-journey gaps left, in Nick's order:**
 1. **Real prices and terms.** Both are still placeholders (`RATES_ARE_PLACEHOLDER`,
@@ -66,6 +69,113 @@ each row of /admin. No answer yet.
   ./scripts/ts-alias-hook.mjs`): check-booking-changes (42), check-admin-signin
   (29), check-delivery-email (35), check-booking-listing (33), check-downloads,
   check-listing-delete, check-copies-action, check-claim. All pass at `7e5cc6e`.
+
+## Sep 22: Download All becomes zips — PLAN AGREED, NOT BUILT
+
+Agreed by Nick on Sep 22. He had a second agent review it twice, and its points
+are folded in below. **Build it in two stages.** Nick said to plan only, so
+nothing is built yet.
+
+**The problem.** Download All (`app/components/Gallery.tsx`) fires one
+download per file, 300ms apart. Chrome lets the first through and blocks the
+rest behind an address-bar prompt that is easy to miss. Download Selected has
+the same flaw with 2 or more files.
+
+**Why this design, and not the others:**
+- **Streaming a zip through Vercel to the client is out.** The team `bmg11` is
+  on **Hobby**: 10 GB/month Fast Origin Transfer, and functions stop at 300s.
+  One full high res Rockwall with its film is ~460 MB, and a slow client would
+  hit the 300s limit.
+- **Zipping in the browser is out.** Safari and iPhone run out of memory on high
+  res, and it needs R2 CORS.
+- **Cloudflare Worker: not yet.** It would add a second deployed service we
+  don't need at this size. If a gallery ever takes more than 5 min to build,
+  move *only the builder* there. The portal, table, auth and zip format stay.
+- Nick knows **Hobby is non-commercial only** under Vercel's terms (Pro is
+  required for a business). Upgrading is his call. Pro would also allow 800s.
+
+**The design:**
+- **Photos only. Films stay separate downloads**, one button each.
+- **Two zips per listing**, high and low, choosing files the way `chooseFile()`
+  does (high = original or `high_key`; low = `large_key`, falling back to
+  the original).
+- **Built on the server, from R2 back into R2:** stream each object, zip in
+  **store** mode (JPEGs don't recompress), ZIP64, and stream into an **R2
+  multipart upload** (5 MiB minimum part, except the last). Abort the multipart
+  on failure. Never hold the whole zip in memory or on disk. `lib/storage.ts`
+  only has whole-object `getObject`/`putObject` today, so streaming and multipart
+  are new code.
+- **Versioned keys:** `archives/<slug>/<version>/photos-high.zip` and
+  `photos-low.zip`. The version fingerprints the photo keys, copies, filenames
+  and order. A new version only becomes current once it's complete.
+- **A new table (migration, so Nick runs the one-liner first):** for each listing,
+  resolution and version it records building / ready / failed, size and
+  built_at. Only one build runs at a time: a lock, later requests join it, and
+  no endless retries.
+- **When zips get built:**
+  - The **ready** delivery email (listing unlocked) builds both zips first.
+    **If fresh zips already exist, it reuses them and sends at once.**
+  - **If a build fails, the ready email does not send.** Nick sees a clear error.
+  - The **preview** email (listing locked) builds nothing and sends as today.
+  - A **Rebuild downloads** button rebuilds without emailing anyone.
+  - The admin listing page is `maxDuration = 60`. The build needs up to 300.
+- **Invalidation:** uploading, deleting, replacing, **reordering** (numbers
+  follow gallery order) or regenerating copies makes the current zips
+  unavailable to new downloads **immediately**, then deletes them (best-effort).
+  Deleting a listing deletes its archives too, alongside the existing file
+  cleanup.
+- **Client fallback**, for Rockwall (already delivered) and anything missing: an
+  authorised request for a missing or stale zip starts one build, or joins the
+  one running. The page shows "Preparing your photos…" and polls. A failure
+  shows an honest error and is logged.
+- **Download:** the same `authorizeListing()` gate (ownership, team, lock),
+  then a signed R2 link. **The 1-hour link lifetime applies to completed zip links
+  only.** `DOWNLOAD_TTL` (5 min) stays for previews, single photos and films. A
+  longer lifetime makes an interrupted or resumed download more likely to
+  succeed. It can't guarantee it.
+- **Logging when the client requests the zip, not when it's built:** one bundle
+  event (resolution, version, client), plus the per-photo `downloads` rows as
+  today. As now, this means authorised or started, not completed.
+- **Names:** zip files in ASCII only, `18-Rockwall-Shores-Drive_Photos_High-Res.zip`
+  and `_Low-Res.zip` (the page can show prettier wording). Entries are
+  `01 - <single-file name>` in gallery order (`sort`, then `id`), so low res
+  keeps its `-low-res` suffix. Sanitise names: no folders, no path tricks, and
+  duplicate names made unique.
+- **iPhone:** the zip opens in the Files app. The photos do **not** go into Photos
+  on their own. That's the parked polish item, not solved here.
+
+**Stage 1 — build first:**
+- Client page: **"Download all photos"** with the High/Low switch (High stays
+  the default) and **sizes** shown once built. Each film gets its own button,
+  e.g. "Download film · 127 MB". **Download Selected is hidden, and so are the
+  selection checkboxes.** Single-photo download from the enlarged view is unchanged.
+- Admin listing page: a delivery panel at the **top** with Send delivery email,
+  the status (ready / preparing / needs rebuilding / failed) and Rebuild downloads.
+- The builder, the table, invalidation and the fallback.
+- **Tests.** In the pglite harness with fake R2:
+  - the ready email builds both zips before sending
+  - the preview email builds none
+  - fresh zips are reused
+  - upload, delete, regenerate and reorder each invalidate both zips
+  - two simultaneous requests produce one build
+  - a failed build stops the ready email
+  - locked, unauthorised and signed-out clients get no zip link
+  - films stay separate and are logged
+  - zip names and numbered entries are correct
+
+  **Live only**, because this workspace has no R2 keys: Nick runs Rebuild (or the
+  fallback) on Rockwall, then downloads all photos at both sizes on computer
+  **and** phone, and I check read-only.
+
+**Stage 2 — afterwards:** Download Selected. One photo downloads directly. Two
+or more become a **temporary zip** under a temp prefix, with an `expires_at` the
+app enforces (no new links after it, whether or not Cloudflare has deleted the
+file yet). Add an **R2 lifecycle rule** on that prefix (walk Nick through it in
+Cloudflare), plus one that aborts incomplete multipart uploads. One build per
+identical selection, version and resolution.
+
+**Still open (UI talk, after the zips):** the Low res label. The second agent
+suggested "Best for phone, web and social".
 
 ## Sep 22: agents reschedule or cancel their own booking — LIVE (`7e5cc6e`)
 
