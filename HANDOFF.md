@@ -351,13 +351,28 @@ separate work.
     hourly grid. Our title leading with "11am ·" makes it read like a timed
     appointment. Opening the event shows All day + Busy. Nick raised this on
     Sep 22 thinking the block had failed; it hadn't.
+  - **Spiro reads our all-day event as a time-off request.** Booking Oct 5
+    produced a Spiro email telling Nick that his employee (himself) had
+    applied for time off. He is fine with the noise — "a redundant reminder
+    of the Sala Nera booking." It is useful evidence: Spiro is not merely
+    free/busy-aware of this calendar, it reads the events and classifies
+    them. **Open question:** "applied for" implies an approval step. If that
+    request can sit unapproved or auto-decline, Spiro may hand the day back
+    while Sala Nera still holds it — a silent double-booking. Ask Nick
+    whether the email has an approve/decline action or a pending state in
+    Spiro, and if it does, make approving it part of the routine.
   - **The reverse is still unproven, and it is the dangerous direction.** A
     Spiro shoot only blocks Sala Nera if Spiro writes its appointments onto
     *this* calendar. If it writes them elsewhere, salanera.com will sell a day
-    Nick is already shooting for BMG. Thu Oct 8, which the site was blocking on
-    Sep 22, turned out to be a doctor's appointment, so it proves the
-    personal-hard-block rule live but says nothing about Spiro. **To check:
-    take a date Nick has a BMG shoot on and see whether the site offers it.**
+    Nick is already shooting for BMG. Two things now point the right way — the
+    calendar's own description ("This is your personal Blackhall Media Group
+    appointments calendar for the Spiro platform. All of your appointments and
+    days off will be available here!") and the time-off email above, which
+    shows Spiro reading this calendar. Neither is proof that it *writes* here.
+    Thu Oct 8, which the site was blocking on Sep 22, turned out to be a
+    doctor's appointment, so it proves the personal-hard-block rule live but
+    says nothing about Spiro. **To check: take a date Nick has a BMG shoot on
+    and see whether the site offers it.**
   - **A personal appointment costs the whole day**, confirmed live by Oct 8.
     With six hours plus an hour of buffer either side, anything busy between
     about 7am and 7pm overlaps all four start times. That is the hard-block
