@@ -356,11 +356,11 @@ separate work.
     applied for time off. He is fine with the noise — "a redundant reminder
     of the Sala Nera booking." It is useful evidence: Spiro is not merely
     free/busy-aware of this calendar, it reads the events and classifies
-    them. **Open question:** "applied for" implies an approval step. If that
-    request can sit unapproved or auto-decline, Spiro may hand the day back
-    while Sala Nera still holds it — a silent double-booking. Ask Nick
-    whether the email has an approve/decline action or a pending state in
-    Spiro, and if it does, make approving it part of the routine.
+    them. **The email is a notice, not an approval step** (Nick, Sep 22): it
+    carries no approve or decline action. So the day Spiro takes off the
+    market is not contingent on Nick acting on the mail, and there is no
+    pending request that could lapse and quietly hand the day back. Nothing
+    to do when one arrives.
   - **The reverse is still unproven, and it is the dangerous direction.** A
     Spiro shoot only blocks Sala Nera if Spiro writes its appointments onto
     *this* calendar. If it writes them elsewhere, salanera.com will sell a day
