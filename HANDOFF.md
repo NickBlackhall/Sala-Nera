@@ -1,6 +1,6 @@
 # Sala Nera — Handoff (updated Sep 22 2026)
 
-## Start here — state at Sep 22, 15:35 UTC
+## Start here — state at Sep 22, 16:40 UTC
 
 **Zip Stage 1 is LIVE** (`11e8976`). Migration 0008 went out alone first
 (`a7a5b2c`) and Nick applied it before the code that uses it. **Steps:**
@@ -28,13 +28,26 @@
      result was never reported.
 4. **Change after that (by the other agent, finished by me):** zips now download
    the way single photos already do for him. Details under "Stage 1 as built".
-   **Nick to test again**, starting with Low res.
+5. **PROVEN LIVE IN SAFARI (Mac), Sep 22 16:34 UTC.** Nick downloaded the High
+   res zip, the Low res zip and a single photo in Safari: "worked perfectly".
+   The server logged each one as `archive` / `single`.
+6. **Chrome on Nick's new Mac still downloads nothing**, even after setting
+   salanera.com's "Automatic downloads" to Allow:
+   - Every click reaches the site and gets a 302 to R2. The Vercel logs show
+     this, e.g. 16:24–16:31 UTC.
+   - Chrome's download list stays empty and the tab keeps spinning.
+   - Headless Chromium downloads the same link in under 0.3s.
+   - It is his Chrome profile, not the site. Next: a Chrome **Guest window**
+     (no extensions, fresh settings), and chrome://extensions for a download
+     manager or security extension. Also a Chrome single-photo test: two
+     `single` high-res downloads were logged at 16:33:23/27, perhaps from Chrome.
+   - The phone test is still to do.
 
 **Built and live, Sep 21–22** (details in the dated sections below):
 
 | What | Commit | Proven live by Nick? |
 |---|---|---|
-| High res / Low res download switch | `97c3445` | Sizes and names **yes**; **Download All is broken in Chrome** (see below) |
+| High res / Low res download switch | `97c3445` | **Yes**, now as zips: Safari on Mac, Sep 22 16:34 UTC. Chrome on his Mac downloads nothing (his profile, see below) |
 | Every booking creates its own listing (migration 0006) | `f9f203a` | **Yes**, Sep 22 13:40 UTC (booking 4) |
 | "Send delivery email" button (migration 0007) | `0b879e8` | **Yes**, Sep 22 00:00 UTC, Rockwall → his Gmail |
 | Admin has its own sign-in at /admin/login | `9803434` | **Yes**, on his new computer |
@@ -95,7 +108,7 @@ and the reschedule/cancel screens (UI only, never the wiring).
   (29), check-delivery-email (35), check-booking-listing (33), check-downloads,
   check-listing-delete, check-copies-action, check-claim. All pass at `7e5cc6e`.
 
-## Sep 22: Download All becomes zips — STAGE 1 LIVE (`11e8976`), NICK TO TEST
+## Sep 22: Download All becomes zips — STAGE 1 LIVE, PROVEN IN SAFARI
 
 ### Stage 1 as built (Sep 22, afternoon)
 
