@@ -90,19 +90,75 @@ export const media = pgTable(
   (t) => [index('media_listing_idx').on(t.listingId, t.sort)],
 );
 
+/**
+ * One line on an invoice. A negative amount is a discount; nothing else marks
+ * one, because a discount is arithmetic, not a special case.
+ */
+export type InvoiceLine = {
+  /** Stable across edits, so re-ordering or renaming never loses a row. */
+  id: string;
+  name: string;
+  /**
+   * **Cents.** The booking quote works in whole dollars (lib/quote.ts), which
+   * is fine while nothing divides. Tax does: 8.25% of $999 is $82.42, and a
+   * money type that cannot hold 42 cents will round it into an argument.
+   */
+  amount: number;
+};
+
+/**
+ * The invoice for a listing — one each, created when Nick first opens the
+ * editor.
+ *
+ * **This is Nick's document, not a copy of Stripe's.** The table it replaced
+ * was keyed on `stripe_invoice_id` and held only what Stripe would tell us:
+ * status, amount due, a hosted URL. That shape cannot answer "add a twilight
+ * shoot we agreed on site", which is the thing Nick actually does. So the
+ * lines, the tax and the total live here and are edited here, and Stripe's own
+ * ids hang off the side for when payment is automated.
+ *
+ * **What it deliberately does not do is edit the booking.** `bookings.lines`
+ * stays exactly as the agent submitted it. What someone asked for and what
+ * they were billed are two different facts, and the day one is disputed, Nick
+ * needs both — the same reason `desired_date` survives next to `starts_at`.
+ */
 export const invoices = pgTable(
   'invoices',
   {
-    stripeInvoiceId: text('stripe_invoice_id').primaryKey(),
-    listingId: integer('listing_id').references(() => listings.id, { onDelete: 'set null' }),
-    clientEmail: text('client_email'),
-    propertyAddress: text('property_address'),
-    status: text('status'),
-    amountDue: integer('amount_due'),
-    hostedInvoiceUrl: text('hosted_invoice_url'),
+    id: serial('id').primaryKey(),
+    listingId: integer('listing_id')
+      .references(() => listings.id, { onDelete: 'cascade' })
+      .notNull(),
+    lines: jsonb('lines').$type<InvoiceLine[]>().notNull(),
+    /**
+     * Basis points — 825 is 8.25%, the usual DFW rate (6.25% state + 2%
+     * local), confirmed by Nick on Sep 22. An integer because no float should
+     * ever touch money. Zero it for an exempt client.
+     */
+    taxRateBp: integer('tax_rate_bp').notNull(),
+    /** Nick's own words to the client, under the lines. */
+    note: text('note'),
+    /**
+     * Where the client pays. Today Nick pastes a Stripe payment link in;
+     * later the app creates it. Null means the invoice shows no Pay button,
+     * which is why every place that renders one checks for it.
+     */
+    paymentUrl: text('payment_url'),
+    /**
+     * When it was paid. The gate on downloads is still `listings.download_locked`,
+     * because every download path already reads it; marking an invoice paid
+     * sets both together. They can disagree on purpose: Nick can unlock a
+     * listing he is comping without inventing a payment.
+     */
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    /** How they paid, in Nick's words: 'Stripe', 'Check', 'Zelle'. */
+    paidMethod: text('paid_method'),
+    /** Stripe's id, once invoices are created there rather than by hand. */
+    stripeInvoiceId: text('stripe_invoice_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index('invoices_listing_idx').on(t.listingId)],
+  (t) => [uniqueIndex('invoices_listing_key').on(t.listingId)],
 );
 
 export const downloads = pgTable(
@@ -135,7 +191,7 @@ export const deliveryEmails = pgTable(
       .references(() => listings.id, { onDelete: 'cascade' })
       .notNull(),
     sentTo: text('sent_to').notNull(),
-    kind: text('kind').$type<'preview' | 'ready'>().notNull(),
+    kind: text('kind').$type<'preview' | 'ready' | 'invoice'>().notNull(),
     at: timestamp('at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index('delivery_emails_listing_idx').on(t.listingId, t.at)],
@@ -327,3 +383,4 @@ export type Event = typeof events.$inferSelect;
 export type RateCardRow = typeof rateCards.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Archive = typeof archives.$inferSelect;
+export type Invoice = typeof invoices.$inferSelect;

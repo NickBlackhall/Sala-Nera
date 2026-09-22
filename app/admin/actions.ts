@@ -33,6 +33,18 @@ import { discardStaleArchives, getListingArchiveKeys, prepareArchives } from '@/
 import { copyKey, makeCopies, type Copies } from '@/lib/media-copies';
 import { releaseBookingListing } from '@/lib/booking-listing';
 import { deliveryEmail } from '@/lib/delivery-email';
+import {
+  getInvoice,
+  getOrCreateInvoice,
+  invoiceIsReady,
+  invoiceMoney,
+  invoiceTotals,
+  saveInvoice,
+  setInvoicePaid,
+  taxRateLabel,
+} from '@/lib/invoices';
+import { invoiceEmail } from '@/lib/invoice-email';
+import type { InvoiceLine } from '@/lib/schema';
 import { sendEmail } from '@/lib/email';
 import { record } from '@/lib/telemetry';
 import { slugify } from '@/lib/slug';
@@ -336,6 +348,22 @@ export async function sendDeliveryAction(
       return { error: `The downloads couldn't be prepared, so the email wasn't sent. ${prepared.error}` };
     }
   }
+  /**
+   * The preview email names the total and links to payment, when there is an
+   * invoice worth showing. A half-filled invoice is deliberately skipped
+   * rather than emailed as "$0.00 due" — see invoiceIsReady().
+   */
+  let invoiceSummary = null;
+  if (kind === 'preview') {
+    const invoice = await getInvoice(listing.id);
+    if (invoiceIsReady(invoice)) {
+      invoiceSummary = {
+        total: invoiceMoney(invoiceTotals(invoice.lines, invoice.taxRateBp).total),
+        payUrl: invoice.paymentUrl,
+      };
+    }
+  }
+
   const { subject, text } = deliveryEmail({
     kind,
     name: client.name,
@@ -345,6 +373,7 @@ export async function sendDeliveryAction(
     photos: media.filter((m) => m.kind === 'photo').length,
     films: media.filter((m) => m.kind === 'video').length,
     base: process.env.PORTAL_URL ?? 'https://salanera.com',
+    invoice: invoiceSummary,
   });
 
   const sent = await sendEmail({ to: client.email, subject, text, replyTo: process.env.NOTIFY_EMAIL });
@@ -388,6 +417,185 @@ export async function prepareDownloadsAction(
   const prepared = await prepareArchives(detail.listing, detail.media, session.email);
   revalidatePath(`/admin/listings/${id}`);
   return prepared.ok ? { prepared: 'Downloads ready.' } : { error: prepared.error };
+}
+
+export type InvoiceState = { error?: string; saved?: string; sent?: string };
+
+/**
+ * Reads the line editor back out of the form.
+ *
+ * Rows arrive as `line-<id>-name` and `line-<id>-amount`, keyed by the line's
+ * own id rather than by position, so the order of the fields in the form is
+ * never load-bearing. A row with no name and no amount is dropped: that is an
+ * empty row Nick added and did not use, and it should not become a blank line
+ * on a client's invoice.
+ *
+ * **Amounts are typed in dollars and stored in cents.** "1,250.50" and
+ * "$1250.50" both mean the same thing to someone typing quickly, so both are
+ * accepted. Anything that is not a number at all is rejected rather than
+ * quietly read as zero — a mistyped price that silently becomes $0 is the
+ * kind of error nobody notices until the money is missing.
+ */
+function readLines(form: FormData): { lines: InvoiceLine[] } | { error: string } {
+  const ids = form.getAll('line-id').map(String);
+  const lines: InvoiceLine[] = [];
+
+  for (const id of ids) {
+    const name = String(form.get(`line-${id}-name`) ?? '').trim();
+    const raw = String(form.get(`line-${id}-amount`) ?? '').trim();
+
+    if (name === '' && raw === '') continue;
+
+    const cleaned = raw.replace(/[$,\s]/g, '');
+    const dollars = cleaned === '' ? 0 : Number(cleaned);
+    if (!Number.isFinite(dollars)) {
+      return { error: `"${raw}" isn't an amount. Use numbers, like 450 or 450.50.` };
+    }
+    if (name === '') {
+      return { error: 'Every line needs a description.' };
+    }
+
+    // Round at the point of entry, so the stored cents are exact from here on.
+    lines.push({ id, name, amount: Math.round(dollars * 100) });
+  }
+
+  return { lines };
+}
+
+/** Saves the lines, the tax rate, the note and the payment link. Never touches paid. */
+export async function saveInvoiceAction(
+  _prev: InvoiceState,
+  form: FormData,
+): Promise<InvoiceState> {
+  await requireAdmin();
+
+  const id = Number(form.get('id'));
+  const detail = Number.isInteger(id) ? await getAdminListing(id) : null;
+  if (!detail) return { error: 'That listing no longer exists.' };
+
+  const read = readLines(form);
+  if ('error' in read) return { error: read.error };
+
+  const rate = String(form.get('taxRate') ?? '').trim().replace(/[%\s]/g, '');
+  const percent = rate === '' ? 0 : Number(rate);
+  if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+    return { error: `"${form.get('taxRate')}" isn't a tax rate. Use a percentage, like 8.25.` };
+  }
+
+  const payUrl = String(form.get('paymentUrl') ?? '').trim();
+  if (payUrl !== '' && !/^https:\/\//i.test(payUrl)) {
+    return { error: 'A payment link has to start with https://.' };
+  }
+
+  // Creating here as well as on read means a Save works even on a listing
+  // whose invoice row was never opened.
+  await getOrCreateInvoice(detail.listing, detail.booking);
+  await saveInvoice(detail.listing.id, {
+    lines: read.lines,
+    taxRateBp: Math.round(percent * 100),
+    note: String(form.get('note') ?? '').trim() || null,
+    paymentUrl: payUrl || null,
+  });
+
+  revalidatePath(`/admin/listings/${id}`);
+  revalidatePath(`/portal/${detail.listing.slug}`);
+  return { saved: 'Invoice saved.' };
+}
+
+/**
+ * Marks an invoice paid or unpaid, which unlocks or relocks the downloads with
+ * it (lib/invoices.ts). One action, because remembering to do both is exactly
+ * the thing a person forgets on a Friday afternoon.
+ */
+export async function setInvoicePaidAction(
+  _prev: InvoiceState,
+  form: FormData,
+): Promise<InvoiceState> {
+  await requireAdmin();
+
+  const id = Number(form.get('id'));
+  const detail = Number.isInteger(id) ? await getAdminListing(id) : null;
+  if (!detail) return { error: 'That listing no longer exists.' };
+
+  const paid = form.get('paid') === 'true';
+  await getOrCreateInvoice(detail.listing, detail.booking);
+  await setInvoicePaid(detail.listing.id, paid, String(form.get('method') ?? '').trim() || null);
+
+  await record({
+    kind: 'delivery',
+    outcome: 'ok',
+    reason: paid ? 'invoice_paid' : 'invoice_unpaid',
+    detail: `${detail.listing.address} — marked ${paid ? 'paid' : 'unpaid'}, downloads ${paid ? 'unlocked' : 'locked'}`,
+    email: detail.client?.email ?? null,
+  });
+
+  revalidatePath('/admin');
+  revalidatePath(`/admin/listings/${id}`);
+  revalidatePath(`/portal/${detail.listing.slug}`);
+  return { saved: paid ? 'Marked paid — downloads are unlocked.' : 'Marked unpaid — downloads are locked again.' };
+}
+
+/**
+ * Sends the invoice, or re-sends it after a change. Nothing goes out until
+ * this is pressed, which is the rule Nick set for the delivery emails and for
+ * the same reason: he edits an invoice three times and sends once.
+ */
+export async function sendInvoiceAction(
+  _prev: InvoiceState,
+  form: FormData,
+): Promise<InvoiceState> {
+  await requireAdmin();
+
+  const id = Number(form.get('id'));
+  const detail = Number.isInteger(id) ? await getAdminListing(id) : null;
+  if (!detail) return { error: 'That listing no longer exists.' };
+
+  const { listing, client, delivered } = detail;
+  if (!client) return { error: 'Assign an agent to this listing first.' };
+
+  const invoice = await getInvoice(listing.id);
+  if (!invoiceIsReady(invoice)) {
+    return { error: 'Fill in the invoice first — it needs at least one priced line.' };
+  }
+
+  const totals = invoiceTotals(invoice.lines, invoice.taxRateBp);
+  const { subject, text } = invoiceEmail({
+    updated: delivered.some((row) => row.kind === 'invoice'),
+    name: client.name,
+    address: listing.address,
+    slug: listing.slug,
+    lines: invoice.lines
+      .filter((line) => line.name.trim() !== '')
+      .map((line) => ({ name: line.name, amount: invoiceMoney(line.amount) })),
+    subtotal: invoiceMoney(totals.subtotal),
+    tax: invoiceMoney(totals.tax),
+    taxLabel: taxRateLabel(invoice.taxRateBp),
+    total: invoiceMoney(totals.total),
+    note: invoice.note,
+    payUrl: invoice.paymentUrl,
+    paid: invoice.paidAt !== null,
+    base: process.env.PORTAL_URL ?? 'https://salanera.com',
+  });
+
+  const sent = await sendEmail({ to: client.email, subject, text, replyTo: process.env.NOTIFY_EMAIL });
+  await record({
+    kind: 'delivery',
+    outcome: sent ? 'ok' : 'failed',
+    reason: sent ? 'invoice' : 'send_failed',
+    detail: `${listing.address} — invoice email, ${invoiceMoney(totals.total)}`,
+    email: client.email,
+  });
+  if (!sent) return { error: "The email didn't send. Try again in a minute." };
+
+  try {
+    await insertDeliveryEmail({ listingId: listing.id, sentTo: client.email, kind: 'invoice' });
+  } catch (error) {
+    // The email is out either way; only this page's record of it is missing.
+    console.error('admin: invoice email sent but not recorded', { listingId: listing.id, error });
+  }
+
+  revalidatePath(`/admin/listings/${id}`);
+  return { sent: `Sent to ${client.email}.` };
 }
 
 /** Media rows and this listing's download history go with it — and the files. */

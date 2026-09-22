@@ -60,6 +60,12 @@ export type AdminListingDetail = {
   media: Media[];
   activity: (typeof downloads.$inferSelect)[];
   delivered: DeliveryEmail[];
+  /**
+   * The booking that made this listing, or null on one Nick made by hand. Read
+   * here so a first invoice can start from what the agent actually ordered
+   * rather than an empty page — see seedLines() in lib/invoices.ts.
+   */
+  booking: Booking | null;
 };
 
 /** One listing, everything the edit page shows. */
@@ -97,7 +103,13 @@ export async function getAdminListing(id: number): Promise<AdminListingDetail | 
     .orderBy(desc(deliveryEmails.at))
     .limit(10);
 
-  return { listing, client: owner, media: items, activity, delivered };
+  let booking: Booking | null = null;
+  if (listing.bookingId !== null) {
+    const [row] = await db.select().from(bookings).where(eq(bookings.id, listing.bookingId)).limit(1);
+    booking = row ?? null;
+  }
+
+  return { listing, client: owner, media: items, activity, delivered, booking };
 }
 
 /** Records one "your photos are ready" email, after it has actually gone. */

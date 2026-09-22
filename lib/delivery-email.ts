@@ -9,9 +9,27 @@
  * Plain text, like every other email the site sends. The link goes to the
  * delivery page; an agent who is not signed in is sent through sign-in and
  * back to this listing, not to their list of listings.
+ *
+ * **The preview carries the money.** Before invoices existed it said
+ * "downloads unlock as soon as payment is received" and stopped there, which
+ * told an agent they owed something without saying how much or how to pay it.
+ * A preview sent with a ready invoice now names the total and links straight
+ * to payment. The ready email does not: by the time it goes out they have
+ * paid, and a Pay button on a paid job is how people pay twice.
  */
 
 export type DeliveryKind = 'preview' | 'ready';
+
+/**
+ * What the client is being asked for, already formatted by the caller — this
+ * module does no arithmetic on money. Null when there is no usable invoice
+ * yet, which leaves the email exactly as it read before.
+ */
+export type DeliveryInvoice = {
+  total: string;
+  /** Stripe payment link, or null while Nick has not put one on the invoice. */
+  payUrl: string | null;
+};
 
 export function deliveryEmail(input: {
   kind: DeliveryKind;
@@ -22,8 +40,10 @@ export function deliveryEmail(input: {
   photos: number;
   films: number;
   base: string;
+  invoice?: DeliveryInvoice | null;
 }): { subject: string; text: string } {
   const { kind, address, slug, photos, films, base } = input;
+  const invoice = kind === 'preview' ? (input.invoice ?? null) : null;
   const firstName = input.name?.trim().split(/\s+/)[0];
 
   // "photos", "film", "photos and films" — whatever was actually delivered.
@@ -63,6 +83,17 @@ export function deliveryEmail(input: {
         ? 'Choose High res for the MLS and print, or Low res for websites, social and email.'
         : null,
     '',
+    // The whole point of the preview email, when there is an invoice behind
+    // it: the number, and the one click that settles it.
+    ...(invoice
+      ? invoice.payUrl
+        ? [`Your total is ${invoice.total}. You can pay here:`, invoice.payUrl, '']
+        : [
+            `Your total is ${invoice.total}. The full invoice is on your gallery page,`,
+            'and I’ll send payment details separately.',
+            '',
+          ]
+      : []),
     ...(kind === 'ready'
       ? [
           'A property website to share with buyers:',

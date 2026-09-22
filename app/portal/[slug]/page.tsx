@@ -13,6 +13,9 @@ import {
 } from '@/lib/portal-queries';
 import { canChangeBooking, CHANGE_CUTOFF_HOURS, shootWhen } from '@/lib/booking-changes';
 import ManageBooking from './ManageBooking';
+import Invoice from './Invoice';
+import { getInvoice, invoiceIsReady } from '@/lib/invoices';
+import type { Invoice as InvoiceRow } from '@/lib/schema';
 import { TIME_ZONE } from '@/lib/scheduling';
 import { getSession } from '@/lib/session';
 import { coverUrl, withPreviewUrls } from '@/lib/storage';
@@ -57,6 +60,23 @@ async function bookingFor(data: ListingBundle): Promise<BookingSummary | null> {
   return getBookingSummary(listing.bookingId);
 }
 
+/**
+ * The listing's invoice, when there is one worth showing. An invoice Nick has
+ * opened but not priced is treated as absent: "$0.00 due" reads as a promise,
+ * and is worse than saying nothing. Demo mode has no database.
+ */
+async function invoiceFor({ listing }: ListingBundle): Promise<InvoiceRow | null> {
+  if (IS_DEMO) return null;
+  try {
+    const invoice = await getInvoice(listing.id);
+    return invoiceIsReady(invoice) ? invoice : null;
+  } catch (error) {
+    // The gallery matters more than the invoice; never lose the page over it.
+    console.error('portal: could not read the invoice', error);
+    return null;
+  }
+}
+
 type ZipSizes = { high: number | null; low: number | null };
 const NO_SIZES: ZipSizes = { high: null, low: null };
 
@@ -77,7 +97,12 @@ async function zipSizesFor({ listing, media }: ListingBundle): Promise<ZipSizes>
   }
 }
 
-function render(data: ListingBundle, booking: BookingSummary | null, zipSizes: ZipSizes) {
+function render(
+  data: ListingBundle,
+  booking: BookingSummary | null,
+  zipSizes: ZipSizes,
+  invoice: InvoiceRow | null,
+) {
   const { listing, media, client } = data;
   // A confirmed booking with a real time is one the agent may manage here.
   const scheduled = booking?.status === 'confirmed' && booking.startsAt ? booking.startsAt : null;
@@ -125,6 +150,12 @@ function render(data: ListingBundle, booking: BookingSummary | null, zipSizes: Z
           <p className="pbooked-note">
             Your photos and film will appear here as soon as they&rsquo;re ready.
           </p>
+          {/*
+            Before the shoot the same document answers a different question:
+            what did I book, and what is it going to cost? An agent who booked
+            six weeks ago should not have to email to find out.
+          */}
+          {invoice && <Invoice invoice={invoice} heading="Your order" />}
           {scheduled && (
             <ManageBooking
               slug={listing.slug}
@@ -140,15 +171,29 @@ function render(data: ListingBundle, booking: BookingSummary | null, zipSizes: Z
           {/* The public property website exists only once the listing is paid. */}
           {!locked && <PropertyLinks slug={listing.slug} />}
 
+          {/*
+            Above the photos while locked, because it is the thing standing
+            between the agent and their downloads. Below them once paid, where
+            it is a receipt rather than a demand.
+          */}
+          {invoice && locked && <Invoice invoice={invoice} heading="Amount due" />}
+
           <Gallery
             slug={listing.slug}
             media={withPreviewUrls(media)}
             locked={locked}
-            // No invoice link until Stripe exists: a button that goes nowhere is
-            // worse than none. Payment is arranged directly with Nick for now.
-            invoiceUrl={null}
+            /*
+             * A Pay button in the gallery bar, only while there is something to
+             * pay: locked, unpaid, and with a link on the invoice. Once paid it
+             * goes, because the same prop renders "View Invoice" on an unlocked
+             * gallery and a Stripe payment link is not an invoice to view.
+             */
+            invoiceUrl={locked && invoice && !invoice.paidAt ? invoice.paymentUrl : null}
             zipSizes={zipSizes}
           />
+
+          {/* Under the photos once paid: a receipt they can come back for. */}
+          {invoice && !locked && <Invoice invoice={invoice} heading="Your invoice" />}
         </>
       )}
 
@@ -182,12 +227,17 @@ export default async function PortalListing({
       // A listing you may not see is reported as missing, not as forbidden —
       // otherwise the 403 itself confirms which addresses we have shot.
       if (!viewer || !bundle || !ownsListing(viewer, bundle.client)) notFound();
-      return render(bundle, await bookingFor(bundle), await zipSizesFor(bundle));
+      return render(
+        bundle,
+        await bookingFor(bundle),
+        await zipSizesFor(bundle),
+        await invoiceFor(bundle),
+      );
     }
   }
 
   const data = await getListing(slug);
   if (!data) notFound();
 
-  return render(data, await bookingFor(data), await zipSizesFor(data));
+  return render(data, await bookingFor(data), await zipSizesFor(data), await invoiceFor(data));
 }

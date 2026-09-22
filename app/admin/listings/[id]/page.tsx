@@ -9,6 +9,8 @@ import { updateListingAction } from '../../actions';
 import { isLocalKey, isRemoteStorage, withPreviewUrls } from '@/lib/storage';
 import MakePreviews from '../../MakePreviews';
 import SendDelivery, { type ZipStatus } from '../../SendDelivery';
+import InvoiceEditor from '../../InvoiceEditor';
+import { getInvoice, seedLines, DEFAULT_TAX_RATE_BP } from '@/lib/invoices';
 import { planArchives } from '@/lib/archives';
 import type { AdminListingDetail } from '@/lib/admin-queries';
 import UploadMedia from '../../UploadMedia';
@@ -81,8 +83,17 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
   ]);
   if (!detail) notFound();
 
-  const { listing, client, media, activity, delivered } = detail;
+  const { listing, client, media, activity, delivered, booking } = detail;
   const zips = await zipStatus(detail);
+
+  /**
+   * The invoice is read, not created, so merely opening a listing never writes
+   * a row. Until Nick saves one, the editor shows lines seeded from the
+   * booking — real on screen, but nothing exists in the database yet.
+   */
+  const invoice = await getInvoice(listing.id);
+  const seeded = invoice === null;
+  const invoiceLines = invoice?.lines ?? seedLines(booking);
 
   // Photos still served as full-size originals: uploaded before copies
   // existed, or whose copies failed. Demo rows are small files already.
@@ -123,12 +134,36 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
         zips={zips}
         history={delivered.map((row) => ({
           id: row.id,
-          what: row.kind === 'preview' ? 'Preview email' : 'Delivery email',
+          what:
+            row.kind === 'preview'
+              ? 'Preview email'
+              : row.kind === 'invoice'
+                ? 'Invoice email'
+                : 'Delivery email',
           sentTo: row.sentTo,
           when: new Date(row.at).toLocaleString('en-US', {
             timeZone: TIME_ZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
           }),
         }))}
+      />
+
+      <InvoiceEditor
+        id={listing.id}
+        lines={invoiceLines}
+        taxRateBp={invoice?.taxRateBp ?? DEFAULT_TAX_RATE_BP}
+        note={invoice?.note ?? null}
+        paymentUrl={invoice?.paymentUrl ?? null}
+        paidAt={
+          invoice?.paidAt
+            ? new Date(invoice.paidAt).toLocaleString('en-US', {
+                timeZone: TIME_ZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+              })
+            : null
+        }
+        paidMethod={invoice?.paidMethod ?? null}
+        hasClient={client !== null}
+        sentCount={delivered.filter((row) => row.kind === 'invoice').length}
+        seeded={seeded && invoiceLines.length > 0}
       />
 
       <ListingForm

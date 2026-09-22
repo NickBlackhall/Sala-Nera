@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0008_archives';
+export const PORTAL_MIGRATION_ID = '0009_invoices';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -230,4 +230,53 @@ export const PORTAL_MIGRATION_STATEMENTS = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "archives_listing_version_key"
     ON "archives" USING btree ("listing_id", "resolution", "version")`,
+
+  /**
+   * 0009 — invoices Nick edits (lib/invoices.ts), replacing the unused Stripe
+   * mirror that 0006 created.
+   *
+   * The old table was keyed on `stripe_invoice_id` and could hold only what
+   * Stripe reported: status, amount due, a hosted URL. It was never written to
+   * by any code, and was confirmed empty in production on Sep 22.
+   *
+   * **Why this is not a plain `DROP TABLE IF EXISTS`.** Every statement in this
+   * file has to be safe to run twice — the endpoint retries after a timeout. A
+   * bare drop satisfies nobody: on the second run it would delete real
+   * invoices and the `CREATE` below would put an empty table back, silently.
+   * So the drop is conditional on the table having the *old* shape, which is
+   * exactly "an invoices table with no `lines` column". Once the new table
+   * exists the condition is false forever, and it can never fire against an
+   * invoice anyone has written.
+   */
+  `DO $$
+  BEGIN
+    IF EXISTS (
+          SELECT 1 FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_name = 'invoices'
+        )
+       AND NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'invoices' AND column_name = 'lines'
+        )
+    THEN
+      DROP TABLE "invoices";
+    END IF;
+  END $$`,
+  `CREATE TABLE IF NOT EXISTS "invoices" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "listing_id" integer NOT NULL,
+    "lines" jsonb NOT NULL,
+    "tax_rate_bp" integer NOT NULL,
+    "note" text,
+    "payment_url" text,
+    "paid_at" timestamp with time zone,
+    "paid_method" text,
+    "stripe_invoice_id" text,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT "invoices_listing_id_listings_id_fk"
+      FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id")
+      ON DELETE cascade ON UPDATE no action
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "invoices_listing_key" ON "invoices" USING btree ("listing_id")`,
 ] as const;
