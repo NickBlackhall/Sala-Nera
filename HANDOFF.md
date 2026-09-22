@@ -2,8 +2,8 @@
 
 ## Start here — state at Sep 22, 15:35 UTC
 
-**Zip Stage 1 is LIVE** (`11e8976`, migration 0008 applied by Nick first). The table's code went live as `a7a5b2c` (schema only,
-nothing uses it). **Next steps, in order:**
+**Zip Stage 1 is LIVE** (`11e8976`). Migration 0008 went out alone first
+(`a7a5b2c`) and Nick applied it before the code that uses it. **Steps:**
 1. ~~Nick runs the migrate one-liner.~~ **Done, Sep 22 15:16 UTC**: confirmed
    read-only, `0008_archives` applied, table and unique index present, empty.
 2. ~~Push the Stage 1 commit.~~ **Live, Sep 22 ~15:25 UTC** (`11e8976`).
