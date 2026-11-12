@@ -43,12 +43,21 @@ serving salanera.com.
      or agent. Checked live on Brookside's public page at desktop and phone
      sizes. **Not checked live:** the signed-in `/portal/n-brookside-drive`;
      it was only tested in demo mode (paid, locked, booked). Nick to look.
-  2. **Tabs: Photos / Aerials / Film** — next. Drone shots sort themselves
-     by filename (`DJI_` prefix). No database change. An empty tab doesn't
-     show.
-  3. **Floor plan and Details** — new listing fields (beds, baths, square
-     feet, a description), a floor plan upload in admin, and the two tabs.
-     Needs a migration.
+  2. **Tabs: Photos / Aerials / Film — done and live (Nov 12).** A photo
+     whose filename starts `DJI_` is an aerial (`isAerial` in
+     `lib/property-site.ts`; only a yes/no reaches the page). On `/p/<slug>`
+     the aerials leave Nick's order and gather in their own section after
+     the ground photos, with a tab each. The split only happens when a
+     listing has both kinds. The lightbox runs through both sections. A run
+     of one or two photos gets one or two columns, not three. The client
+     gallery (`/portal/<slug>`) is not split. No database change.
+  3. **Floor plan and Details — next, and waiting on Nick's answers.** New
+     listing fields (beds, baths, square feet, a description) and the two
+     tabs. **Nick's requirement (Nov 12): a place on the admin listing page
+     to upload floor plans, taking several files per listing, because there
+     are often different versions.** Needs a migration. Questions asked of
+     him: file types, whether every version shows publicly, whether clients
+     download them, and whether they appear on the MLS version.
   4. **Favourites and slideshow** — later, only if Nick wants them.
 - **Parked: Nick is fine with both as they are (Nov 12).** Don't change
   either unless he raises it again:

@@ -1,5 +1,5 @@
 import PropertyBar, { type BarTab } from '@/app/components/PropertyBar';
-import PropertyGallery from '@/app/components/PropertyGallery';
+import PropertyGallery, { type PhotoGroup } from '@/app/components/PropertyGallery';
 import VideoPlayer from '@/app/components/VideoPlayer';
 import type { PropertySite as Site, PropertyVideo } from '@/lib/property-site';
 
@@ -37,10 +37,24 @@ function formatPhone(phone: string): string {
 export default function PropertySite({ site, branded }: { site: Site; branded: boolean }) {
   const agent = branded ? site.agent : null;
 
+  // Drone shots get a section of their own, in Nick's order within it — but
+  // only beside ground photos. A set that is all one kind stays one section.
+  const ground = site.photos.filter((p) => !p.aerial);
+  const aerials = site.photos.filter((p) => p.aerial);
+  const groups: PhotoGroup[] =
+    ground.length > 0 && aerials.length > 0
+      ? [
+          { id: 'photos', label: 'Photos', photos: ground },
+          { id: 'aerials', label: aerials.length > 1 ? 'Aerials' : 'Aerial', photos: aerials },
+        ]
+      : site.photos.length > 0
+        ? [{ id: 'photos', label: 'Photos', photos: site.photos }]
+        : [];
+
   // A tab per section this page actually has; one section alone needs no tabs.
   const tabs: BarTab[] = [];
   if (site.videos.length > 0) tabs.push({ id: 'film', label: site.videos.length > 1 ? 'Films' : 'Film' });
-  if (site.photos.length > 0) tabs.push({ id: 'photos', label: 'Photos' });
+  for (const group of groups) tabs.push({ id: group.id, label: group.label });
   if (agent) tabs.push({ id: 'contact', label: 'Contact' });
 
   return (
@@ -79,11 +93,7 @@ export default function PropertySite({ site, branded }: { site: Site; branded: b
             ))}
           </section>
         )}
-        {site.photos.length > 0 && (
-          <section id="photos" aria-label="Photos">
-            <PropertyGallery photos={site.photos} address={site.address} />
-          </section>
-        )}
+        {groups.length > 0 && <PropertyGallery groups={groups} address={site.address} />}
       </main>
 
       {branded && (

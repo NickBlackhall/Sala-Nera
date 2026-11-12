@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export type BarTab = { id: string; label: string };
 
@@ -14,11 +14,16 @@ export type BarTab = { id: string; label: string };
 export default function PropertyBar({ title, sub, tabs }: { title: string; sub?: string | null; tabs: BarTab[] }) {
   const [active, setActive] = useState(tabs[0]?.id ?? null);
   const [copied, setCopied] = useState(false);
+  // A tapped tab stays the current one while the page glides to it. A short
+  // last section can't reach the top, and scrolling alone would name the
+  // section below it instead.
+  const pinnedUntil = useRef(0);
 
   // The current tab is the last section whose top has passed under the bar.
   useEffect(() => {
     if (tabs.length < 2) return;
     const onScroll = () => {
+      if (Date.now() < pinnedUntil.current) return;
       let current = tabs[0].id;
       for (const tab of tabs) {
         const el = document.getElementById(tab.id);
@@ -65,7 +70,15 @@ export default function PropertyBar({ title, sub, tabs }: { title: string; sub?:
         {tabs.length > 1 && (
           <nav className="pbar-tabs" aria-label="Sections">
             {tabs.map((tab) => (
-              <a key={tab.id} href={`#${tab.id}`} aria-current={active === tab.id ? 'true' : undefined}>
+              <a
+                key={tab.id}
+                href={`#${tab.id}`}
+                aria-current={active === tab.id ? 'true' : undefined}
+                onClick={() => {
+                  setActive(tab.id);
+                  pinnedUntil.current = Date.now() + 1200;
+                }}
+              >
                 {tab.label}
               </a>
             ))}

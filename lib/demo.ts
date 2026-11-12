@@ -59,7 +59,12 @@ export const DEMO_MEDIA: Media[] = PHOTOS.map(([key, label, w, h], i) => ({
   listingId: 1,
   kind: 'photo',
   r2Key: `/demo/${key}.jpg`,
-  filename: `SN-${String(i + 1).padStart(3, '0')}-${label.toLowerCase().replace(/\s+/g, '-')}.jpg`,
+  // The aerial is named as a drone names it, so the property website's
+  // Aerials section can be seen in demo mode (lib/property-site.ts).
+  filename:
+    key === 'aerial'
+      ? 'DJI_20260910101406_0573_D.jpg'
+      : `SN-${String(i + 1).padStart(3, '0')}-${label.toLowerCase().replace(/\s+/g, '-')}.jpg`,
   bytes: 4_200_000,
   width: w,
   height: h,

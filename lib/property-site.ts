@@ -29,7 +29,15 @@ export type PropertyPhoto = {
   height: number;
   gridUrl: string;
   largeUrl: string;
+  /** A drone shot, which the page gathers under its own tab. */
+  aerial: boolean;
 };
+
+/**
+ * A drone names its files DJI_…, and Nick uploads them as they come off the
+ * card, so the filename is the tag. Only this yes/no reaches the page.
+ */
+const isAerial = (filename: string) => /^DJI_/i.test(filename);
 
 export type PropertyVideo = {
   id: number;
@@ -86,6 +94,7 @@ export function toPropertySite({ listing, media, client }: ListingBundle): Prope
     height: m.height ?? 1067,
     gridUrl: url(m.gridKey ?? m.r2Key),
     largeUrl: url(m.largeKey ?? m.r2Key),
+    aerial: isAerial(m.filename),
   }));
 
   // The cover Nick chose, if it is one of the photos shown; otherwise the first.
