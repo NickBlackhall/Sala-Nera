@@ -50,11 +50,13 @@ serving salanera.com.
      feet, a description), a floor plan upload in admin, and the two tabs.
      Needs a migration.
   4. **Favourites and slideshow** — later, only if Nick wants them.
-- **Two questions put to Nick, unanswered:**
-  - The mark is faint over bright sky on Brookside's cover. Add a shadow, or
-    darken the top of the photo?
-  - The cover photo is still the first tile in the grid, because a phone
-    crops the cover to a tall slice. Keep it or drop it?
+- **Parked: Nick is fine with both as they are (Nov 12).** Don't change
+  either unless he raises it again:
+  - The mark is faint over bright sky on Brookside's cover. If he wants it
+    fixed: a soft shadow behind the mark (my pick, leaves the photo alone)
+    or darken the top of the photo.
+  - The cover photo is also the first tile in the grid, kept because a phone
+    crops the cover to a tall slice. Could be dropped later.
 
 **Waiting on Nick (his test, then my read-only check):**
 1. **The first real invoice end to end** (§4.9). Migration 0009 is applied and
