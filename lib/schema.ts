@@ -91,6 +91,36 @@ export const media = pgTable(
 );
 
 /**
+ * A listing's floor plans (migration 0011). A table of their own, not media
+ * rows, so no photo query, zip, count or cover fallback can pick one up.
+ * Several per listing: there are often different versions of the same plan,
+ * and `label` is the name Nick gives each. They carry no branding, so the
+ * same files serve the MLS version of the property website.
+ */
+export const floorplans = pgTable(
+  'floorplans',
+  {
+    id: serial('id').primaryKey(),
+    listingId: integer('listing_id')
+      .references(() => listings.id, { onDelete: 'cascade' })
+      .notNull(),
+    r2Key: text('r2_key').notNull(),
+    filename: text('filename').notNull(),
+    label: text('label'),
+    bytes: bigint('bytes', { mode: 'number' }),
+    width: integer('width'),
+    height: integer('height'),
+    sort: integer('sort').default(0).notNull(),
+    // Smaller copies for the page; null until made, and the page then leaves
+    // the plan off rather than load the original.
+    gridKey: text('grid_key'),
+    largeKey: text('large_key'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('floorplans_listing_idx').on(t.listingId, t.sort)],
+);
+
+/**
  * One line on an invoice. A negative amount is a discount; nothing else marks
  * one, because a discount is arithmetic, not a special case.
  */
@@ -378,6 +408,7 @@ export const bookings = pgTable(
 export type Client = typeof clients.$inferSelect;
 export type Listing = typeof listings.$inferSelect;
 export type Media = typeof media.$inferSelect;
+export type Floorplan = typeof floorplans.$inferSelect;
 export type DeliveryEmail = typeof deliveryEmails.$inferSelect;
 export type Event = typeof events.$inferSelect;
 export type RateCardRow = typeof rateCards.$inferSelect;

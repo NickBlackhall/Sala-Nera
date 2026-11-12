@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import Gallery from '@/app/components/Gallery';
 import PropertyLinks from '@/app/components/PropertyLinks';
-import { DEMO_BOOKING, DEMO_CLIENT, DEMO_LISTINGS, IS_DEMO, demoMediaFor } from '@/lib/demo';
+import { DEMO_BOOKING, DEMO_CLIENT, DEMO_LISTINGS, IS_DEMO, demoFloorplansFor, demoMediaFor } from '@/lib/demo';
+import { getFloorplans } from '@/lib/floorplans';
+import type { Floorplan } from '@/lib/schema';
+import Floorplans from './Floorplans';
 import {
   getBookingSummary,
   getClientByEmail,
@@ -97,11 +100,23 @@ async function zipSizesFor({ listing, media }: ListingBundle): Promise<ZipSizes>
   }
 }
 
+/** A failure to read them never breaks the page the agent's photos are on. */
+async function floorplansFor({ listing }: ListingBundle): Promise<Floorplan[]> {
+  if (IS_DEMO) return demoFloorplansFor(listing);
+  try {
+    return await getFloorplans(listing.id);
+  } catch (error) {
+    console.error('portal: could not read the floor plans', error);
+    return [];
+  }
+}
+
 function render(
   data: ListingBundle,
   booking: BookingSummary | null,
   zipSizes: ZipSizes,
   invoice: InvoiceRow | null,
+  plans: Floorplan[],
 ) {
   const { listing, media, client } = data;
   // A confirmed booking with a real time is one the agent may manage here.
@@ -199,6 +214,8 @@ function render(
             zipSizes={zipSizes}
           />
 
+          <Floorplans slug={listing.slug} plans={plans} locked={locked} />
+
           {/* Under the photos once paid: a receipt they can come back for. */}
           {invoice && !locked && <Invoice invoice={invoice} heading="Your invoice" />}
         </>
@@ -239,6 +256,7 @@ export default async function PortalListing({
         await bookingFor(bundle),
         await zipSizesFor(bundle),
         await invoiceFor(bundle),
+        await floorplansFor(bundle),
       );
     }
   }
@@ -246,5 +264,11 @@ export default async function PortalListing({
   const data = await getListing(slug);
   if (!data) notFound();
 
-  return render(data, await bookingFor(data), await zipSizesFor(data), await invoiceFor(data));
+  return render(
+    data,
+    await bookingFor(data),
+    await zipSizesFor(data),
+    await invoiceFor(data),
+    await floorplansFor(data),
+  );
 }

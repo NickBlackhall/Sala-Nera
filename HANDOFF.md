@@ -51,13 +51,44 @@ serving salanera.com.
      listing has both kinds. The lightbox runs through both sections. A run
      of one or two photos gets one or two columns, not three. The client
      gallery (`/portal/<slug>`) is not split. No database change.
-  3. **Floor plan and Details — next, and waiting on Nick's answers.** New
-     listing fields (beds, baths, square feet, a description) and the two
-     tabs. **Nick's requirement (Nov 12): a place on the admin listing page
-     to upload floor plans, taking several files per listing, because there
-     are often different versions.** Needs a migration. Questions asked of
-     him: file types, whether every version shows publicly, whether clients
-     download them, and whether they appear on the MLS version.
+  3. **Floor plans — built and pushed Nov 12; waiting on Nick to run
+     migration `0011_floorplans_details`** (the usual one-liner, §2). Until
+     it runs, the admin panel says so and offers no upload, and every page
+     simply has no plans (`getFloorplans` treats a missing table as none).
+     **Not yet proven with a real upload** — this workspace can't reach the
+     bucket's writes safely, so the first real JPG Nick uploads is the test:
+     it should show a preview in admin, a Floor plan tab on `/p/<slug>` and
+     `/mls`, and a Download on the delivery page.
+     - **Their own table, `floorplans`** (`lib/floorplans.ts`), not media
+       rows, so no photo query, zip, count or cover can pick one up. `0010`
+       was an earlier media-row shape, replaced before anyone ran it.
+     - **Admin:** a "Floor plans" section on the listing page
+       (`app/admin/Floorplans.tsx`, `floorplan-actions.ts`). Several image
+       files at once, a label per plan, delete. Copies are made in the same
+       call as the upload, on white, with **no copyright notice written in**
+       (`makePlanCopies`) because the MLS version shows them.
+     - **Property website:** a Floor plan(s) tab and section on both
+       versions (`PropertyPlans.tsx`), on a white sheet, click to enlarge.
+       A plan with no label reads "Floor plan" / "Floor plan 2".
+     - **Delivery page:** thumbnails with Download (the file as uploaded)
+       through `/api/portal/download/floorplan`, behind the same
+       `authorizeListing` gate. While locked it shows one line and no
+       picture. Downloads are logged as events (`reason='floorplan'`), not
+       in the `downloads` table.
+     - **Nick's answers (Nov 12):** files are generally JPGs; all plans are
+       unbranded for MLS, so all show on both versions; labels wanted, exact
+       wording to be worked out; agents download from the delivery page, not
+       the property site. **Assumed, not asked:** downloads sit behind
+       payment like the photos.
+     - Demo mode has two sample plans (`public/demo/floorplan-*.svg`).
+  3b. **Details tab — not built.** The columns exist after 0011
+     (`listings.beds`, `baths` (text), `sqft`, `description`) but are not in
+     `lib/schema.ts` yet; add them there with the code that uses them.
+  3c. **Aerials mislabel low drone shots — open, Nick to choose.** On
+     Brookside the two `DJI_` photos are low shots of the patio and bocce
+     court, not aerial views. Options put to him: leave it, add a per-photo
+     switch in admin (my pick; `media.aerial` exists after 0011, null = go by
+     filename, also not in `schema.ts` yet), or remove the split.
   4. **Favourites and slideshow** — later, only if Nick wants them.
 - **Parked: Nick is fine with both as they are (Nov 12).** Don't change
   either unless he raises it again:
@@ -161,6 +192,7 @@ serving salanera.com.
 - **Live checks are read-only.** GET page views with a minted admin cookie
   are fine; POSTs are not. On the live site, Nick does anything that writes
   (upload, delete, press a button), and I verify before and after.
+- (Nov 12: `.env.local` does appear to hold R2 settings now — a local server signed bucket URLs and showed the upload button. Not tested further; treat a prod-backed local server as able to reach the real bucket.)
 - This workspace has **no R2 keys** and **no Google calendar key**, so
   anything touching the real bucket or calendar is proven on the live site.
 

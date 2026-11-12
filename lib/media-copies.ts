@@ -99,6 +99,40 @@ export async function makeCopies(original: Buffer): Promise<Copies> {
 }
 
 /**
+ * A floor plan's copies. Not makeCopies(): a plan is a drawing, often a PNG
+ * with a transparent background, which a JPEG would otherwise turn black, so
+ * it is laid on white first. And no copyright notice is written into it — a
+ * plan is shown on the MLS version of the property website, which carries no
+ * name anywhere, the file's own details included.
+ */
+export async function makePlanCopies(
+  original: Buffer,
+): Promise<{ width: number; height: number; grid: Buffer; large: Buffer }> {
+  const meta = await sharp(original, INPUT).metadata();
+  if (!meta.width || !meta.height) throw new Error('not a readable image');
+
+  const sideways = (meta.orientation ?? 1) >= 5;
+  const width = sideways ? meta.height : meta.width;
+  const height = sideways ? meta.width : meta.height;
+
+  const large = await sharp(original, INPUT)
+    .autoOrient()
+    .flatten({ background: '#ffffff' })
+    .resize({ width: LARGE_EDGE, height: LARGE_EDGE, fit: 'inside', withoutEnlargement: true })
+    .withIccProfile('srgb')
+    .jpeg({ quality: 88, mozjpeg: true })
+    .toBuffer();
+
+  const grid = await sharp(large)
+    .resize({ width: GRID_EDGE, height: GRID_EDGE, fit: 'inside', withoutEnlargement: true })
+    .withIccProfile('srgb')
+    .jpeg({ quality: 84, mozjpeg: true })
+    .toBuffer();
+
+  return { width, height, grid, large };
+}
+
+/**
  * A full-resolution JPEG under the MLS cap. Quality steps down first, because
  * it costs far less visibly than pixels do; only if that is not enough does
  * the image shrink. Practically never reached for Nick's own exports, which

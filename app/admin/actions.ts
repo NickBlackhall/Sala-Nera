@@ -29,6 +29,7 @@ import {
   updateClientRow,
   updateListingRow,
 } from '@/lib/admin-queries';
+import { getListingFloorplanKeys } from '@/lib/floorplans';
 import { discardStaleArchives, getListingArchiveKeys, prepareArchives } from '@/lib/archives';
 import { copyKey, makeCopies, type Copies } from '@/lib/media-copies';
 import { releaseBookingListing } from '@/lib/booking-listing';
@@ -621,7 +622,11 @@ export async function deleteListingAction(form: FormData): Promise<void> {
 
   // Read the keys first: the media and zip rows cascade with the listing, and
   // once they are gone nothing records which objects used to be its.
-  const keys = [...(await getListingMediaKeys(id)), ...(await getListingArchiveKeys(id))];
+  const keys = [
+    ...(await getListingMediaKeys(id)),
+    ...(await getListingArchiveKeys(id)),
+    ...(await getListingFloorplanKeys(id)),
+  ];
 
   await deleteListingRow(id);
   await deleteObjects(keys);

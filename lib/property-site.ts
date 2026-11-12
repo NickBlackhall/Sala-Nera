@@ -2,7 +2,9 @@ import 'server-only';
 
 import type { Metadata } from 'next';
 import { cache } from 'react';
-import { DEMO_CLIENT, DEMO_LISTINGS, DEMO_MEDIA, IS_DEMO } from '@/lib/demo';
+import { DEMO_CLIENT, DEMO_LISTINGS, DEMO_MEDIA, demoFloorplansFor, IS_DEMO } from '@/lib/demo';
+import { floorplanTitle, getFloorplans } from '@/lib/floorplans';
+import type { Floorplan } from '@/lib/schema';
 import { getListingBySlug, type ListingBundle } from '@/lib/portal-queries';
 import { SITE_ICONS, SITE_MANIFEST } from '@/lib/site-metadata';
 import { isLocalKey, mediaUrl, PUBLIC_TTL } from '@/lib/storage';
@@ -48,6 +50,16 @@ export type PropertyVideo = {
   posterUrl: string | null;
 };
 
+/** One floor plan as the page shows it. The same on both versions: plans carry no branding. */
+export type PropertyPlan = {
+  id: number;
+  title: string;
+  width: number;
+  height: number;
+  gridUrl: string;
+  largeUrl: string;
+};
+
 export type PropertyAgent = {
   name: string | null;
   company: string | null;
@@ -63,6 +75,7 @@ export type PropertySite = {
   coverUrl: string | null;
   videos: PropertyVideo[];
   photos: PropertyPhoto[];
+  plans: PropertyPlan[];
   agent: PropertyAgent | null;
 };
 
@@ -71,7 +84,10 @@ function url(key: string): string {
   return isLocalKey(key) ? key : mediaUrl(key, { expiresIn: PUBLIC_TTL });
 }
 
-export function toPropertySite({ listing, media, client }: ListingBundle): PropertySite | null {
+export function toPropertySite(
+  { listing, media, client }: ListingBundle,
+  floorplans: Floorplan[] = [],
+): PropertySite | null {
   if (listing.downloadLocked) return null;
 
   const shown = media.filter(
@@ -97,6 +113,17 @@ export function toPropertySite({ listing, media, client }: ListingBundle): Prope
     aerial: isAerial(m.filename),
   }));
 
+  // Like a photo, a plan whose copies are not made is left off, not shown full-size.
+  const shownPlans = floorplans.filter((f) => isLocalKey(f.r2Key) || (f.gridKey && f.largeKey));
+  const plans = shownPlans.map((f, i) => ({
+    id: f.id,
+    title: floorplanTitle(f, i, shownPlans.length),
+    width: f.width ?? 1600,
+    height: f.height ?? 1100,
+    gridUrl: url(f.gridKey ?? f.r2Key),
+    largeUrl: url(f.largeKey ?? f.r2Key),
+  }));
+
   // The cover Nick chose, if it is one of the photos shown; otherwise the first.
   const cover = shown.findIndex((m) => m.r2Key === listing.coverKey);
 
@@ -107,6 +134,7 @@ export function toPropertySite({ listing, media, client }: ListingBundle): Prope
     coverUrl: photos.length ? photos[Math.max(cover, 0)].largeUrl : (videos.find((v) => v.posterUrl)?.posterUrl ?? null),
     videos,
     photos,
+    plans,
     agent: client
       ? { name: client.name, company: client.company, phone: client.phone, email: client.email }
       : null,
@@ -117,10 +145,13 @@ export function toPropertySite({ listing, media, client }: ListingBundle): Prope
 export const getPropertySite = cache(async (slug: string): Promise<PropertySite | null> => {
   if (IS_DEMO) {
     const listing = DEMO_LISTINGS.find((l) => l.slug === slug);
-    return listing ? toPropertySite({ listing, media: DEMO_MEDIA, client: DEMO_CLIENT }) : null;
+    return listing
+      ? toPropertySite({ listing, media: DEMO_MEDIA, client: DEMO_CLIENT }, demoFloorplansFor(listing))
+      : null;
   }
   const bundle = await getListingBySlug(slug);
-  return bundle ? toPropertySite(bundle) : null;
+  if (!bundle || bundle.listing.downloadLocked) return null;
+  return toPropertySite(bundle, await getFloorplans(bundle.listing.id));
 });
 
 /**

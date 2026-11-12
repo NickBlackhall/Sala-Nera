@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100" font-family="Helvetica, Arial, sans-serif">
+  <rect width="1600" height="1100" fill="#fff"/>
+  <g fill="none" stroke="#1b1a18" stroke-width="10" stroke-linejoin="miter">
+    <rect x="150" y="150" width="1300" height="800"/>
+    <path d="M650 150V520M150 520H520M650 520H1000M1000 520V950M1000 400V150M1000 520H1140M1300 520H1450"/>
+  </g>
+  <g fill="none" stroke="#1b1a18" stroke-width="3">
+    <path d="M520 520A130 130 0 0 1 650 650"/><path d="M1140 520A160 160 0 0 0 1300 680"/>
+  </g>
+  <g fill="#1b1a18" text-anchor="middle" font-size="30" letter-spacing="4">
+    <text x="400" y="330">KITCHEN</text><text x="825" y="330">DINING</text><text x="1225" y="330">STUDY</text>
+    <text x="575" y="750">LIVING ROOM</text><text x="1225" y="770">PRIMARY SUITE</text>
+  </g>
+  <g fill="#77736c" text-anchor="middle" font-size="22">
+    <text x="400" y="368">16' × 14'</text><text x="825" y="368">14' × 14'</text><text x="1225" y="368">17' × 14'</text>
+    <text x="575" y="788">32' × 16'</text><text x="1225" y="808">17' × 16'</text>
+  </g>
+  <text x="800" y="1030" fill="#77736c" text-anchor="middle" font-size="20" letter-spacing="3">SAMPLE PLAN · NOT TO SCALE</text>
+</svg>

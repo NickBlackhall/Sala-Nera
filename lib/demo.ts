@@ -1,4 +1,4 @@
-import type { Listing, Media } from './schema';
+import type { Floorplan, Listing, Media } from './schema';
 
 /**
  * Demo data so the portal renders before Neon and R2 exist. Every reader of
@@ -109,3 +109,26 @@ export function demoMediaFor(listing: Listing): Media[] {
 }
 
 export const IS_DEMO = !process.env.DATABASE_URL;
+
+/** Two versions of a sample plan, on the shot listings, so the Floor plans tab shows in demo mode. */
+export const DEMO_FLOORPLANS: Floorplan[] = [
+  ['floorplan-main', 'First floor'],
+  ['floorplan-upper', null],
+].map(([key, label], i) => ({
+  id: i + 1,
+  listingId: 1,
+  r2Key: `/demo/${key}.svg`,
+  filename: `${key}.svg`,
+  label,
+  bytes: 2_000,
+  width: 1600,
+  height: 1100,
+  sort: i,
+  gridKey: null,
+  largeKey: null,
+  createdAt: new Date('2026-09-10T12:00:00Z'),
+}));
+
+export function demoFloorplansFor(listing: Listing): Floorplan[] {
+  return listing.id === DEMO_LISTING_BOOKED.id ? [] : DEMO_FLOORPLANS;
+}

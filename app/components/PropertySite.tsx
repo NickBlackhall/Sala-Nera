@@ -1,5 +1,6 @@
 import PropertyBar, { type BarTab } from '@/app/components/PropertyBar';
 import PropertyGallery, { type PhotoGroup } from '@/app/components/PropertyGallery';
+import PropertyPlans from '@/app/components/PropertyPlans';
 import VideoPlayer from '@/app/components/VideoPlayer';
 import type { PropertySite as Site, PropertyVideo } from '@/lib/property-site';
 
@@ -55,6 +56,8 @@ export default function PropertySite({ site, branded }: { site: Site; branded: b
   const tabs: BarTab[] = [];
   if (site.videos.length > 0) tabs.push({ id: 'film', label: site.videos.length > 1 ? 'Films' : 'Film' });
   for (const group of groups) tabs.push({ id: group.id, label: group.label });
+  const plansLabel = site.plans.length > 1 ? 'Floor plans' : 'Floor plan';
+  if (site.plans.length > 0) tabs.push({ id: 'floorplan', label: plansLabel });
   if (agent) tabs.push({ id: 'contact', label: 'Contact' });
 
   return (
@@ -94,6 +97,7 @@ export default function PropertySite({ site, branded }: { site: Site; branded: b
           </section>
         )}
         {groups.length > 0 && <PropertyGallery groups={groups} address={site.address} />}
+        {site.plans.length > 0 && <PropertyPlans plans={site.plans} heading={plansLabel} address={site.address} />}
       </main>
 
       {branded && (

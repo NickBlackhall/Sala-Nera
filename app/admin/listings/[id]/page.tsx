@@ -6,7 +6,7 @@ import DeleteListing from '../../DeleteListing';
 import ListingForm from '../../ListingForm';
 import MediaGrid from '../../MediaGrid';
 import { updateListingAction } from '../../actions';
-import { isLocalKey, isRemoteStorage, withPreviewUrls } from '@/lib/storage';
+import { isLocalKey, isRemoteStorage, previewUrl, withPreviewUrls } from '@/lib/storage';
 import MakePreviews from '../../MakePreviews';
 import SendDelivery, { type ZipStatus } from '../../SendDelivery';
 import InvoiceEditor from '../../InvoiceEditor';
@@ -14,6 +14,8 @@ import { getInvoice, seedLines, DEFAULT_TAX_RATE_BP } from '@/lib/invoices';
 import { planArchives } from '@/lib/archives';
 import type { AdminListingDetail } from '@/lib/admin-queries';
 import UploadMedia from '../../UploadMedia';
+import Floorplans from '../../Floorplans';
+import { getFloorplansIfReady } from '@/lib/floorplans';
 import { TIME_ZONE } from '@/lib/scheduling';
 
 export const dynamic = 'force-dynamic';
@@ -85,6 +87,9 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
 
   const { listing, client, media, activity, delivered, booking } = detail;
   const zips = await zipStatus(detail);
+  // Null until migration 0011 has run; the panel then says so instead of offering an upload.
+  const plansIfReady = await getFloorplansIfReady(listing.id);
+  const plans = plansIfReady ?? [];
 
   /**
    * The invoice is read, not created, so merely opening a listing never writes
@@ -198,6 +203,19 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
         )}
       </section>
 
+      <Floorplans
+        listingId={listing.id}
+        canUpload={isRemoteStorage() && plansIfReady !== null}
+        needsMigration={plansIfReady === null}
+        plans={plans.map((plan) => ({
+          id: plan.id,
+          filename: plan.filename,
+          label: plan.label,
+          width: plan.width,
+          height: plan.height,
+          previewUrl: plan.gridKey ? previewUrl(plan.gridKey) : null,
+        }))}
+      />
 
       <section className="admin-section">
         <h2>Download activity</h2>
