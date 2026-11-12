@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0010_floorplans_details';
+export const PORTAL_MIGRATION_ID = '0011_floorplans_details';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -281,20 +281,44 @@ export const PORTAL_MIGRATION_STATEMENTS = [
   `CREATE UNIQUE INDEX IF NOT EXISTS "invoices_listing_key" ON "invoices" USING btree ("listing_id")`,
 
   /**
-   * 0010 — floor plans and listing details. Columns only, all nullable, so
-   * the code deployed before this ran is untouched by it.
+   * 0011 — floor plans and listing details. One new table and nullable
+   * columns, so the code deployed before this ran is untouched by it.
    *
-   * A floor plan is a `media` row with kind 'floorplan'; `label` is the name
-   * Nick gives each version ("First floor", "With dimensions").
+   * (0010 was an earlier shape of this, pushed and replaced within the hour
+   * on Nov 12 before anyone ran it. It kept floor plans as `media` rows; a
+   * table of their own means no photo query, zip, count or cover can ever
+   * pick one up by accident. If 0010 did run, it left one unused column,
+   * `media.label`, and everything below is still safe on top of it.)
    *
-   * `aerial` overrides the filename rule (DJI_… is an aerial): null means "go
-   * by the filename", true or false is Nick's own call for that photo. A low
-   * drone shot of a patio is a DJI file and not an aerial.
+   * `floorplans.label` is the name Nick gives each version ("First floor",
+   * "With dimensions"). `grid_key`/`large_key` are the smaller copies, made
+   * the same way a photo's are.
+   *
+   * `media.aerial` overrides the filename rule (DJI_… is an aerial): null
+   * means "go by the filename", true or false is Nick's own call for that
+   * photo. A low drone shot of a patio is a DJI file and not an aerial.
    *
    * The four on `listings` are what the property website's Details tab shows.
    * `baths` is text because "3.5" and "3 full, 1 half" are both real answers.
    */
-  `ALTER TABLE "media" ADD COLUMN IF NOT EXISTS "label" text`,
+  `CREATE TABLE IF NOT EXISTS "floorplans" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "listing_id" integer NOT NULL,
+    "r2_key" text NOT NULL,
+    "filename" text NOT NULL,
+    "label" text,
+    "bytes" bigint,
+    "width" integer,
+    "height" integer,
+    "sort" integer DEFAULT 0 NOT NULL,
+    "grid_key" text,
+    "large_key" text,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT "floorplans_listing_id_listings_id_fk"
+      FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id")
+      ON DELETE cascade ON UPDATE no action
+  )`,
+  `CREATE INDEX IF NOT EXISTS "floorplans_listing_idx" ON "floorplans" USING btree ("listing_id", "sort")`,
   `ALTER TABLE "media" ADD COLUMN IF NOT EXISTS "aerial" boolean`,
   `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "beds" integer`,
   `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "baths" text`,
