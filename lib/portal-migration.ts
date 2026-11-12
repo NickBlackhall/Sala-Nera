@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0009_invoices';
+export const PORTAL_MIGRATION_ID = '0010_floorplans_details';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -279,4 +279,25 @@ export const PORTAL_MIGRATION_STATEMENTS = [
       ON DELETE cascade ON UPDATE no action
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "invoices_listing_key" ON "invoices" USING btree ("listing_id")`,
+
+  /**
+   * 0010 — floor plans and listing details. Columns only, all nullable, so
+   * the code deployed before this ran is untouched by it.
+   *
+   * A floor plan is a `media` row with kind 'floorplan'; `label` is the name
+   * Nick gives each version ("First floor", "With dimensions").
+   *
+   * `aerial` overrides the filename rule (DJI_… is an aerial): null means "go
+   * by the filename", true or false is Nick's own call for that photo. A low
+   * drone shot of a patio is a DJI file and not an aerial.
+   *
+   * The four on `listings` are what the property website's Details tab shows.
+   * `baths` is text because "3.5" and "3 full, 1 half" are both real answers.
+   */
+  `ALTER TABLE "media" ADD COLUMN IF NOT EXISTS "label" text`,
+  `ALTER TABLE "media" ADD COLUMN IF NOT EXISTS "aerial" boolean`,
+  `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "beds" integer`,
+  `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "baths" text`,
+  `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "sqft" integer`,
+  `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "description" text`,
 ] as const;
