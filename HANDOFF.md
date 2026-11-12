@@ -25,6 +25,37 @@ mode — it was blocked in one earlier session, but it ran fine on Sep 22 and
 showed Production Ready, so use it to confirm a deploy rather than only
 serving salanera.com.
 
+**Nov 12 update (the rest of this file is as of Sep 22):**
+- **A real sample listing exists: `n-brookside-drive`.** Nick uploaded a real
+  client's photos (all horizontal), added that client (Peter) in admin, and
+  sent him the link. It is the first time anyone but Nick has been given a
+  Sala Nera link. He trusts these clients to give feedback, and says the
+  whole site is still a preview, so **new design work is built straight on
+  the live site** (checked locally in demo mode before each push).
+- **Gallery redesign, modelled on a Pixieset gallery Nick likes. Dark look
+  stays.** Agreed steps:
+  1. **The look — done and live, `078ec6f`.** Full-screen cover in a thin
+     frame with the mark, a lighter headline and an underlined "View gallery"
+     link. On `/p/<slug>` a slim pinned bar (`PropertyBar.tsx`) with the
+     address, Photos / Film / Contact tabs and Share. The client gallery's
+     download bar gained the address. Thin gaps, and tiles fade in on scroll
+     (`useReveal.ts`). The MLS version has the same layout with no mark, name
+     or agent. Checked live on Brookside's public page at desktop and phone
+     sizes. **Not checked live:** the signed-in `/portal/n-brookside-drive`;
+     it was only tested in demo mode (paid, locked, booked). Nick to look.
+  2. **Tabs: Photos / Aerials / Film** — next. Drone shots sort themselves
+     by filename (`DJI_` prefix). No database change. An empty tab doesn't
+     show.
+  3. **Floor plan and Details** — new listing fields (beds, baths, square
+     feet, a description), a floor plan upload in admin, and the two tabs.
+     Needs a migration.
+  4. **Favourites and slideshow** — later, only if Nick wants them.
+- **Two questions put to Nick, unanswered:**
+  - The mark is faint over bright sky on Brookside's cover. Add a shadow, or
+    darken the top of the photo?
+  - The cover photo is still the first tile in the grid, because a phone
+    crops the cover to a tall slice. Keep it or drop it?
+
 **Waiting on Nick (his test, then my read-only check):**
 1. **The first real invoice end to end** (§4.9). Migration 0009 is applied and
    verified (Sep 22, 20:38 UTC: right columns, the unique index, the legacy
