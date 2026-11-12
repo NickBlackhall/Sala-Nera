@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import VideoPlayer from '@/app/components/VideoPlayer';
+import { useReveal } from '@/app/components/useReveal';
 import { formatSize, type MediaView } from '@/lib/media-view';
 
 /**
@@ -29,12 +30,15 @@ const GIVE_UP_MS = 6 * 60_000;
 
 export default function Gallery({
   slug,
+  title,
   media,
   locked,
   invoiceUrl,
   zipSizes,
 }: {
   slug: string;
+  /** The address, shown in the bar that stays on screen while scrolling. */
+  title: string;
   media: MediaView[];
   locked: boolean;
   invoiceUrl?: string | null;
@@ -55,6 +59,8 @@ export default function Gallery({
   const [preparing, setPreparing] = useState(false);
   const [prepared, setPrepared] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const grid = useRef<HTMLDivElement>(null);
+  useReveal(grid, [cols, media.length]);
 
   const photos = media.filter((m) => m.kind === 'photo');
   const films = media.filter((m) => m.kind === 'video');
@@ -166,10 +172,13 @@ export default function Gallery({
     <>
       <div className="gal-bar">
         <div className="gal-bar-inner wrap">
-          <span className="gal-count">
-            {media.length} images
-            {locked && <span className="gal-lock">· previews — downloads unlock on payment</span>}
-          </span>
+          <div className="gal-title">
+            <strong>{title}</strong>
+            <span className="gal-count">
+              {media.length} images
+              {locked && <span className="gal-lock">· previews — downloads unlock on payment</span>}
+            </span>
+          </div>
           <div className="gal-actions">
             {!locked && photos.length > 0 && (
               <>
@@ -251,13 +260,13 @@ export default function Gallery({
         </div>
       )}
 
-      <div className="gal-cols wrap">
+      <div className="gal-cols" ref={grid}>
         {columns.map((col, ci) => (
           <div className="gal-col" key={ci}>
             {col.map((m) => {
               const i = media.indexOf(m);
               return (
-                <figure className={`tile${locked ? ' tile--locked' : ''}`} key={m.id}>
+                <figure className={`tile${locked ? ' tile--locked' : ''}`} data-reveal key={m.id}>
                   <button
                     className="tile-open"
                     onClick={() => setLightbox(i)}

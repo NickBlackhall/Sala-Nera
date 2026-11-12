@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { intoColumns } from '@/app/components/Gallery';
+import { useReveal } from '@/app/components/useReveal';
 import type { PropertyPhoto } from '@/lib/property-site';
 
 /** Wider than 2:1 — a panorama is lost in a column, so it spans the page instead. */
@@ -30,6 +31,8 @@ export default function PropertyGallery({ photos, address }: { photos: PropertyP
   const [cols, setCols] = useState(3);
   const [open, setOpen] = useState<number | null>(null);
   const touchX = useRef<number | null>(null);
+  const grid = useRef<HTMLDivElement>(null);
+  useReveal(grid, [cols, photos.length]);
 
   useEffect(() => {
     const set = () => setCols(window.innerWidth < 640 ? 1 : window.innerWidth < 1100 ? 2 : 3);
@@ -64,6 +67,7 @@ export default function PropertyGallery({ photos, address }: { photos: PropertyP
     return (
       <button
         className="psite-tile"
+        data-reveal
         key={photo.id}
         onClick={() => setOpen(i)}
         aria-label={`Enlarge photo ${i + 1} of ${photos.length}`}
@@ -84,7 +88,7 @@ export default function PropertyGallery({ photos, address }: { photos: PropertyP
 
   return (
     <>
-      <div className="psite-photos">
+      <div className="psite-photos" ref={grid}>
         {segments(photos).map((segment) =>
           'pano' in segment ? (
             <div className="psite-pano" key={`pano-${segment.pano.id}`}>{tile(segment.pano)}</div>

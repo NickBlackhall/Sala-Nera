@@ -128,13 +128,19 @@ function render(
         }
       >
         <div className="pcover-scrim" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="pcover-logo" src="/brand/sala nera logo cropped dark.svg" alt="Sala Nera" width={1669} height={1072} />
         <div className="pcover-inner">
           {listing.city && <p className="pcover-kicker">{listing.city}</p>}
           <h1>{listing.address}</h1>
           {client?.name && <p className="pcover-by">{booked ? 'Booked for' : 'Shot for'} {client.name}</p>}
           {client?.company && <p className="pcover-by">{client.company}</p>}
+          {!booked && <a className="pcover-enter" href="#gallery">View gallery</a>}
         </div>
       </header>
+      {/* Where "View gallery" lands: whatever comes first under the cover,
+          which on a locked listing is the invoice, not the photos. */}
+      {!booked && <span id="gallery" className="pcover-anchor" />}
 
       {booked ? (
         <section className="pbooked wrap">
@@ -180,6 +186,7 @@ function render(
 
           <Gallery
             slug={listing.slug}
+            title={listing.address}
             media={withPreviewUrls(media)}
             locked={locked}
             /*

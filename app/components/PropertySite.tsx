@@ -1,6 +1,10 @@
+import PropertyBar, { type BarTab } from '@/app/components/PropertyBar';
 import PropertyGallery from '@/app/components/PropertyGallery';
 import VideoPlayer from '@/app/components/VideoPlayer';
 import type { PropertySite as Site, PropertyVideo } from '@/lib/property-site';
+
+/** The mark on the cover. Branded only: its very filename says whose it is. */
+const LOGO = '/brand/sala nera logo cropped dark.svg';
 
 const isVertical = (v: PropertyVideo) => Boolean(v.width && v.height && v.height > v.width);
 
@@ -33,21 +37,32 @@ function formatPhone(phone: string): string {
 export default function PropertySite({ site, branded }: { site: Site; branded: boolean }) {
   const agent = branded ? site.agent : null;
 
+  // A tab per section this page actually has; one section alone needs no tabs.
+  const tabs: BarTab[] = [];
+  if (site.videos.length > 0) tabs.push({ id: 'film', label: site.videos.length > 1 ? 'Films' : 'Film' });
+  if (site.photos.length > 0) tabs.push({ id: 'photos', label: 'Photos' });
+  if (agent) tabs.push({ id: 'contact', label: 'Contact' });
+
   return (
     <div className="psite">
       <header className="pcover" style={site.coverUrl ? { backgroundImage: `url(${site.coverUrl})` } : undefined}>
         <div className="pcover-scrim" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {branded && <img className="pcover-logo" src={LOGO} alt="Sala Nera" width={1669} height={1072} />}
         <div className="pcover-inner">
           {site.city && <p className="pcover-kicker">{site.city}</p>}
           <h1>{site.address}</h1>
           {agent?.name && <p className="pcover-by">Presented by {agent.name}</p>}
           {agent?.company && <p className="pcover-by">{agent.company}</p>}
+          <a className="pcover-enter" href="#gallery">View gallery</a>
         </div>
       </header>
 
+      <PropertyBar title={site.address} sub={branded ? 'Sala Nera' : site.city} tabs={tabs} />
+
       <main className="psite-body">
         {site.videos.length > 0 && (
-          <section className="psite-films" aria-label="Film">
+          <section className="psite-films" id="film" aria-label="Film">
             {filmRows(site.videos).map((row) => (
               <div className="psite-film-row" key={row[0].id}>
                 {row.map((video) => (
@@ -64,13 +79,17 @@ export default function PropertySite({ site, branded }: { site: Site; branded: b
             ))}
           </section>
         )}
-        {site.photos.length > 0 && <PropertyGallery photos={site.photos} address={site.address} />}
+        {site.photos.length > 0 && (
+          <section id="photos" aria-label="Photos">
+            <PropertyGallery photos={site.photos} address={site.address} />
+          </section>
+        )}
       </main>
 
       {branded && (
         <footer className="psite-foot">
           {agent && (
-            <div className="psite-agent">
+            <div className="psite-agent" id="contact">
               <span className="kicker">Presented by</span>
               {agent.name && <h2>{agent.name}</h2>}
               {agent.company && <p>{agent.company}</p>}
