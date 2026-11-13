@@ -20,13 +20,18 @@ const ORDINAL: Record<string, string> = {
 const ORD = Object.keys(ORDINAL).join('|');
 const FLOOR = 'floor|level|lvl|fl|story|storey';
 
-export function labelFromFilename(filename: string): string | null {
-  const name = ` ${filename
+/** Lower case, words split on _ - . +, "2ndfloor" → "2nd floor", padded with spaces. */
+function normalise(filename: string): string {
+  return ` ${filename
     .replace(/\.[a-z0-9]+$/i, '')
     .toLowerCase()
     .replace(/[_\-.+]+/g, ' ')
     .replace(/(\d)(st|nd|rd|th)?(floor|level|lvl|fl)\b/g, '$1$2 $3')
     .replace(/\b(floor|level|lvl|fl)(\d)\b/g, '$1 $2')} `;
+}
+
+export function labelFromFilename(filename: string): string | null {
+  const name = normalise(filename);
 
   // "All floors" first: it names several floors.
   if (/\b(all|full|combined|whole) (floors?|levels?|house|home)\b|\bfloors? (all|combined)\b/.test(name)) return 'All floors';
@@ -54,4 +59,48 @@ export function labelFromFilename(filename: string): string | null {
   if (/\bgarage\b/.test(name)) return 'Garage';
   if (/\battic\b/.test(name)) return 'Attic';
   return null;
+}
+
+/**
+ * Whether the filename says the plan has measurements drawn on: "with_dim",
+ * "dimensions", "dimensioned" → 'with'; "no_dim", "without_dimensions",
+ * "undimensioned" → 'without'; nothing said → null.
+ */
+export function dimensionsFromFilename(filename: string): 'with' | 'without' | null {
+  const name = normalise(filename);
+  const dim = '(?:dims?|dimensions?|dimensioned)';
+  if (new RegExp(`\\b(?:no|without|wo|non) ?${dim}\\b|\\bundimensioned\\b|\\bnodims?\\b`).test(name)) return 'without';
+  if (new RegExp(`\\b${dim}\\b`).test(name)) return 'with';
+  return null;
+}
+
+type Named = { label: string | null; filename: string };
+
+/**
+ * What a visitor reads for one plan: Nick's label; failing that, the floor
+ * named in the filename ("First floor", "All floors"); failing that, "Floor
+ * plan", numbered when there is more than one. Never the raw filename.
+ *
+ * When the same floor is there twice, once with measurements and once
+ * without (Nick often delivers both), each says which: "First floor (with
+ * dimensions)". A file that says nothing is taken as the other kind of its
+ * twin. With one version, the name stays plain.
+ */
+export function floorplanTitle(plan: Named, index: number, plans: readonly Named[]): string {
+  const typed = plan.label?.trim();
+  if (typed) return typed;
+
+  const base = labelFromFilename(plan.filename);
+  if (!base) return plans.length > 1 ? `Floor plan ${index + 1}` : 'Floor plan';
+
+  const twins = plans.filter((p, i) => i !== index && labelFromFilename(p.filename) === base);
+  if (twins.length === 0) return base;
+
+  let dims = dimensionsFromFilename(plan.filename);
+  if (!dims) {
+    const other = twins.map((t) => dimensionsFromFilename(t.filename));
+    if (other.includes('with')) dims = 'without';
+    else if (other.includes('without')) dims = 'with';
+  }
+  return dims ? `${base} (${dims === 'with' ? 'with' : 'no'} dimensions)` : base;
 }

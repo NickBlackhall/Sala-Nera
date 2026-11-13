@@ -2,7 +2,6 @@ import 'server-only';
 
 import { asc, eq, sql } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
-import { labelFromFilename } from '@/lib/floorplan-label';
 import { floorplans, type Floorplan } from '@/lib/schema';
 
 /**
@@ -106,19 +105,5 @@ export async function getListingFloorplanKeys(listingId: number): Promise<string
   return (await getFloorplans(listingId)).flatMap(floorplanObjectKeys);
 }
 
-/**
- * What a visitor reads for one plan: Nick's label; failing that, the floor
- * named in the filename ("First floor", "All floors"); failing that, "Floor
- * plan", numbered when there is more than one. Never the raw filename.
- */
-export function floorplanTitle(
-  plan: Pick<Floorplan, 'label' | 'filename'>,
-  index: number,
-  total: number,
-): string {
-  return (
-    plan.label?.trim() ||
-    labelFromFilename(plan.filename) ||
-    (total > 1 ? `Floor plan ${index + 1}` : 'Floor plan')
-  );
-}
+// Pure, so the admin page can use it too; re-exported for the server callers.
+export { floorplanTitle } from '@/lib/floorplan-label';

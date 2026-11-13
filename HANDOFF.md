@@ -71,6 +71,12 @@ serving salanera.com.
      blank stores null (stays automatic). No match → "Floor plan 2" as before.
      Brookside's three now read First floor / Second floor / All floors.
      Nick doesn't want to label plans by hand: keep it that way.
+     **With and without dimensions:** Nick often delivers both versions,
+     named `…_with_dim.jpg` and `…_without_dim.jpg` (`dimensionsFromFilename`).
+     When a listing has the same floor twice, each gets "(with dimensions)" /
+     "(no dimensions)"; a file that says neither takes the other kind of its
+     twin. With one version the name stays plain. `floorplanTitle` now lives
+     in `lib/floorplan-label.ts` and takes the whole plan list.
      Earlier note: **Not yet proven with a real upload** — this workspace can't reach the
      bucket's writes safely, so the first real JPG Nick uploads is the test:
      it should show a preview in admin, a Floor plan tab on `/p/<slug>` and

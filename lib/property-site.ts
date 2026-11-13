@@ -117,7 +117,7 @@ export function toPropertySite(
   const shownPlans = floorplans.filter((f) => isLocalKey(f.r2Key) || (f.gridKey && f.largeKey));
   const plans = shownPlans.map((f, i) => ({
     id: f.id,
-    title: floorplanTitle(f, i, shownPlans.length),
+    title: floorplanTitle(f, i, shownPlans),
     width: f.width ?? 1600,
     height: f.height ?? 1100,
     gridUrl: url(f.gridKey ?? f.r2Key),

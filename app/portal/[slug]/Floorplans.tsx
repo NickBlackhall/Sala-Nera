@@ -33,7 +33,7 @@ export default function Floorplans({
       ) : (
         <ul className="pplans-list">
           {plans.map((plan, i) => {
-            const title = floorplanTitle(plan, i, plans.length);
+            const title = floorplanTitle(plan, i, plans);
             const picture = plan.gridKey ?? (isLocalKey(plan.r2Key) ? plan.r2Key : null);
             return (
               <li key={plan.id}>

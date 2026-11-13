@@ -211,7 +211,7 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
           id: plan.id,
           filename: plan.filename,
           label: plan.label,
-          autoTitle: floorplanTitle({ label: null, filename: plan.filename }, i, plans.length),
+          autoTitle: floorplanTitle({ label: null, filename: plan.filename }, i, plans),
           width: plan.width,
           height: plan.height,
           previewUrl: plan.gridKey ? previewUrl(plan.gridKey) : null,

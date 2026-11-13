@@ -53,7 +53,7 @@ export async function GET(request: Request) {
 
   await record({
     kind: 'download', outcome: 'ok', reason: 'floorplan',
-    detail: `${floorplanTitle(plan, index, plans.length)} (${plan.filename}) from ${auth.listing.address}`,
+    detail: `${floorplanTitle(plan, index, plans)} (${plan.filename}) from ${auth.listing.address}`,
     email: auth.session.email,
   });
 
