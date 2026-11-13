@@ -110,7 +110,7 @@ export default function PropertySite({ site, branded }: { site: Site; branded: b
           </section>
         )}
         {groups.length > 0 && <PropertyGallery groups={groups} address={site.address} />}
-        <PropertyDetails details={details} address={site.address} />
+        <PropertyDetails details={details} address={site.address} city={site.city} />
         {site.plans.length > 0 && <PropertyPlans plans={site.plans} heading={plansLabel} address={site.address} />}
       </main>
 

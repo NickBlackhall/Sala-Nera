@@ -122,8 +122,17 @@ serving salanera.com.
        `PropertyDetails.tsx`, `.pcover-facts`), fading up half a second after
        load (off for reduced motion). On phones the price takes its own line.
        Nick asked about a modal instead; I recommended against hiding the
-       numbers behind a click. The Details section below keeps only school
-       district, description and the map link. MLS: same line, no price.
+       numbers behind a click. MLS: same line, no price.
+     - **Details section redesigned (Nov 13; Nick: it looked generic,
+       "very Claude").** A brochure spread in the homepage's editorial
+       language: left-aligned "Details" kicker and the address as a display
+       headline, beside the description (its first paragraph set larger as
+       a lede). Below, a ruled spec table opened by a short oxblood rule
+       (the mark's red bar): a figures row (Offered at, Bedrooms, Bathrooms,
+       Interior) in large light type, then a quieter row (School district,
+       Location = city + "View on map ↗"). Each row splits its width
+       equally, so it is never half-filled. Phones: figures 2×2, the rest
+       stacked. Styles: `.pdet*` in `globals.css`.
      - Fields on `listings`: `beds`, `baths` (text), `sqft`, `school_district`,
        `description`, all optional (`lib/listing-details.ts`).
      - **Property site:** a Details section and tab after the photos, on both
