@@ -25,7 +25,15 @@ and confirmed in the database**. Before it, `4bcb263`, the redesigned Details se
 live on Brookside and **approved by Nick ("much better")**. Migrations applied through `0013_listing_price`. Where the
 gallery redesign stands and what is open: the Nov 12 update below, items 3–3c.
 (Sep 22: the last change then, `05e3297`, the all-day calendar block, is
-proven live end to end, §4.2.) `npx vercel ls` works under auto
+proven live end to end, §4.2.)
+
+**Read `CLIENT-JOURNEY.md` next (written Nov 13).** It is the audit Nick
+asked for: the whole client journey from order to payment as it works today,
+every known problem with a proposed fix, what has never been tested for
+real, and a suggested order of work. **It is the current to-do list**; the
+"Next work" list further down is older and is folded into it. Nick has not
+yet read it or picked from it. When he does, start from its "Suggested
+order" (first: the Rockwall dollar test, which needs no building). `npx vercel ls` works under auto
 mode — it was blocked in one earlier session, but it ran fine on Sep 22 and
 showed Production Ready, so use it to confirm a deploy rather than only
 serving salanera.com.
@@ -225,9 +233,11 @@ serving salanera.com.
    verified (Sep 22, 20:38 UTC: right columns, the unique index, the legacy
    Stripe columns gone, 0 rows). What is untested is the feature itself. On
    Rockwall: add lines, paste a Stripe payment link, Save, Send invoice, then
-   pay it and check Mark paid unlocks the downloads. Rockwall is currently
-   **unlocked**, so relock it first to see the "Amount due" state that
-   matters. Check read-only with `select lines, tax_rate_bp, payment_url,
+   pay it and check Mark paid unlocks the downloads. **Rockwall is locked
+   as of Nov 13 and has no invoice row, so it is ready for this as it
+   stands** (CLIENT-JOURNEY.md A2, "the dollar test"). The only invoice row
+   in production is Brookside's: zero lines, marked paid Nov 12, which is
+   how Nick unlocked it. No invoice or preview email has ever been sent. Check read-only with `select lines, tax_rate_bp, payment_url,
    paid_at from invoices`.
 2. **Download all photos on his phone.** Open Rockwall
    (`/portal/rockwall-shores-drive`) signed in as his Gmail and download both
@@ -241,8 +251,50 @@ serving salanera.com.
    previews. That proves new photos get copies, and the copyright notice, on
    their own; Rockwall's 32 existing copies predate the notice. The latest
    media id is 56, so anything above it is new.
+   **Looks settled Nov 13:** every photo in production has its copies,
+   including Brookside's 22 (ids 57–80, the last four uploaded Nov 13 and
+   on the site minutes later). Not known: whether Nick ever pressed Make
+   previews on Brookside. Ask if it matters.
 
-**Next work. Nick picks the order:**
+**Client-journey audit, Nov 13 (`CLIENT-JOURNEY.md`). New since the list
+below was written:**
+- **Only one real person has used the site, and not through the front
+  door.** Peter (Brookside) got a hand-made listing, a link Nick sent
+  himself, and a mark-paid with an empty invoice. The order form → invoice →
+  payment → delivery email path has only been walked by Nick with tests. The
+  one delivery email ever sent was Rockwall's "ready", Sep 22, to Nick's
+  Gmail.
+- **Bug, found by reading, not yet fixed or shown to Nick on screen:**
+  `/admin/bookings` labels every non-cancelled booking "confirmed"
+  (`app/admin/bookings/page.tsx`, the status cell), so a fallback
+  `requested` booking, which has no slot and still needs an answer, reads as
+  settled. Booking 1 is one. Fix: label it "needs a date" and sort it first.
+- **Nobody tells the agent the Property details box exists**: no email
+  mentions it, and the property site it feeds only exists once paid.
+- **Every email link lands on the sign-in screen** (two emails to see
+  photos; link good 15 min, session 30 days). Proposed: a listing-scoped
+  sign-in link inside the delivery/preview/invoice emails, good for a week.
+  Needs Nick's yes: a forwarded email would open the gallery (downloads stay
+  behind payment).
+- **After payment the agent waits on Nick twice** (Mark paid, then Send
+  delivery email). Proposed with Stripe stage 3: unlock on the webhook, and
+  let the ready email send itself then. That bends his "I press the button"
+  rule (§3), so it is his call.
+- **Spam trap is working:** 23 honeypot discards on the contact form in 60
+  days, about one a day, against 1 real inquiry. All read as bots.
+- **Test data in production is now:** listing 1 (Preston Hollow), listing 7
+  (Cashmere Drive, empty, locked, from booking 6), bookings 1–6 (1
+  `requested`, 2–5 cancelled, **6 still `confirmed` for Oct 5, now past**),
+  client 5 (no listings). Keep listing 2 (Rockwall) and listing 8
+  (Brookside, real: client 10 is Peter).
+- **Suggested order in the file:** dollar test → one session of small fixes
+  (confirmation subject, Details mentions in emails, "needs a date", city
+  from the geocoder) → pre-shoot reminder → sign-in links in emails → real
+  rates/terms + order summary → Stripe stages 2–3 → launch housekeeping.
+- The audit queries were read-only; nothing in production was changed.
+
+**Next work (the Sep 22 list; see CLIENT-JOURNEY.md for the current one).
+Nick picks the order:**
 - **UI tweaks he wants to discuss**:
   - The download area, now the zips work.
   - The agent's reschedule/cancel screens. UI only; see the rule in §3.
