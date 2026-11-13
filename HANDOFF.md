@@ -58,8 +58,10 @@ serving salanera.com.
      three plans on Brookside (1st floor, 2nd floor, all floors; JPG
      4000×3000, no labels). All three rows have copies; `/p/n-brookside-drive`
      and `/mls` show the Floor plans tab and section, and the grid copies
-     load. **Delivery-page Download not yet checked:** Nick to look, because
-     I can't (see the `AUTH_SECRET` note in §2).
+     load. **Delivery-page Download proven Nov 13, 15:37 UTC:** Nick
+     downloaded the 1st-floor plan from `/portal/n-brookside-drive`
+     (unlocked); logged as `download:ok reason=floorplan` and in `events`.
+     Floor plans are done apart from labels, which Nick can add in admin.
      Earlier note: **Not yet proven with a real upload** — this workspace can't reach the
      bucket's writes safely, so the first real JPG Nick uploads is the test:
      it should show a preview in admin, a Floor plan tab on `/p/<slug>` and
