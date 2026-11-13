@@ -19,9 +19,9 @@ Sep 22 unless it says otherwise.
 ## 1. Start here
 
 **State (Nov 13, ~17:15 UTC):** everything is committed, pushed and
-deployed; the working tree is clean. The last code change is the Photos / Aerials
-sections in admin's media grid (item 3c below), **live but a real drag is not
-yet proven**. Before it, `4bcb263`, the redesigned Details section, checked
+deployed; the working tree is clean. The last code change is `cd29ba4`, the Photos /
+Aerials sections in admin's media grid (item 3c below), **proven live by Nick
+and confirmed in the database**. Before it, `4bcb263`, the redesigned Details section, checked
 live on Brookside and **approved by Nick ("much better")**. Migrations applied through `0013_listing_price`. Where the
 gallery redesign stands and what is open: the Nov 12 update below, items 3–3c.
 (Sep 22: the last change then, `05e3297`, the all-day calendar block, is
@@ -147,7 +147,8 @@ serving salanera.com.
        (Property details form, new look) has only been tested in demo mode.
      - **Next, if Nick wants it:** the Details redesign is done; nothing
        else on the property site was asked for. **3c below (drag photos into Aerials in admin)
-       is built; waiting on Nick's test of a real drag.**
+       is built and proven. Nothing on the gallery redesign is waiting to be
+       built; item 4 (favourites, slideshow) only if Nick asks.**
      - **What Nick is checking on the delivery page** (told him Nov 13):
        the new look (address in the download bar, thin gaps, fade-in), the
        Property details box with his saved values and Listing price first
@@ -168,8 +169,8 @@ serving salanera.com.
        footage now starts the listing's `sqft` for new bookings
        (`ensureBookingListing`). Existing listings were not backfilled.
      - Demo mode: Rockwall has sample details.
-  3c. **Aerials: drag between sections in admin — built and live Nov 13;
-     a real drag NOT YET PROVEN (Nick's test below).** Problem it solves: on
+  3c. **Aerials: drag between sections in admin — built, live and PROVEN
+     Nov 13 (Nick's test, then my read-only check).** Problem it solves: on
      Brookside the two `DJI_` photos (media ids 67, 68) are eye-level shots
      of the patio and bocce court; Nick flies the drone low sometimes.
      - Admin's photo grid (`app/admin/MediaGrid.tsx`) is **two sections,
@@ -198,11 +199,15 @@ serving salanera.com.
        shows Photos 16 / Aerials 2; a drop moved the tile at once, sent the
        action, and reverted with the error when it was cut off). The
        database write itself has not run.
-     - **Nick's test:** in admin on Brookside, drag the two DJI photos from
-       Aerials into Photos. Then `/p/n-brookside-drive` should have no
-       Aerials tab (a listing with no aerials is one section). Read-only
-       check: `select id, aerial, sort from media where id in (67,68)`
-       should show `aerial = false`.
+     - **Proven live Nov 13:** Nick dragged the two eye-level DJI shots
+       (67, 68) into Photos, uploaded four real aerials (ids 77–80,
+       `DJI_…`), and tried the rearranging; he reports every function
+       behaved as expected and the site shows them as expected. Database
+       agrees: 67 and 68 have `aerial = false` and sit among the photos
+       (sort 16 and 10); 77–80 have `aerial` null, so they are in Aerials by
+       filename alone (sort 18–21); `IMG_8092` has an explicit `false` (a
+       photo dragged in and back out, which is correct). Brookside now has
+       22 media and its property site has the Aerials tab.
   4. **Favourites and slideshow** — later, only if Nick wants them.
 - **Parked: Nick is fine with both as they are (Nov 12).** Don't change
   either unless he raises it again:
