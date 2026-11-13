@@ -7,6 +7,7 @@ import { requireAdmin } from '@/lib/admin';
 import { invalidateAvailability } from '@/lib/availability';
 import { deleteBookingEvent } from '@/lib/calendar';
 import {
+  arrangeMedia,
   cancelBookingRow,
   deleteClientRow,
   deleteListingRow,
@@ -21,7 +22,6 @@ import {
   insertDeliveryEmail,
   insertListing,
   insertMediaRow,
-  reorderMedia,
   setListingCover,
   setListingLock,
   setMediaCopies,
@@ -849,24 +849,28 @@ export async function saveVideoFrameAction(form: FormData): Promise<{ error?: st
 }
 
 /**
- * Persist a new running order for one listing's media.
- *
- * Called with the whole order rather than "this moved from 3 to 7" so that a
- * dropped request leaves the old order intact instead of a half-applied one.
+ * The admin grid after a drag: the whole order, plus which photos are in the
+ * Aerials section. Sent whole rather than "this moved from 3 to 7", so a
+ * dropped request leaves everything as it was, not half-applied. Moving a photo between sections re-renders
+ * nothing: it only changes which section of the property website shows it.
  */
-export async function reorderMediaAction(input: {
+export async function arrangeMediaAction(input: {
   listingId: number;
   orderedIds: number[];
+  aerialIds: number[];
 }): Promise<{ error?: string }> {
   await requireAdmin();
 
   if (!Number.isInteger(input.listingId)) return { error: 'That listing no longer exists.' };
-  if (!input.orderedIds.every(Number.isInteger)) return { error: 'That order could not be read.' };
+  if (!input.orderedIds.every(Number.isInteger) || !input.aerialIds.every(Number.isInteger)) {
+    return { error: 'That arrangement could not be read.' };
+  }
 
-  await reorderMedia(input.listingId, input.orderedIds);
-  // The zips number photos in gallery order. Moving only a film leaves them be.
-  await discardStaleArchives(input.listingId);
+  const { orderChanged } = await arrangeMedia(input.listingId, input.orderedIds, input.aerialIds);
+  // The zips number photos in gallery order; a change of section alone leaves them be.
+  if (orderChanged) await discardStaleArchives(input.listingId);
 
+  // The property website reads its photos on every request; nothing to refresh there.
   revalidatePath(`/admin/listings/${input.listingId}`);
   return {};
 }

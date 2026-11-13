@@ -87,6 +87,7 @@ export const DEMO_MEDIA: Media[] = PHOTOS.map(([key, label, w, h], i) => ({
   gridKey: null,
   largeKey: null,
   highKey: null,
+  aerial: null,
 }));
 
 /**

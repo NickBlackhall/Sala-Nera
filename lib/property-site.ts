@@ -5,6 +5,7 @@ import { cache } from 'react';
 import { DEMO_CLIENT, DEMO_LISTINGS, DEMO_MEDIA, demoFloorplansFor, IS_DEMO } from '@/lib/demo';
 import { floorplanTitle, getFloorplans } from '@/lib/floorplans';
 import { mapUrl, type ListingDetails } from '@/lib/listing-details';
+import { isAerialPhoto } from '@/lib/media-arrange';
 import type { Floorplan } from '@/lib/schema';
 import { getListingBySlug, type ListingBundle } from '@/lib/portal-queries';
 import { SITE_ICONS, SITE_MANIFEST } from '@/lib/site-metadata';
@@ -36,11 +37,6 @@ export type PropertyPhoto = {
   aerial: boolean;
 };
 
-/**
- * A drone names its files DJI_…, and Nick uploads them as they come off the
- * card, so the filename is the tag. Only this yes/no reaches the page.
- */
-const isAerial = (filename: string) => /^DJI_/i.test(filename);
 
 export type PropertyVideo = {
   id: number;
@@ -115,7 +111,8 @@ export function toPropertySite(
     height: m.height ?? 1067,
     gridUrl: url(m.gridKey ?? m.r2Key),
     largeUrl: url(m.largeKey ?? m.r2Key),
-    aerial: isAerial(m.filename),
+    // Nick's call from admin, else the DJI_ filename. Only this yes/no reaches the page.
+    aerial: isAerialPhoto(m),
   }));
 
   // Like a photo, a plan whose copies are not made is left off, not shown full-size.

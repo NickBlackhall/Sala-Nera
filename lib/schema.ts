@@ -95,6 +95,9 @@ export const media = pgTable(
     gridKey: text('grid_key'),
     largeKey: text('large_key'),
     highKey: text('high_key'),
+    // Nick's own call on whether a photo is an aerial (migration 0011). Null
+    // means "go by the filename"; see isAerialPhoto in lib/media-arrange.ts.
+    aerial: boolean('aerial'),
   },
   (t) => [index('media_listing_idx').on(t.listingId, t.sort)],
 );

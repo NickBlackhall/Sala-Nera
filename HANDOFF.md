@@ -19,9 +19,10 @@ Sep 22 unless it says otherwise.
 ## 1. Start here
 
 **State (Nov 13, ~17:15 UTC):** everything is committed, pushed and
-deployed; the working tree is clean. The last code change is `4bcb263`, the
-redesigned Details section, checked live on Brookside and **approved by Nick
-("much better")**. Migrations applied through `0013_listing_price`. Where the
+deployed; the working tree is clean. The last code change is the Photos / Aerials
+sections in admin's media grid (item 3c below), **live but a real drag is not
+yet proven**. Before it, `4bcb263`, the redesigned Details section, checked
+live on Brookside and **approved by Nick ("much better")**. Migrations applied through `0013_listing_price`. Where the
 gallery redesign stands and what is open: the Nov 12 update below, items 3–3c.
 (Sep 22: the last change then, `05e3297`, the all-day calendar block, is
 proven live end to end, §4.2.) `npx vercel ls` works under auto
@@ -145,8 +146,8 @@ serving salanera.com.
      - **Open, Nick to look:** the signed-in `/portal/n-brookside-drive`
        (Property details form, new look) has only been tested in demo mode.
      - **Next, if Nick wants it:** the Details redesign is done; nothing
-       else on the property site was asked for. **Next build: 3c below
-       (drag photos into an Aerials zone in admin), once Nick says go.**
+       else on the property site was asked for. **3c below (drag photos into Aerials in admin)
+       is built; waiting on Nick's test of a real drag.**
      - **What Nick is checking on the delivery page** (told him Nov 13):
        the new look (address in the download bar, thin gaps, fade-in), the
        Property details box with his saved values and Listing price first
@@ -167,29 +168,41 @@ serving salanera.com.
        footage now starts the listing's `sqft` for new bookings
        (`ensureBookingListing`). Existing listings were not backfilled.
      - Demo mode: Rockwall has sample details.
-  3c. **Aerials: drag between sections in admin — agreed Nov 13, NOT BUILT
-     YET** (Nick asked for no code until he says go). Problem: on Brookside
-     the two `DJI_` photos are eye-level shots of the patio and bocce court;
-     Nick flies the drone low sometimes. What Nick wants and agreed:
-     - Admin's photo grid (`app/admin/MediaGrid.tsx`, already drag-to-reorder
-       with tick-several-and-drag) becomes **two zones, Photos and Aerials**.
-       Dragging a photo or a ticked group across sets `media.aerial`
-       true/false. No re-upload, no re-render: instant. This was his main
-       point, so don't make it a separate upload box.
-     - `DJI_` filename stays as the first guess only (`media.aerial` null =
-       go by filename); a drag stores Nick's call and it sticks.
-       `media.aerial` exists in the database since 0011 but is **not in
-       `lib/schema.ts` yet**, so no migration is needed, just the schema
-       line.
-     - Order within each zone is Nick's; the property site follows it.
-       An empty Aerials zone shows a "Drag aerials here" target.
-     - **Delivery page stays one grid** (Nick: it's not public, agents use
-       it to download and enter details).
-     - **Mouse only for now, but plan for touch:** structure the drag so
-       pointer events can be added later without a rewrite (e.g. one
-       "move these ids to zone X at index N" function that both native drag
-       and a future touch handler call). Touch itself is an edge case, not
-       to be built now.
+  3c. **Aerials: drag between sections in admin — built and live Nov 13;
+     a real drag NOT YET PROVEN (Nick's test below).** Problem it solves: on
+     Brookside the two `DJI_` photos (media ids 67, 68) are eye-level shots
+     of the patio and bocce court; Nick flies the drone low sometimes.
+     - Admin's photo grid (`app/admin/MediaGrid.tsx`) is **two sections,
+       Photos (with any film) and Aerials**. Dragging a photo, or a ticked
+       group, across sets `media.aerial` true/false. No re-upload, no
+       re-render: that was Nick's main point, so never make it a separate
+       upload box. An empty section shows a permanent drop target.
+     - `DJI_` filename is the first guess only (`media.aerial` null = go by
+       filename); a drag stores Nick's call and it sticks. One rule,
+       `isAerialPhoto` in `lib/media-arrange.ts`, used by the grid, the save
+       and the property site. Videos are never aerials. `media.aerial` is in
+       `lib/schema.ts` now (the column dates from 0011; no migration).
+     - Save: `arrangeMediaAction` → `arrangeMedia` (`lib/admin-queries.ts`)
+       takes the whole order plus the ids in Aerials, writes only what
+       differs (so untouched photos stay null), and discards the zips only
+       when the order changed. `reorderMediaAction` is gone.
+     - Order: one running order as before; the delivery page shows it as
+       **one grid, unsplit** (Nick: not public). A photo dropped on a tile
+       lands before it; into an empty section it keeps its place.
+     - **Mouse only; touch planned, not built** (Nick: edge case for now).
+       Every drop goes through `place()` → `moveMedia` (pure, in
+       `lib/media-arrange.ts`), free of drag events, so a pointer-event
+       handler can call the same thing.
+     - **Checked:** 16 cases of `moveMedia`/`isAerialPhoto`; the grid
+       locally against the real database with every write blocked (Brookside
+       shows Photos 16 / Aerials 2; a drop moved the tile at once, sent the
+       action, and reverted with the error when it was cut off). The
+       database write itself has not run.
+     - **Nick's test:** in admin on Brookside, drag the two DJI photos from
+       Aerials into Photos. Then `/p/n-brookside-drive` should have no
+       Aerials tab (a listing with no aerials is one section). Read-only
+       check: `select id, aerial, sort from media where id in (67,68)`
+       should show `aerial = false`.
   4. **Favourites and slideshow** — later, only if Nick wants them.
 - **Parked: Nick is fine with both as they are (Nov 12).** Don't change
   either unless he raises it again:

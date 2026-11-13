@@ -2,6 +2,7 @@ import 'server-only';
 
 import { and, asc, count, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
+import { isAerialPhoto } from '@/lib/media-arrange';
 import { bookings, clients, deliveryEmails, downloads, events, listings, media } from '@/lib/schema';
 import type { Booking, DeliveryEmail, Event } from '@/lib/schema';
 import type { Client, Listing, Media } from '@/lib/schema';
@@ -296,6 +297,40 @@ export async function reorderMedia(listingId: number, orderedIds: number[]): Pro
       db.update(media).set({ sort: index }).where(eq(media.id, id)),
     ),
   );
+}
+
+/**
+ * Save the admin grid as Nick arranged it: the order, and which photos sit
+ * in Aerials. Only what actually differs is written, so a photo he never
+ * dragged across keeps `aerial` null and goes on following its filename.
+ * Says whether the order changed, since only that makes the zips stale.
+ */
+export async function arrangeMedia(
+  listingId: number,
+  orderedIds: number[],
+  aerialIds: number[],
+): Promise<{ orderChanged: boolean }> {
+  const db = getDatabase();
+  const rows = await db
+    .select({ id: media.id, kind: media.kind, filename: media.filename, aerial: media.aerial })
+    .from(media)
+    .where(eq(media.listingId, listingId))
+    .orderBy(asc(media.sort), asc(media.id));
+
+  const sent = new Set(orderedIds);
+  const current = rows.filter((r) => sent.has(r.id)).map((r) => r.id);
+  const owned = new Set(current);
+  const wanted = orderedIds.filter((id) => owned.has(id));
+  const orderChanged = wanted.join(',') !== current.join(',');
+  if (orderChanged) await reorderMedia(listingId, wanted);
+
+  const inAerials = new Set(aerialIds);
+  const flips = rows.filter((r) => r.kind === 'photo' && sent.has(r.id) && isAerialPhoto(r) !== inAerials.has(r.id));
+  await Promise.all(
+    flips.map((r) => db.update(media).set({ aerial: inAerials.has(r.id) }).where(eq(media.id, r.id))),
+  );
+
+  return { orderChanged };
 }
 
 /** Whatever now sorts first, for a listing that just lost its cover photo. */
