@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0011_floorplans_details';
+export const PORTAL_MIGRATION_ID = '0012_school_district';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -324,4 +324,11 @@ export const PORTAL_MIGRATION_STATEMENTS = [
   `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "baths" text`,
   `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "sqft" integer`,
   `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "description" text`,
+
+  /**
+   * 0012 — the school district, the one Details field 0011 lacked. Free
+   * text and optional: the agent fills it in or doesn't. Nullable, so code
+   * deployed before this ran is untouched by it.
+   */
+  `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "school_district" text`,
 ] as const;
