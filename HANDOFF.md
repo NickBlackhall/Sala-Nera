@@ -51,10 +51,9 @@ serving salanera.com.
      listing has both kinds. The lightbox runs through both sections. A run
      of one or two photos gets one or two columns, not three. The client
      gallery (`/portal/<slug>`) is not split. No database change.
-  3. **Floor plans — built and pushed Nov 12; waiting on Nick to run
-     migration `0011_floorplans_details`** (the usual one-liner, §2). Until
-     it runs, the admin panel says so and offers no upload, and every page
-     simply has no plans (`getFloorplans` treats a missing table as none).
+  3. **Floor plans — built and live; migration `0011_floorplans_details`
+     applied Nov 13, 15:27 UTC** (verified: `floorplans` table, the
+     `listings` detail columns and `media.aerial` all exist; 0 plans).
      **Not yet proven with a real upload** — this workspace can't reach the
      bucket's writes safely, so the first real JPG Nick uploads is the test:
      it should show a preview in admin, a Floor plan tab on `/p/<slug>` and
@@ -205,7 +204,17 @@ serving salanera.com.
   `node --env-file=.env.local -e "fetch('https://salanera.com/api/portal/migrate',{method:'POST',headers:{Authorization:'Bearer '+process.env.MIGRATE_TOKEN}}).then(r=>r.text()).then(console.log)"`.
   Confirm in `portal_migrations`, and only then push code that uses it. The
   endpoint runs the *deployed* code, so push and wait first. Applied so far:
-  `0001`–`0009` (`0009_invoices` on Sep 22).
+  `0001`–`0009` and `0011` (`0011_floorplans_details` on Nov 13; `0010` was
+  never run, it was replaced by 0011).
+- **`MIGRATE_TOKEN` gotcha.** `vercel env pull` rewrites `.env.local` with
+  the *Development* values, and Production's token is a hidden secret that
+  can't be pulled, so after a pull the one-liner returns "Unauthorized".
+  That happened on Nov 12. Fixed Nov 13: a new random token was put in
+  Production and in `.env.local`, then a redeploy. If it recurs, do the same
+  thing again: `vercel env rm MIGRATE_TOKEN --environment production
+  --confirm-name MIGRATE_TOKEN`, `vercel env add MIGRATE_TOKEN production
+  --sensitive` (piped from `.env.local`), `vercel redeploy <latest prod url>
+  --target production`. Ask Nick first, because it changes a live setting.
 - Vercel team `bmg11` is on **Hobby**:
   - 300s function limit and 10 GB/month Fast Origin Transfer.
   - Hobby is for non-commercial use only. Nick knows and will upgrade before
