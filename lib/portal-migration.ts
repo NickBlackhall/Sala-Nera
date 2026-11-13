@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0012_school_district';
+export const PORTAL_MIGRATION_ID = '0013_listing_price';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -331,4 +331,11 @@ export const PORTAL_MIGRATION_STATEMENTS = [
    * deployed before this ran is untouched by it.
    */
   `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "school_district" text`,
+
+  /**
+   * 0013 — the listing price, in whole dollars, for the Details tab. The
+   * agent fills it in or doesn't. Nullable, so code deployed before this ran
+   * is untouched by it.
+   */
+  `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "price" integer`,
 ] as const;
