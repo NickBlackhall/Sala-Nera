@@ -145,8 +145,13 @@ serving salanera.com.
      - **Open, Nick to look:** the signed-in `/portal/n-brookside-drive`
        (Property details form, new look) has only been tested in demo mode.
      - **Next, if Nick wants it:** the Details redesign is done; nothing
-       else on the property site was asked for. Remaining gallery item is
-       3c (aerial mislabels) below.
+       else on the property site was asked for. **Next build: 3c below
+       (drag photos into an Aerials zone in admin), once Nick says go.**
+     - **What Nick is checking on the delivery page** (told him Nov 13):
+       the new look (address in the download bar, thin gaps, fade-in), the
+       Property details box with his saved values and Listing price first
+       (edit one, save, see the property site update), floor plans still
+       showing.
      - Fields on `listings`: `beds`, `baths` (text), `sqft`, `school_district`,
        `description`, all optional (`lib/listing-details.ts`).
      - **Property site:** a Details section and tab after the photos, on both
@@ -162,11 +167,29 @@ serving salanera.com.
        footage now starts the listing's `sqft` for new bookings
        (`ensureBookingListing`). Existing listings were not backfilled.
      - Demo mode: Rockwall has sample details.
-  3c. **Aerials mislabel low drone shots — open, Nick to choose.** On
-     Brookside the two `DJI_` photos are low shots of the patio and bocce
-     court, not aerial views. Options put to him: leave it, add a per-photo
-     switch in admin (my pick; `media.aerial` exists after 0011, null = go by
-     filename, also not in `schema.ts` yet), or remove the split.
+  3c. **Aerials: drag between sections in admin — agreed Nov 13, NOT BUILT
+     YET** (Nick asked for no code until he says go). Problem: on Brookside
+     the two `DJI_` photos are eye-level shots of the patio and bocce court;
+     Nick flies the drone low sometimes. What Nick wants and agreed:
+     - Admin's photo grid (`app/admin/MediaGrid.tsx`, already drag-to-reorder
+       with tick-several-and-drag) becomes **two zones, Photos and Aerials**.
+       Dragging a photo or a ticked group across sets `media.aerial`
+       true/false. No re-upload, no re-render: instant. This was his main
+       point, so don't make it a separate upload box.
+     - `DJI_` filename stays as the first guess only (`media.aerial` null =
+       go by filename); a drag stores Nick's call and it sticks.
+       `media.aerial` exists in the database since 0011 but is **not in
+       `lib/schema.ts` yet**, so no migration is needed, just the schema
+       line.
+     - Order within each zone is Nick's; the property site follows it.
+       An empty Aerials zone shows a "Drag aerials here" target.
+     - **Delivery page stays one grid** (Nick: it's not public, agents use
+       it to download and enter details).
+     - **Mouse only for now, but plan for touch:** structure the drag so
+       pointer events can be added later without a rewrite (e.g. one
+       "move these ids to zone X at index N" function that both native drag
+       and a future touch handler call). Touch itself is an edge case, not
+       to be built now.
   4. **Favourites and slideshow** — later, only if Nick wants them.
 - **Parked: Nick is fine with both as they are (Nov 12).** Don't change
   either unless he raises it again:
