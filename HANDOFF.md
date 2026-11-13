@@ -18,9 +18,13 @@ Sep 22 unless it says otherwise.
 
 ## 1. Start here
 
-**State:** everything is committed, pushed and deployed. The last code change
-is `05e3297`, the all-day calendar block, and **it is now proven live end to
-end** (§4.2). The working tree is clean. `npx vercel ls` works under auto
+**State (Nov 13, ~17:15 UTC):** everything is committed, pushed and
+deployed; the working tree is clean. The last code change is `4bcb263`, the
+redesigned Details section, checked live on Brookside and **approved by Nick
+("much better")**. Migrations applied through `0013_listing_price`. Where the
+gallery redesign stands and what is open: the Nov 12 update below, items 3–3c.
+(Sep 22: the last change then, `05e3297`, the all-day calendar block, is
+proven live end to end, §4.2.) `npx vercel ls` works under auto
 mode — it was blocked in one earlier session, but it ran fine on Sep 22 and
 showed Production Ready, so use it to confirm a deploy rather than only
 serving salanera.com.
@@ -132,7 +136,17 @@ serving salanera.com.
        Interior) in large light type, then a quieter row (School district,
        Location = city + "View on map ↗"). Each row splits its width
        equally, so it is never half-filled. Phones: figures 2×2, the rest
-       stacked. Styles: `.pdet*` in `globals.css`.
+       stacked. Styles: `.pdet*` in `globals.css`. Proven live on
+       Brookside and approved by Nick, Nov 13.
+     - **Open, small:** Brookside's `city` is stored as "DALLAS", which
+       shouts in the Location cell (the cover hid it: its kicker is caps
+       anyway). Told Nick to change it to "Dallas, TX" in admin; offered to
+       title-case all-caps cities on the site instead. No answer yet.
+     - **Open, Nick to look:** the signed-in `/portal/n-brookside-drive`
+       (Property details form, new look) has only been tested in demo mode.
+     - **Next, if Nick wants it:** the Details redesign is done; nothing
+       else on the property site was asked for. Remaining gallery item is
+       3c (aerial mislabels) below.
      - Fields on `listings`: `beds`, `baths` (text), `sqft`, `school_district`,
        `description`, all optional (`lib/listing-details.ts`).
      - **Property site:** a Details section and tab after the photos, on both
