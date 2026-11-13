@@ -27,6 +27,7 @@ export const DEMO_LISTING: Listing = {
   coverKey: '/demo/elevation-dusk.jpg',
   downloadLocked: true,
   bookingId: null,
+  price: null,
   beds: null,
   baths: null,
   sqft: null,
@@ -58,6 +59,7 @@ export const DEMO_LISTING_PAID: Listing = {
   coverKey: '/demo/courtyard.jpg',
   downloadLocked: false,
   // Filled in, so the property website's Details tab can be seen in demo mode.
+  price: 3_450_000,
   beds: 5,
   baths: '4.5',
   sqft: 6120,

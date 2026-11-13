@@ -141,6 +141,7 @@ export function toPropertySite(
     photos,
     plans,
     details: {
+      price: listing.price,
       beds: listing.beds,
       baths: listing.baths,
       sqft: listing.sqft,

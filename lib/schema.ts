@@ -60,6 +60,7 @@ export const listings = pgTable(
     // The property website's Details (lib/listing-details.ts). All optional;
     // the agent fills them in on the delivery page, Nick in admin. sqft
     // starts as the booking's. baths is text: "3.5" and "3 full, 1 half".
+    price: integer('price'), // whole dollars
     beds: integer('beds'),
     baths: text('baths'),
     sqft: integer('sqft'),

@@ -106,8 +106,18 @@ serving salanera.com.
   3b. **Details tab — built and live Nov 13** (migration `0012_school_district`
      applied 16:09 UTC). Nick's rule: **the agent controls the facts, Sala
      Nera controls the look**. No layout, cover or photo settings for agents;
-     add one only if agents ask. No price or For sale / Sold status for now
+     add one only if agents ask. No For sale / Sold status for now
      (Nick: later, if enough agents ask).
+     - **Listing price (Nov 13, migration `0013_listing_price` applied
+       16:44 UTC):** `listings.price`, whole dollars, optional, top of the
+       form. Plain dollar amounts only ("$1,250,000" / "1250000"); Nick
+       declined "1.25M"/"950k" shorthand. Shown on the branded site only:
+       **left off the MLS version** (Nick), stripped before it reaches the
+       page, like the agent.
+     - **Live save proven Nov 13:** Nick saved Brookside's details (4 bd /
+       4 ba / 3,500 sq ft, "Dallas", test description); they show on the
+       delivery page and the property site. **Next:** Nick wants to rework
+       how the Details are presented on the site.
      - Fields on `listings`: `beds`, `baths` (text), `sqft`, `school_district`,
        `description`, all optional (`lib/listing-details.ts`).
      - **Property site:** a Details section and tab after the photos, on both
@@ -123,7 +133,6 @@ serving salanera.com.
        footage now starts the listing's `sqft` for new bookings
        (`ensureBookingListing`). Existing listings were not backfilled.
      - Demo mode: Rockwall has sample details.
-     - **Not yet proven live:** a real save from admin or the delivery page.
   3c. **Aerials mislabel low drone shots — open, Nick to choose.** On
      Brookside the two `DJI_` photos are low shots of the patio and bocce
      court, not aerial views. Options put to him: leave it, add a per-photo

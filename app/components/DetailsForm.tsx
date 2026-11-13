@@ -27,6 +27,17 @@ export default function DetailsForm({
       <p className="details-form-note">{note}</p>
       {state.error && <p className="form-error">{state.error}</p>}
 
+      <div className="field">
+        <label htmlFor="details-price">Listing price</label>
+        <input
+          id="details-price"
+          name="price"
+          inputMode="numeric"
+          defaultValue={initial.price !== null ? `$${initial.price.toLocaleString('en-US')}` : ''}
+          placeholder="e.g. $1,250,000"
+        />
+      </div>
+
       <div className="details-form-row">
         <div className="field">
           <label htmlFor="details-beds">Bedrooms</label>

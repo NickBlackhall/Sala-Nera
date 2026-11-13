@@ -4,8 +4,8 @@ import type { PropertyDetails as Details } from '@/lib/property-site';
 const thousands = (n: number) => n.toLocaleString('en-US');
 
 /**
- * The Details section of the property website: the agent's facts in a quiet
- * row, the description, and a link out to Google Maps. A link and not an
+ * The Details section of the property website: the price, the agent's facts in a
+ * quiet row, the description, and a link out to Google Maps. A link and not an
  * embedded map, so nothing of Google's sits on the page or changes its look.
  * A blank field is simply left out.
  */
@@ -20,6 +20,7 @@ export default function PropertyDetails({ details, address }: { details: Details
     <section id="details" className="psite-details" aria-label="Details">
       <h2 className="psite-group-title">Details</h2>
       <div className="psite-details-inner">
+        {details.price !== null && <p className="psite-price">${thousands(details.price)}</p>}
         {stats.length > 0 && (
           <dl className="psite-stats">
             {stats.map((s) => (

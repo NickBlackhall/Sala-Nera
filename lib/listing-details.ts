@@ -11,6 +11,8 @@
  */
 
 export type ListingDetails = {
+  /** The asking price, in whole dollars. */
+  price: number | null;
   beds: number | null;
   baths: string | null;
   sqft: number | null;
@@ -38,13 +40,28 @@ function whole(value: FormDataEntryValue | null, max: number): number | null | u
   return n <= max ? n : undefined;
 }
 
+/**
+ * "$1,250,000" or "1250000" → whole dollars. Blank → null. Only plain dollar
+ * amounts (Nick, Nov 13: no "1.25M" shorthand). Anything else → undefined (refused).
+ */
+function dollars(value: FormDataEntryValue | null): number | null | undefined {
+  const s = String(value ?? '').replace(/[$,\s]/g, '');
+  if (!s) return null;
+  if (!/^\d+$/.test(s)) return undefined;
+  const n = Number(s);
+  return n >= 1 && n <= 1_000_000_000 ? n : undefined;
+}
+
 export function readDetailsForm(form: FormData): { details: ListingDetails } | { error: string } {
   const beds = whole(form.get('beds'), 50);
   if (beds === undefined) return { error: 'Bedrooms should be a whole number, like 4.' };
+  const price = dollars(form.get('price'));
+  if (price === undefined) return { error: 'Price should be a dollar amount, like $1,250,000.' };
   const sqft = whole(form.get('sqft'), 100_000);
   if (sqft === undefined) return { error: 'Square feet should be a number, like 4,250.' };
   return {
     details: {
+      price,
       beds,
       baths: text(form.get('baths'), DETAIL_LIMITS.baths),
       sqft: sqft === 0 ? null : sqft,
@@ -57,6 +74,7 @@ export function readDetailsForm(form: FormData): { details: ListingDetails } | {
 /** Just the Details, so a form gets these and no other column of the listing. */
 export function pickDetails(row: ListingDetails): ListingDetails {
   return {
+    price: row.price,
     beds: row.beds,
     baths: row.baths,
     sqft: row.sqft,
@@ -66,7 +84,7 @@ export function pickDetails(row: ListingDetails): ListingDetails {
 }
 
 export function hasDetails(d: ListingDetails): boolean {
-  return d.beds !== null || Boolean(d.baths) || d.sqft !== null || Boolean(d.schoolDistrict) || Boolean(d.description);
+  return d.price !== null || d.beds !== null || Boolean(d.baths) || d.sqft !== null || Boolean(d.schoolDistrict) || Boolean(d.description);
 }
 
 /**
