@@ -54,7 +54,13 @@ serving salanera.com.
   3. **Floor plans — built and live; migration `0011_floorplans_details`
      applied Nov 13, 15:27 UTC** (verified: `floorplans` table, the
      `listings` detail columns and `media.aerial` all exist; 0 plans).
-     **Not yet proven with a real upload** — this workspace can't reach the
+     **Nov 13: first real upload proven on the property site.** Nick put
+     three plans on Brookside (1st floor, 2nd floor, all floors; JPG
+     4000×3000, no labels). All three rows have copies; `/p/n-brookside-drive`
+     and `/mls` show the Floor plans tab and section, and the grid copies
+     load. **Delivery-page Download not yet checked:** Nick to look, because
+     I can't (see the `AUTH_SECRET` note in §2).
+     Earlier note: **Not yet proven with a real upload** — this workspace can't reach the
      bucket's writes safely, so the first real JPG Nick uploads is the test:
      it should show a preview in admin, a Floor plan tab on `/p/<slug>` and
      `/mls`, and a Download on the delivery page.
@@ -206,6 +212,11 @@ serving salanera.com.
   endpoint runs the *deployed* code, so push and wait first. Applied so far:
   `0001`–`0009` and `0011` (`0011_floorplans_details` on Nov 13; `0010` was
   never run, it was replaced by 0011).
+- **`AUTH_SECRET` is also the Development value since the Nov 12 pull**, so
+  a minted admin cookie no longer works on salanera.com (307 to login).
+  Signed-in live checks need Nick, unless the production secret is put back
+  in `.env.local`. Don't rotate the production secret to fix this: that
+  signs everyone out and kills outstanding login links.
 - **`MIGRATE_TOKEN` gotcha.** `vercel env pull` rewrites `.env.local` with
   the *Development* values, and Production's token is a hidden secret that
   can't be pulled, so after a pull the one-liner returns "Unauthorized".
