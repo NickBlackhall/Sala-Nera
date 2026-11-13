@@ -2,6 +2,7 @@ import 'server-only';
 
 import { asc, eq, sql } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db';
+import { labelFromFilename } from '@/lib/floorplan-label';
 import { floorplans, type Floorplan } from '@/lib/schema';
 
 /**
@@ -106,10 +107,18 @@ export async function getListingFloorplanKeys(listingId: number): Promise<string
 }
 
 /**
- * What a visitor reads for one plan: Nick's label, or failing that "Floor
- * plan", numbered when there is more than one. Never the filename — it is
- * whatever the drafting service called the file.
+ * What a visitor reads for one plan: Nick's label; failing that, the floor
+ * named in the filename ("First floor", "All floors"); failing that, "Floor
+ * plan", numbered when there is more than one. Never the raw filename.
  */
-export function floorplanTitle(plan: Pick<Floorplan, 'label'>, index: number, total: number): string {
-  return plan.label?.trim() || (total > 1 ? `Floor plan ${index + 1}` : 'Floor plan');
+export function floorplanTitle(
+  plan: Pick<Floorplan, 'label' | 'filename'>,
+  index: number,
+  total: number,
+): string {
+  return (
+    plan.label?.trim() ||
+    labelFromFilename(plan.filename) ||
+    (total > 1 ? `Floor plan ${index + 1}` : 'Floor plan')
+  );
 }

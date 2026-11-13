@@ -61,7 +61,16 @@ serving salanera.com.
      load. **Delivery-page Download proven Nov 13, 15:37 UTC:** Nick
      downloaded the 1st-floor plan from `/portal/n-brookside-drive`
      (unlocked); logged as `download:ok reason=floorplan` and in `events`.
-     Floor plans are done apart from labels, which Nick can add in admin.
+     **Labels are automatic (Nov 13):** `labelFromFilename`
+     (`lib/floorplan-label.ts`) names a plan from its filename ("1st_floor_…"
+     → "First floor", "all_floors_…" → "All floors", plus basement, garage,
+     guest house, casita, site plan, main/upper/lower), worked out when the
+     page is shown, so nothing is stored. An ordinal only counts next to a
+     floor word, so "100 1st Street" is ignored. A label Nick types wins. The
+     admin box starts filled with the automatic name; saving it unchanged or
+     blank stores null (stays automatic). No match → "Floor plan 2" as before.
+     Brookside's three now read First floor / Second floor / All floors.
+     Nick doesn't want to label plans by hand: keep it that way.
      Earlier note: **Not yet proven with a real upload** — this workspace can't reach the
      bucket's writes safely, so the first real JPG Nick uploads is the test:
      it should show a preview in admin, a Floor plan tab on `/p/<slug>` and

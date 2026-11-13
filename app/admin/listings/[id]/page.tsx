@@ -15,7 +15,7 @@ import { planArchives } from '@/lib/archives';
 import type { AdminListingDetail } from '@/lib/admin-queries';
 import UploadMedia from '../../UploadMedia';
 import Floorplans from '../../Floorplans';
-import { getFloorplansIfReady } from '@/lib/floorplans';
+import { floorplanTitle, getFloorplansIfReady } from '@/lib/floorplans';
 import { TIME_ZONE } from '@/lib/scheduling';
 
 export const dynamic = 'force-dynamic';
@@ -207,10 +207,11 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
         listingId={listing.id}
         canUpload={isRemoteStorage() && plansIfReady !== null}
         needsMigration={plansIfReady === null}
-        plans={plans.map((plan) => ({
+        plans={plans.map((plan, i) => ({
           id: plan.id,
           filename: plan.filename,
           label: plan.label,
+          autoTitle: floorplanTitle({ label: null, filename: plan.filename }, i, plans.length),
           width: plan.width,
           height: plan.height,
           previewUrl: plan.gridKey ? previewUrl(plan.gridKey) : null,

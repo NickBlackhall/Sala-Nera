@@ -13,6 +13,8 @@ export type PlanView = {
   id: number;
   filename: string;
   label: string | null;
+  /** What visitors see when Nick has typed no label: the filename's guess, or "Floor plan 2". */
+  autoTitle: string;
   width: number | null;
   height: number | null;
   /** Null when its smaller copy could not be made; it then stays off the site. */
@@ -35,14 +37,19 @@ async function uploadOne(listingId: number, file: File): Promise<Row> {
 
 /** One plan: its picture, a label Nick can change, and Delete. */
 function Plan({ plan }: { plan: PlanView }) {
-  const [label, setLabel] = useState(plan.label ?? '');
+  // The box shows what visitors see, so Nick only types when the guess is wrong.
+  const shown = plan.label ?? plan.autoTitle;
+  const [label, setLabel] = useState(shown);
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const router = useRouter();
-  const changed = label.trim() !== (plan.label ?? '');
+  const changed = label.trim() !== shown;
 
   async function save() {
     setState('saving');
-    const result = await renameFloorplanAction({ id: plan.id, label });
+    // Saving the automatic name (or nothing) stores no label, so it stays automatic.
+    const typed = label.trim() === plan.autoTitle ? '' : label;
+    const result = await renameFloorplanAction({ id: plan.id, label: typed });
+    if (!typed.trim()) setLabel(plan.autoTitle);
     setState(result.error ? 'error' : 'saved');
     if (!result.error) router.refresh();
   }
@@ -72,6 +79,9 @@ function Plan({ plan }: { plan: PlanView }) {
           />
         </label>
         <span className="admin-muted">
+          {plan.label ? 'Your label. Clear it to go back to the automatic name.' : 'Named automatically from the filename.'}
+        </span>
+        <span className="admin-muted">
           {plan.filename}
           {plan.width && plan.height ? ` · ${plan.width}×${plan.height}` : ''}
         </span>
@@ -82,7 +92,7 @@ function Plan({ plan }: { plan: PlanView }) {
           <form
             action={deleteFloorplanAction}
             onSubmit={(e) => {
-              if (!window.confirm(`Delete ${plan.label || plan.filename}? This removes the file.`)) e.preventDefault();
+              if (!window.confirm(`Delete ${shown}? This removes the file.`)) e.preventDefault();
             }}
           >
             <input type="hidden" name="id" value={plan.id} />
@@ -183,7 +193,7 @@ export default function Floorplans({
       ) : (
         <ul className="admin-media admin-plans">
           {plans.map((plan) => (
-            <Plan key={plan.id} plan={plan} />
+            <Plan key={`${plan.id}:${plan.label ?? plan.autoTitle}`} plan={plan} />
           ))}
         </ul>
       )}
