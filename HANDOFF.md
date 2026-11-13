@@ -139,10 +139,8 @@ serving salanera.com.
        equally, so it is never half-filled. Phones: figures 2×2, the rest
        stacked. Styles: `.pdet*` in `globals.css`. Proven live on
        Brookside and approved by Nick, Nov 13.
-     - **Open, small:** Brookside's `city` is stored as "DALLAS", which
-       shouts in the Location cell (the cover hid it: its kicker is caps
-       anyway). Told Nick to change it to "Dallas, TX" in admin; offered to
-       title-case all-caps cities on the site instead. No answer yet.
+     - Brookside's `city` was "DALLAS" (it shouted in the Location cell);
+       Nick fixed it in admin Nov 13, now "Dallas". No code change.
      - **Open, Nick to look:** the signed-in `/portal/n-brookside-drive`
        (Property details form, new look) has only been tested in demo mode.
      - **Next, if Nick wants it:** the Details redesign is done; nothing
@@ -208,7 +206,11 @@ serving salanera.com.
        filename alone (sort 18–21); `IMG_8092` has an explicit `false` (a
        photo dragged in and back out, which is correct). Brookside now has
        22 media and its property site has the Aerials tab.
-  4. **Favourites and slideshow** — later, only if Nick wants them.
+  4. **Favourites and slideshow** — parked.
+- **Property site: no new features for now (Nick, Nov 13).** "It's on the
+  verge of getting too busy as is." Don't propose additions to `/p/<slug>`
+  (sections, tabs, widgets, favourites, slideshow) unless Nick raises them;
+  fixes and polish to what's there are fine.
 - **Parked: Nick is fine with both as they are (Nov 12).** Don't change
   either unless he raises it again:
   - The mark is faint over bright sky on Brookside's cover. If he wants it
