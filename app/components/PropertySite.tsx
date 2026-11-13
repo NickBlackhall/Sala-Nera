@@ -1,5 +1,5 @@
 import PropertyBar, { type BarTab } from '@/app/components/PropertyBar';
-import PropertyDetails from '@/app/components/PropertyDetails';
+import PropertyDetails, { coverFacts } from '@/app/components/PropertyDetails';
 import PropertyGallery, { type PhotoGroup } from '@/app/components/PropertyGallery';
 import PropertyPlans from '@/app/components/PropertyPlans';
 import VideoPlayer from '@/app/components/VideoPlayer';
@@ -38,6 +38,9 @@ function formatPhone(phone: string): string {
  */
 export default function PropertySite({ site, branded }: { site: Site; branded: boolean }) {
   const agent = branded ? site.agent : null;
+  // The price is left off the MLS version, like the agent (Nick, Nov 13).
+  const details = branded ? site.details : { ...site.details, price: null };
+  const { price, facts } = coverFacts(details);
 
   // Drone shots get a section of their own, in Nick's order within it — but
   // only beside ground photos. A set that is all one kind stays one section.
@@ -71,6 +74,14 @@ export default function PropertySite({ site, branded }: { site: Site; branded: b
         <div className="pcover-inner">
           {site.city && <p className="pcover-kicker">{site.city}</p>}
           <h1>{site.address}</h1>
+          {(price || facts.length > 0) && (
+            <p className="pcover-facts">
+              {price && <span className="pcover-price">{price}</span>}
+              {facts.map((f) => (
+                <span key={f}>{f}</span>
+              ))}
+            </p>
+          )}
           {agent?.name && <p className="pcover-by">Presented by {agent.name}</p>}
           {agent?.company && <p className="pcover-by">{agent.company}</p>}
           <a className="pcover-enter" href="#gallery">View gallery</a>
@@ -99,8 +110,7 @@ export default function PropertySite({ site, branded }: { site: Site; branded: b
           </section>
         )}
         {groups.length > 0 && <PropertyGallery groups={groups} address={site.address} />}
-        {/* The price is left off the MLS version, like the agent (Nick, Nov 13). */}
-        <PropertyDetails details={branded ? site.details : { ...site.details, price: null }} address={site.address} />
+        <PropertyDetails details={details} address={site.address} />
         {site.plans.length > 0 && <PropertyPlans plans={site.plans} heading={plansLabel} address={site.address} />}
       </main>
 

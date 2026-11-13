@@ -116,8 +116,14 @@ serving salanera.com.
        page, like the agent.
      - **Live save proven Nov 13:** Nick saved Brookside's details (4 bd /
        4 ba / 3,500 sq ft, "Dallas", test description); they show on the
-       delivery page and the property site. **Next:** Nick wants to rework
-       how the Details are presented on the site.
+       delivery page and the property site.
+     - **Presentation (Nov 13):** price · beds · baths · sq ft sit in one
+       line of small caps under the address on the cover (`coverFacts` in
+       `PropertyDetails.tsx`, `.pcover-facts`), fading up half a second after
+       load (off for reduced motion). On phones the price takes its own line.
+       Nick asked about a modal instead; I recommended against hiding the
+       numbers behind a click. The Details section below keeps only school
+       district, description and the map link. MLS: same line, no price.
      - Fields on `listings`: `beds`, `baths` (text), `sqft`, `school_district`,
        `description`, all optional (`lib/listing-details.ts`).
      - **Property site:** a Details section and tab after the photos, on both
