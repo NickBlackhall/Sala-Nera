@@ -103,9 +103,27 @@ serving salanera.com.
        the property site. **Assumed, not asked:** downloads sit behind
        payment like the photos.
      - Demo mode has two sample plans (`public/demo/floorplan-*.svg`).
-  3b. **Details tab — not built.** The columns exist after 0011
-     (`listings.beds`, `baths` (text), `sqft`, `description`) but are not in
-     `lib/schema.ts` yet; add them there with the code that uses them.
+  3b. **Details tab — built and live Nov 13** (migration `0012_school_district`
+     applied 16:09 UTC). Nick's rule: **the agent controls the facts, Sala
+     Nera controls the look**. No layout, cover or photo settings for agents;
+     add one only if agents ask. No price or For sale / Sold status for now
+     (Nick: later, if enough agents ask).
+     - Fields on `listings`: `beds`, `baths` (text), `sqft`, `school_district`,
+       `description`, all optional (`lib/listing-details.ts`).
+     - **Property site:** a Details section and tab after the photos, on both
+       versions: beds / baths / sq ft in a row, school district, description,
+       and a "View on map" link (a Google Maps search URL built from
+       address + city; no embed, no key). Always present, because the map
+       link always is; blank facts are left out.
+     - **Who fills it in:** the agent on the delivery page ("Property
+       details", any state: booked, locked or paid) and Nick in admin
+       (Details section). One form, `app/components/DetailsForm.tsx`; the
+       agent's action re-checks ownership like the page does. Last save wins.
+     - **Order form unchanged** (instant booking stays short). Its square
+       footage now starts the listing's `sqft` for new bookings
+       (`ensureBookingListing`). Existing listings were not backfilled.
+     - Demo mode: Rockwall has sample details.
+     - **Not yet proven live:** a real save from admin or the delivery page.
   3c. **Aerials mislabel low drone shots — open, Nick to choose.** On
      Brookside the two `DJI_` photos are low shots of the patio and bocce
      court, not aerial views. Options put to him: leave it, add a per-photo

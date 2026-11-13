@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { cache } from 'react';
 import { DEMO_CLIENT, DEMO_LISTINGS, DEMO_MEDIA, demoFloorplansFor, IS_DEMO } from '@/lib/demo';
 import { floorplanTitle, getFloorplans } from '@/lib/floorplans';
+import { mapUrl, type ListingDetails } from '@/lib/listing-details';
 import type { Floorplan } from '@/lib/schema';
 import { getListingBySlug, type ListingBundle } from '@/lib/portal-queries';
 import { SITE_ICONS, SITE_MANIFEST } from '@/lib/site-metadata';
@@ -60,6 +61,9 @@ export type PropertyPlan = {
   largeUrl: string;
 };
 
+/** The Details section. Every fact may be blank; the map link never is. */
+export type PropertyDetails = ListingDetails & { mapUrl: string };
+
 export type PropertyAgent = {
   name: string | null;
   company: string | null;
@@ -76,6 +80,7 @@ export type PropertySite = {
   videos: PropertyVideo[];
   photos: PropertyPhoto[];
   plans: PropertyPlan[];
+  details: PropertyDetails;
   agent: PropertyAgent | null;
 };
 
@@ -135,6 +140,14 @@ export function toPropertySite(
     videos,
     photos,
     plans,
+    details: {
+      beds: listing.beds,
+      baths: listing.baths,
+      sqft: listing.sqft,
+      schoolDistrict: listing.schoolDistrict,
+      description: listing.description,
+      mapUrl: mapUrl(listing.address, listing.city),
+    },
     agent: client
       ? { name: client.name, company: client.company, phone: client.phone, email: client.email }
       : null,

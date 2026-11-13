@@ -27,6 +27,11 @@ export const DEMO_LISTING: Listing = {
   coverKey: '/demo/elevation-dusk.jpg',
   downloadLocked: true,
   bookingId: null,
+  beds: null,
+  baths: null,
+  sqft: null,
+  schoolDistrict: null,
+  description: null,
   createdAt: new Date('2026-08-14'),
 };
 
@@ -52,6 +57,13 @@ export const DEMO_LISTING_PAID: Listing = {
   city: 'Rockwall, TX',
   coverKey: '/demo/courtyard.jpg',
   downloadLocked: false,
+  // Filled in, so the property website's Details tab can be seen in demo mode.
+  beds: 5,
+  baths: '4.5',
+  sqft: 6120,
+  schoolDistrict: 'Rockwall ISD',
+  description:
+    'A lakefront house on a quiet cove, with a courtyard at its centre and every main room facing the water.\n\nThe primary suite has its own terrace. A pool, outdoor kitchen and private dock complete the grounds.',
 };
 
 export const DEMO_MEDIA: Media[] = PHOTOS.map(([key, label, w, h], i) => ({

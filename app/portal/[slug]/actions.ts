@@ -11,6 +11,9 @@ import {
 import { IS_DEMO } from '@/lib/demo';
 import { getClientByEmail, getListingBySlug, ownsListing } from '@/lib/portal-queries';
 import { getSession } from '@/lib/session';
+import type { DetailsState } from '@/app/components/DetailsForm';
+import { readDetailsForm } from '@/lib/listing-details';
+import { saveListingDetails } from '@/lib/listing-details-store';
 
 /**
  * The agent's Reschedule and Cancel buttons, on their listing's "Shoot booked"
@@ -76,4 +79,28 @@ export async function rescheduleMyBookingAction(slug: string, slot: string): Pro
   revalidatePath(`/portal/${slug}`);
   revalidatePath('/portal');
   return { movedTo: result.when };
+}
+
+/**
+ * The agent's Details form on their delivery page: beds, baths, square feet,
+ * school district, description. Any time, booked or delivered, paid or not;
+ * they show on the property website once it is live. Same test as the page:
+ * signed in, and the admin or the agent (or a teammate) the listing is for.
+ */
+export async function saveMyDetailsAction(slug: string, _prev: DetailsState, form: FormData): Promise<DetailsState> {
+  if (IS_DEMO) return { error: MESSAGES.demo };
+  const session = await getSession();
+  if (!session) return { error: 'Your session has ended. Sign in again to save.' };
+
+  const bundle = await getListingBySlug(String(slug));
+  if (!bundle) return { error: 'That listing no longer exists.' };
+  if (!session.isAdmin) {
+    const viewer = await getClientByEmail(session.email);
+    if (!viewer || !ownsListing(viewer, bundle.client)) return { error: 'That listing is not available to change.' };
+  }
+
+  const parsed = readDetailsForm(form);
+  if ('error' in parsed) return parsed;
+  await saveListingDetails(bundle.listing.id, parsed.details);
+  return { saved: true };
 }

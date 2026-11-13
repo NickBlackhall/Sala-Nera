@@ -67,6 +67,8 @@ export async function ensureBookingListing(input: {
   clientId: number | null;
   /** The shoot's local day, YYYY-MM-DD, or null for a request with no slot. */
   shootDate: string | null;
+  /** What the agent entered to be quoted; it starts the property site's Details. */
+  sqft?: number | null;
 }): Promise<BookingListing> {
   const db = getDatabase();
   const { street, city } = splitAddress(input.address);
@@ -86,6 +88,7 @@ export async function ensureBookingListing(input: {
         // the shoot onto the day before.
         shootDate: input.shootDate ? new Date(`${input.shootDate}T12:00:00Z`) : null,
         downloadLocked: true,
+        sqft: input.sqft ?? null,
       })
       .onConflictDoNothing()
       .returning({ id: listings.id, slug: listings.slug });

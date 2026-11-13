@@ -6,6 +6,9 @@ import { DEMO_BOOKING, DEMO_CLIENT, DEMO_LISTINGS, IS_DEMO, demoFloorplansFor, d
 import { getFloorplans } from '@/lib/floorplans';
 import type { Floorplan } from '@/lib/schema';
 import Floorplans from './Floorplans';
+import DetailsForm from '@/app/components/DetailsForm';
+import { saveMyDetailsAction } from './actions';
+import { pickDetails } from '@/lib/listing-details';
 import {
   getBookingSummary,
   getClientByEmail,
@@ -220,6 +223,23 @@ function render(
           {invoice && !locked && <Invoice invoice={invoice} heading="Your invoice" />}
         </>
       )}
+
+      {/*
+        The agent's facts for the property website. Any time: booked, locked
+        or paid. The look of that site stays Nick's; only these are theirs.
+      */}
+      <section className="pdetails wrap" id="details">
+        <p className="kicker">Property details</p>
+        <DetailsForm
+          action={saveMyDetailsAction.bind(null, listing.slug)}
+          initial={pickDetails(listing)}
+          note={
+            locked || booked
+              ? 'These show on your property website once it goes live. Fill in what you like and leave the rest blank.'
+              : 'These show on your property website. Fill in what you like and leave the rest blank.'
+          }
+        />
+      </section>
 
       <footer className="pfoot">
         <div className="wrap">

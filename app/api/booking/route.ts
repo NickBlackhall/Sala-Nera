@@ -251,7 +251,7 @@ export async function POST(req: Request) {
   const makeListing = async (bookingId: number, shootDate: string | null) => {
     try {
       return await ensureBookingListing({
-        bookingId, address, shootDate, clientId: account?.id ?? null,
+        bookingId, address, shootDate, sqft, clientId: account?.id ?? null,
       });
     } catch (error) {
       await record({ kind: 'booking', outcome: 'failed', reason: 'listing_not_created',

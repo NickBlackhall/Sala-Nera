@@ -15,6 +15,9 @@ import { planArchives } from '@/lib/archives';
 import type { AdminListingDetail } from '@/lib/admin-queries';
 import UploadMedia from '../../UploadMedia';
 import Floorplans from '../../Floorplans';
+import DetailsForm from '@/app/components/DetailsForm';
+import { saveListingDetailsAction } from '../../details-actions';
+import { pickDetails } from '@/lib/listing-details';
 import { floorplanTitle, getFloorplansIfReady } from '@/lib/floorplans';
 import { TIME_ZONE } from '@/lib/scheduling';
 
@@ -217,6 +220,15 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
           previewUrl: plan.gridKey ? previewUrl(plan.gridKey) : null,
         }))}
       />
+
+      <section className="admin-section">
+        <h2>Details</h2>
+        <DetailsForm
+          action={saveListingDetailsAction.bind(null, listing.id)}
+          initial={pickDetails(listing)}
+          note="The property website's Details tab. The agent can fill these in from their delivery page too; whoever saves last wins. Leave any of them blank."
+        />
+      </section>
 
       <section className="admin-section">
         <h2>Download activity</h2>

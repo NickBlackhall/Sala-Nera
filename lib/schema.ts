@@ -57,6 +57,14 @@ export const listings = pgTable(
     // The booking that made this listing — see lib/booking-listing.ts. Null on
     // one Nick made by hand. Unique, so a booking can only ever make one.
     bookingId: integer('booking_id').references(() => bookings.id, { onDelete: 'set null' }),
+    // The property website's Details (lib/listing-details.ts). All optional;
+    // the agent fills them in on the delivery page, Nick in admin. sqft
+    // starts as the booking's. baths is text: "3.5" and "3 full, 1 half".
+    beds: integer('beds'),
+    baths: text('baths'),
+    sqft: integer('sqft'),
+    schoolDistrict: text('school_district'),
+    description: text('description'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

@@ -538,3 +538,27 @@ section{position:relative;border-top:1px solid var(--line)}
 
 /* Photos fade up as they scroll into view — only once useReveal has run */
 .reveal [data-reveal]{opacity:0;transform:translateY(16px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.7,.2,1)}.reveal [data-reveal].is-in{opacity:1;transform:none}
+
+/* Property website: Details. The agent's facts, quiet, in the page's own type. */
+.psite-details-inner{max-width:760px;margin:0 auto;padding:0 clamp(16px,3vw,40px);text-align:center}
+.psite-stats{display:flex;justify-content:center;flex-wrap:wrap;gap:clamp(28px,6vw,72px);margin:0 0 clamp(28px,4vw,44px)}
+.psite-stats div{display:flex;flex-direction:column;align-items:center;gap:8px}
+.psite-stats dd{margin:0;font-family:var(--font-display);font-size:clamp(1.7rem,3.6vw,2.4rem);font-weight:300;letter-spacing:-.01em;color:var(--paper)}
+.psite-stats dt{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.psite-detail-line{color:var(--paper);margin:0 0 clamp(22px,3vw,32px)}
+.psite-detail-line span{display:block;font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.psite-description{white-space:pre-line;color:#C9C4BA;line-height:1.75;text-align:left;margin:0 auto clamp(28px,4vw,40px);max-width:62ch}
+.psite-map{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--paper);border-bottom:1px solid var(--line);padding-bottom:4px}
+.psite-map:hover{border-color:var(--paper)}
+
+/* The Details form: the agent's delivery page and Nick's admin. */
+.details-form{max-width:680px}
+.details-form-note{color:var(--muted);font-size:.9rem;margin:0 0 18px}
+.details-form-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:560px){.details-form-row{grid-template-columns:1fr 1fr}.details-form-row .field:last-child{grid-column:1/-1}}
+.details-form textarea{width:100%;resize:vertical;font:inherit;line-height:1.6}
+.details-form-actions{display:flex;align-items:center;gap:16px;margin-top:6px}
+.details-form-saved{color:var(--muted);font-size:.88rem}
+.pdetails{padding-top:clamp(40px,6vw,72px);padding-bottom:clamp(48px,7vw,84px);border-top:1px solid var(--line)}
+.pdetails .details-form{margin-top:18px;border-top:0;padding-top:0}
+.admin-section .details-form{border-top:0;padding-top:0}
