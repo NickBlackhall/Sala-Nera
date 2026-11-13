@@ -46,8 +46,8 @@ serving salanera.com.
      download bar gained the address. Thin gaps, and tiles fade in on scroll
      (`useReveal.ts`). The MLS version has the same layout with no mark, name
      or agent. Checked live on Brookside's public page at desktop and phone
-     sizes. **Not checked live:** the signed-in `/portal/n-brookside-drive`;
-     it was only tested in demo mode (paid, locked, booked). Nick to look.
+     sizes. **Signed-in `/portal/n-brookside-drive` checked live by Nick,
+     Nov 13: correct** (unlocked state; locked and booked still demo-only).
   2. **Tabs: Photos / Aerials / Film — done and live (Nov 12).** A photo
      whose filename starts `DJI_` is an aerial (`isAerial` in
      `lib/property-site.ts`; only a yes/no reaches the page). On `/p/<slug>`
@@ -141,8 +141,9 @@ serving salanera.com.
        Brookside and approved by Nick, Nov 13.
      - Brookside's `city` was "DALLAS" (it shouted in the Location cell);
        Nick fixed it in admin Nov 13, now "Dallas". No code change.
-     - **Open, Nick to look:** the signed-in `/portal/n-brookside-drive`
-       (Property details form, new look) has only been tested in demo mode.
+     - **Delivery page proven live Nov 13 (Nick):** the new look, all 22
+       photos in one grid, the Property details box with his saved values
+       and Listing price first, and the three floor plans. Nothing open.
      - **Next, if Nick wants it:** the Details redesign is done; nothing
        else on the property site was asked for. **3c below (drag photos into Aerials in admin)
        is built and proven. Nothing on the gallery redesign is waiting to be
