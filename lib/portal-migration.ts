@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const PORTAL_MIGRATION_ID = '0013_listing_price';
+export const PORTAL_MIGRATION_ID = '0014_listing_featured';
 
 /**
  * Kept as discrete statements so Neon can execute the migration atomically.
@@ -338,4 +338,11 @@ export const PORTAL_MIGRATION_STATEMENTS = [
    * is untouched by it.
    */
   `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "price" integer`,
+
+  /**
+   * 0014 — when Nick switched a listing on for the public site's Selected
+   * Work (lib/featured.ts). Null means not featured; the newest shows first.
+   * Nullable, so code deployed before this ran is untouched by it.
+   */
+  `ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "featured_at" timestamp with time zone`,
 ] as const;
