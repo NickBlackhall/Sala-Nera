@@ -18,8 +18,8 @@ Sep 22 unless it says otherwise.
 
 ## 1. Start here
 
-**State (Nov 13, ~17:15 UTC):** everything is committed, pushed and
-deployed; the working tree is clean. The last code change is `cd29ba4`, the Photos /
+**State (Nov 14):** everything is committed, pushed and deployed; see the
+Nov 14 update below for the latest changes. Before those, the last code change was `cd29ba4`, the Photos /
 Aerials sections in admin's media grid (item 3c below), **proven live by Nick
 and confirmed in the database**. Before it, `4bcb263`, the redesigned Details section, checked
 live on Brookside and **approved by Nick ("much better")**. Migrations applied through `0013_listing_price`. Where the
@@ -37,6 +37,39 @@ order" (first: the Rockwall dollar test, which needs no building). `npx vercel l
 mode — it was blocked in one earlier session, but it ran fine on Sep 22 and
 showed Production Ready, so use it to confirm a deploy rather than only
 serving salanera.com.
+
+**Nov 14 update: small fixes and the privacy page, pushed live.**
+- **Done from CLIENT-JOURNEY.md's step 2:** B2 (subject "Your shoot is booked
+  — <address>" when a slot is held; "booking request" only on the fallback),
+  B3 (Property details mentioned in the confirmation and ready emails), C1,
+  C2. **None of the email wording has been sent for real yet**; the next test
+  booking shows it.
+- **C1 correction:** the audit was wrong that a request read "confirmed". It
+  read a faint "<date> wanted". It now reads "needs a date" in red and sorts
+  to the top of `/admin/bookings` (checked against production data, read-only:
+  booking 1 is first). A cancelled request reads "cancelled".
+- **C2, city from Google:** `geocodeAddress` now also returns `place`
+  (town, state, `partial`), and `listingPlace` in `lib/booking-listing.ts`
+  uses it for new booking listings: "600 N Brookside Dr Dallas TX 75214" →
+  street "600 N Brookside Dr", city "Dallas, TX". The agent's own town wins
+  when it differs; a town nobody typed is filled only from a full match.
+  19 cases pass (`reference/check-listing-place.mjs`). **Not proven against
+  real Google answers:** the Maps key in `.env.local` is a Development value
+  Google rejects. Production's key works (travel-estimate answered live).
+  Nick will try a no-comma test booking when convenient; expect "520
+  Cashmere Drive" / "Garland, TX".
+- **Privacy page rewritten** (`app/privacy/page.tsx`, A4) to cover bookings,
+  accounts, media, invoices, property websites and every provider. It names
+  no retention period; add one if Nick sets it.
+- **Vercel Pro: Nick will upgrade once the brand launches and is being
+  paid. Don't raise it before then.**
+- **The check scripts listed in §2 are gone from this workspace** (`reference/`
+  held only `pixieset/` on Nov 14). The list below describes what existed.
+  A `server-only` import needs stubbing to run a check; see the header of
+  `check-listing-place.mjs`.
+- **Still open, in order:** the Rockwall dollar test (Nick), the pre-shoot
+  reminder (B1), sign-in links in emails (B4, needs Nick's yes), then rates
+  and Stripe.
 
 **Nov 12 update (the rest of this file is as of Sep 22):**
 - **A real sample listing exists: `n-brookside-drive`.** Nick uploaded a real

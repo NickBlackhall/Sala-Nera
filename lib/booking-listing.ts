@@ -50,6 +50,58 @@ export function splitAddress(full: string): { street: string; city: string | nul
   return { street: parts[0] ?? full.trim(), city: null };
 }
 
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Google's town and state for an address; see lib/geocode.ts. */
+export type AddressPlace = {
+  locality: string;
+  /** Two letters: "TX". */
+  state: string;
+  /** Spelled out: "Texas". */
+  stateName?: string | null;
+  /** Google matched only part of what was typed, so its town may be a guess. */
+  partial?: boolean;
+};
+
+/**
+ * splitAddress(), helped by Google's answer for the same address.
+ *
+ * Free text arrives in shapes a comma split gets wrong: "600 N Brookside Dr
+ * Dallas TX 75214" (no commas, so no city), "…, Dallas, Texas" (the state
+ * read as the city), "…, DALLAS". When the address ends with the town Google
+ * named, with or without a state, zip and country after it, that whole tail
+ * comes off the street and the city becomes Google's "Dallas, TX".
+ *
+ * When the typed address does not end that way, the agent's own city stands
+ * (a suburb with a Dallas postal address, say): they know the house. And a
+ * city the agent never typed is filled in only from a full match, never from
+ * a partial one, where Google's town may be a guess.
+ */
+export function listingPlace(
+  full: string,
+  place: AddressPlace | null | undefined,
+): { street: string; city: string | null } {
+  const split = splitAddress(full);
+  if (!place) return split;
+  const geoCity = `${place.locality}, ${place.state}`;
+
+  const states = [place.state, place.stateName].filter(Boolean).map((s) => escapeRe(s as string)).join('|');
+  const tail = new RegExp(
+    `[\\s,]+${escapeRe(place.locality)}` +
+      `(?:[\\s,]+(?:${states}))?` +
+      `(?:[\\s,]+\\d{5}(?:-\\d{4})?)?` +
+      `(?:[\\s,]+(?:usa|us|united states(?: of america)?))?[\\s,.]*$`,
+    'i',
+  );
+  const normal = full.replace(/\s+/g, ' ').trim();
+  const street = normal.replace(tail, '').trim();
+  // Only take the cut if a real street is left ("4840 Serenity Trail", not "4840").
+  if (street !== normal && street.split(/\s+/).length >= 2) return { street, city: geoCity };
+
+  if (split.city || place.partial) return split;
+  return { street: split.street, city: geoCity };
+}
+
 export type BookingListing = { id: number; slug: string; created: boolean };
 
 /**
@@ -69,9 +121,11 @@ export async function ensureBookingListing(input: {
   shootDate: string | null;
   /** What the agent entered to be quoted; it starts the property site's Details. */
   sqft?: number | null;
+  /** Google's town and state for the address, when the lookup found them. */
+  place?: AddressPlace | null;
 }): Promise<BookingListing> {
   const db = getDatabase();
-  const { street, city } = splitAddress(input.address);
+  const { street, city } = listingPlace(input.address, input.place);
   const base = slugify(street) || 'listing';
 
   for (let n = 1; n <= 50; n++) {

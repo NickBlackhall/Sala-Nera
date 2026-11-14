@@ -24,7 +24,7 @@ export function hasGeocoding(): boolean {
 // field, or the server re-checking what the browser already resolved — from
 // spending a second geocode call on a string already seen this run. Cleared
 // on redeploy; that's fine, a cache miss just costs one more request.
-const cache = new Map<string, GeoPoint | null>();
+const cache = new Map<string, GeoResult | null>();
 const MAX_CACHE_ENTRIES = 500;
 
 /**
@@ -34,7 +34,31 @@ const MAX_CACHE_ENTRIES = 500;
  */
 const DFW_BOUNDS = '32.0,-97.6|33.4,-96.0';
 
-export async function geocodeAddress(address: string): Promise<GeoPoint | null> {
+/**
+ * A located address. `place` is Google's town and state ("McKinney", "TX"),
+ * when it named them; it lets a booking's listing get its city even when the
+ * agent typed the address without a comma to split on. `partial` is Google
+ * saying it matched only part of what was typed, so the town may be a guess.
+ */
+export type GeoResult = GeoPoint & {
+  place: { locality: string; state: string; stateName: string | null; partial: boolean } | null;
+};
+
+type AddressComponent = { long_name: string; short_name: string; types: string[] };
+
+function placeOf(result: { address_components?: AddressComponent[]; partial_match?: boolean }): GeoResult['place'] {
+  const components = result.address_components;
+  if (!Array.isArray(components)) return null;
+  const find = (type: string) => components.find((c) => c.types?.includes(type));
+  // "locality" is the town; some addresses only carry a postal town.
+  const locality = (find('locality') ?? find('postal_town'))?.long_name?.trim();
+  const area = find('administrative_area_level_1');
+  const state = area?.short_name?.trim();
+  if (!locality || !state) return null;
+  return { locality, state, stateName: area?.long_name?.trim() || null, partial: result.partial_match === true };
+}
+
+export async function geocodeAddress(address: string): Promise<GeoResult | null> {
   const key = process.env.GOOGLE_MAPS_API_KEY;
   if (!key) return null;
 
@@ -49,7 +73,7 @@ export async function geocodeAddress(address: string): Promise<GeoPoint | null> 
   url.searchParams.set('region', 'us');
   url.searchParams.set('bounds', DFW_BOUNDS);
 
-  let point: GeoPoint | null = null;
+  let point: GeoResult | null = null;
   /**
    * Only a definitive answer from Google gets remembered — a located address,
    * or an honest ZERO_RESULTS. A timeout, a 500, or a refused key must NOT be
@@ -66,7 +90,7 @@ export async function geocodeAddress(address: string): Promise<GeoPoint | null> 
       const data = await res.json();
       if (data.status === 'OK' && data.results?.[0]?.geometry?.location) {
         const { lat, lng } = data.results[0].geometry.location;
-        point = { lat, lng };
+        point = { lat, lng, place: placeOf(data.results[0]) };
         definitive = true;
       } else if (data.status === 'ZERO_RESULTS') {
         definitive = true; // Google looked and there is genuinely nothing there.

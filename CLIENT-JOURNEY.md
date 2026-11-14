@@ -317,6 +317,7 @@ are making their own.
    us whether the money half works at all.
 2. **The small fixes in one session:** the confirmation subject (B2), the
    Details mentions (B3), "needs a date" in admin (C1), the city fix (C2).
+   **Done Nov 14**, along with the privacy page from A4.
 3. **The pre-shoot reminder (B1).**
 4. **Sign-in links in emails (B4),** if you agree with the trade-off.
 5. **Real rates and terms (A1),** whenever they exist, with the order

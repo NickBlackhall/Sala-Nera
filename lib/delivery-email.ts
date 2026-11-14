@@ -102,6 +102,9 @@ export function deliveryEmail(input: {
           'The same page with no branding, for the MLS:',
           `${base}/p/${slug}/mls`,
           '',
+          'To add or change the price, bedrooms, bathrooms or description on those',
+          'pages, use Property details on your gallery page.',
+          '',
         ]
       : []),
     `Sign in with this email address (${input.email}). There's no password — we'll email you a link.`,

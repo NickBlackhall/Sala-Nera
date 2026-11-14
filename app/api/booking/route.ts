@@ -252,6 +252,7 @@ export async function POST(req: Request) {
     try {
       return await ensureBookingListing({
         bookingId, address, shootDate, sqft, clientId: account?.id ?? null,
+        place: point?.place ?? null,
       });
     } catch (error) {
       await record({ kind: 'booking', outcome: 'failed', reason: 'listing_not_created',
@@ -485,7 +486,9 @@ export async function POST(req: Request) {
   const confirmed = await sendEmail({
     to: email,
     replyTo: NOTIFY_EMAIL, // a reply reaches Nick, not the no-reply sender
-    subject: `We've got your booking request — ${address}`,
+    // Instant booking is the point: a held slot says so in the subject. Only
+    // the fallback path, with no slot, is still a request.
+    subject: booked ? `Your shoot is booked — ${address}` : `We've got your booking request — ${address}`,
     text: clientConfirmation({
       name, address, desiredDate, priced,
       shoot: booked ? `${when(booked.startsAt)} – ${when(booked.endsAt)}` : null,
@@ -538,7 +541,9 @@ function clientConfirmation({
   const travel = priced.lines.find((l) => l.id === 'travel');
 
   return [
-    `Thanks ${firstName} — we've got your request for ${address}.`,
+    shoot
+      ? `Thanks ${firstName} — your shoot at ${address} is booked.`
+      : `Thanks ${firstName} — we've got your request for ${address}.`,
     '',
     'What you asked for:',
     ...chosenLines(priced).map((l) => `  - ${l.name}`),
@@ -599,6 +604,10 @@ function clientConfirmation({
           manageUrl,
           '',
           "There's no password — sign in with this email address and we'll email you a link.",
+          '',
+          'While you are there, add the price, bedrooms, bathrooms and a description',
+          'under Property details. They go on the property website we make for this',
+          'listing once your photos are delivered.',
           '',
         ]
       : portalLogin

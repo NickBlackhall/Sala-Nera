@@ -62,7 +62,10 @@ export default async function BookingsPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ booking, client, listing }) => (
+              {/* Requests still owed an answer first; otherwise newest first, as loaded. */}
+              {[...rows]
+                .sort((a, b) => Number(b.booking.status === 'requested') - Number(a.booking.status === 'requested'))
+                .map(({ booking, client, listing }) => (
                 <tr key={booking.id}>
                   <td className="ev-dim">
                     {new Date(booking.createdAt).toLocaleString('en-US', {
@@ -110,7 +113,17 @@ export default async function BookingsPage() {
                         )}
                       </>
                     ) : (
-                      <span className="ev-dim">{booking.desiredDate ? `${booking.desiredDate} wanted` : '—'}</span>
+                      <>
+                        <span className="ev-dim">{booking.desiredDate ? `${booking.desiredDate} wanted` : 'no date given'}</span>
+                        <br />
+                        {/*
+                          A request came in when the calendar couldn't be read: no
+                          day is held and the agent is waiting on Nick's reply.
+                        */}
+                        {booking.status === 'cancelled'
+                          ? <span className="ev-dim">cancelled</span>
+                          : <span className="admin-warn">needs a date</span>}
+                      </>
                     )}
                   </td>
                   <td>
