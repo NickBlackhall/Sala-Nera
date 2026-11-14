@@ -90,6 +90,17 @@ serving salanera.com.
 - **Still open, in order:** the Rockwall dollar test (Nick), the pre-shoot
   reminder (B1), sign-in links in emails (B4, needs Nick's yes), then rates
   and Stripe.
+- **To do, not started: tidy the admin listing page** (`app/admin/listings/[id]/page.tsx`).
+  Nick, Nov 14: "becoming a lot to scroll thru. All the functionality is
+  good, but it needs to be organized a little better." Only the single
+  listing page; Nick says the top `/admin` page is laid out well, so leave
+  it alone and match its feel. Reorganise only; keep
+  every feature. Today it is one long column, in this order: Send delivery,
+  Invoice, the listing form, Media, Selected Work, Floor plans, Details,
+  Download activity, Delete. Ideas to put to Nick before coding: tabs or
+  collapsible sections, grouped by job (the shoot's media, the property
+  website, billing and delivery, history); the status things (locked, paid,
+  featured, delivered) gathered at the top. Ask before building.
 
 **Nov 12 update (the rest of this file is as of Sep 22):**
 - **A real sample listing exists: `n-brookside-drive`.** Nick uploaded a real
