@@ -22,7 +22,7 @@ Sep 22 unless it says otherwise.
 Nov 14 update below for the latest changes. Before those, the last code change was `cd29ba4`, the Photos /
 Aerials sections in admin's media grid (item 3c below), **proven live by Nick
 and confirmed in the database**. Before it, `4bcb263`, the redesigned Details section, checked
-live on Brookside and **approved by Nick ("much better")**. Migrations applied through `0013_listing_price`. Where the
+live on Brookside and **approved by Nick ("much better")**. Migrations applied through `0014_listing_featured`. Where the
 gallery redesign stands and what is open: the Nov 12 update below, items 3–3c.
 (Sep 22: the last change then, `05e3297`, the all-day calendar block, is
 proven live end to end, §4.2.)
@@ -67,6 +67,24 @@ serving salanera.com.
   held only `pixieset/` on Nov 14). The list below describes what existed.
   A `server-only` import needs stubbing to run a check; see the header of
   `check-listing-place.mjs`.
+- **Selected Work from admin (Nov 14, built and pushed; migration
+  `0014_listing_featured` applied and confirmed in `portal_migrations`).** Nick chose: pick
+  listings in admin, the card opens the property website, one cover photo
+  (the listing's existing cover), no price or agent name on the card.
+  - `listings.featured_at` (0014). `lib/featured.ts` reads featured AND
+    unlocked listings, newest first. A "Selected Work" panel on the admin
+    listing page switches it (`toggleFeaturedAction`).
+  - `/` (newest 6) and `/work` (all) render `app/components/SelectedWork.tsx`;
+    with nothing featured both look exactly as before. Both are prerendered
+    with a 1h backstop; every admin action that changes the selection, the
+    lock, the cover or the address rebuilds them.
+  - Card photos point at `/work/cover/<slug>`, which redirects to a freshly
+    signed URL. A signed URL written into a prerendered page would expire.
+  - Layout checked with sample photos at 1 and 3 cards, desktop and phone.
+    **Not yet seen with a real listing**: that needs Nick to press
+    "Feature on the site" on Brookside.
+  - The property website stays noindex, and it does show the price and the
+    agent. Nick knows the card hides them and the click-through doesn't.
 - **Still open, in order:** the Rockwall dollar test (Nick), the pre-shoot
   reminder (B1), sign-in links in emails (B4, needs Nick's yes), then rates
   and Stripe.

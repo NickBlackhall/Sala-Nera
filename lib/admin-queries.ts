@@ -191,6 +191,12 @@ export async function setListingLock(id: number, locked: boolean): Promise<void>
   await db.update(listings).set({ downloadLocked: locked }).where(eq(listings.id, id));
 }
 
+/** Selected Work on the public site (lib/featured.ts). The time is what orders the cards. */
+export async function setListingFeatured(id: number, featured: boolean): Promise<void> {
+  const db = getDatabase();
+  await db.update(listings).set({ featuredAt: featured ? new Date() : null }).where(eq(listings.id, id));
+}
+
 export async function setListingCover(id: number, coverKey: string | null): Promise<void> {
   const db = getDatabase();
   await db.update(listings).set({ coverKey }).where(eq(listings.id, id));

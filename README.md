@@ -108,8 +108,10 @@ use `drizzle-kit push` against production.
 - [x] **Mobile hero video** — `public/media/sala-nera-hero-mobile.mp4` (4.3 MB).
 - [x] **Hero poster** — `public/media/hero-poster.jpg` (~167 KB), used before playback
       and whenever reduced-motion or data-saving settings suppress the reel.
-- [ ] **Collection grid** — REMOVED for launch (no finished property sets yet). When you
-      have 2–3, it goes back as a row of larger cards. Ask and it's a ten-minute edit.
+- [x] **Collection grid** — Selected Work on `/` and `/work` now fills itself from
+      admin: open a listing, press "Feature on the site". It shows the listing's cover
+      photo, address and city, and opens the property website. Only unlocked (paid)
+      listings appear. Until one is featured, the placeholder stays. See `lib/featured.ts`.
 - [x] **OG image** — `public/og-sala-nera.jpg` at exactly 1200×630. This is the link preview
       when you text the site to an agent.
 - [ ] **Client list** — the `.proof-row` list, relabelled "Past clients include".

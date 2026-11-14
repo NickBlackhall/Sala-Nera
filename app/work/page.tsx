@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Footer from '../components/Footer';
 import Nav from '../components/Nav';
+import SelectedWork from '../components/SelectedWork';
+import { getFeaturedWork } from '@/lib/featured';
 
 const MARK = '/brand/mark.svg';
 
@@ -30,7 +32,13 @@ const experience = [
   ['03', 'After', 'Personally reviewed films and imagery, delivered in the formats needed to bring the property to market.'],
 ] as const;
 
-export default function WorkPage() {
+// Selected Work comes from the database. Admin rebuilds this page whenever
+// the selection changes; the hour is a backstop for anything that misses.
+export const revalidate = 3600;
+
+export default async function WorkPage() {
+  const work = await getFeaturedWork();
+
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
@@ -39,6 +47,12 @@ export default function WorkPage() {
         <header className="work-hero"><div className="wrap"><span className="kicker kicker--accent">The Collection</span><h1>Work that holds the room.</h1><p>Feature films and editorial imagery shaped around a property&apos;s architecture, atmosphere, and point of view.</p></div></header>
         <div className="work-main">
           <nav className="subnav" aria-label="Work categories"><div className="wrap subnav-inner"><a href="#all">All Work</a><a href="#films">Films</a><a href="#stills">Editorial Stills</a><a href="#aerial">Aerial</a><a href="#social">Social Cuts</a><a href="#process">Process</a><a href="#experience">Experience</a></div></nav>
+          {work.length > 0 && (
+            <section className="wrap work-selected" id="selected" aria-labelledby="work-selected-h">
+              <div className="work-intro"><h2 id="work-selected-h">Selected properties.</h2><p>Each opens the property&apos;s own presentation: the imagery, the film, and the plans.</p></div>
+              <SelectedWork work={work} />
+            </section>
+          )}
           <section className="wrap" id="all" aria-labelledby="work-index-h">
             <div className="work-intro"><h2 id="work-index-h">Four disciplines. One visual standard.</h2><p>Each property will bring film, stills, aerial work, and campaign cuts together as one considered presentation.</p></div>
             <div className="work-grid">

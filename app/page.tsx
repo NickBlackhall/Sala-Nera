@@ -1,6 +1,8 @@
 import Footer from './components/Footer';
 import HeroVideo from './components/HeroVideo';
 import Nav from './components/Nav';
+import SelectedWork from './components/SelectedWork';
+import { getFeaturedWork } from '@/lib/featured';
 
 const LOGO = '/brand/sala nera logo cropped dark.svg';
 const MARK = '/brand/mark.svg';
@@ -32,7 +34,16 @@ const services = [
   { href: '/work#social', type: 'Short Form', title: 'Social Cuts', copy: 'Focused edits made for the pace of the feed.' },
 ] as const;
 
-export default function Home() {
+// Selected Work comes from the database. Admin rebuilds this page whenever
+// the selection changes; the hour is a backstop for anything that misses.
+export const revalidate = 3600;
+
+/** A deliberately concise collection: the newest few here, all of them on /work. */
+const HOME_WORK_LIMIT = 6;
+
+export default async function Home() {
+  const work = (await getFeaturedWork()).slice(0, HOME_WORK_LIMIT);
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
@@ -64,11 +75,15 @@ export default function Home() {
               <div><span className="kicker">Selected Work</span><h2 id="work-h">A collection, deliberately concise.</h2></div>
               <a className="work-showcase-link" href="/work">Explore the work &rarr;</a>
             </div>
-            <div className="work-empty">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={MARK} alt="" aria-hidden="true" />
-              <p>A handful of properties will be presented here as the Sala Nera collection is photographed and filmed.</p>
-            </div>
+            {work.length > 0 ? (
+              <SelectedWork work={work} />
+            ) : (
+              <div className="work-empty">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={MARK} alt="" aria-hidden="true" />
+                <p>A handful of properties will be presented here as the Sala Nera collection is photographed and filmed.</p>
+              </div>
+            )}
           </div>
         </section>
 

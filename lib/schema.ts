@@ -66,6 +66,9 @@ export const listings = pgTable(
     sqft: integer('sqft'),
     schoolDistrict: text('school_district'),
     description: text('description'),
+    // When Nick put this listing in the public site's Selected Work
+    // (migration 0014, lib/featured.ts). Null means not featured.
+    featuredAt: timestamp('featured_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

@@ -23,6 +23,7 @@ import {
   insertListing,
   insertMediaRow,
   setListingCover,
+  setListingFeatured,
   setListingLock,
   setMediaCopies,
   slugIsTaken,
@@ -278,7 +279,31 @@ export async function updateListingAction(
   revalidatePath('/admin');
   revalidatePath(`/admin/listings/${id}`);
   revalidatePath(`/portal/${parsed.input.slug}`);
+  revalidateSelectedWork();
   redirect('/admin?saved=1');
+}
+
+/**
+ * The public pages that show Selected Work (lib/featured.ts) are prerendered,
+ * so anything that changes which listings appear there, or what a card says,
+ * has to rebuild them.
+ */
+function revalidateSelectedWork(): void {
+  revalidatePath('/');
+  revalidatePath('/work');
+}
+
+/** Puts a listing in Selected Work on the public site, or takes it out. */
+export async function toggleFeaturedAction(form: FormData): Promise<void> {
+  await requireAdmin();
+
+  const id = Number(form.get('id'));
+  if (!Number.isInteger(id)) return;
+
+  await setListingFeatured(id, form.get('featured') === 'true');
+  revalidateSelectedWork();
+  revalidatePath('/admin');
+  revalidatePath(`/admin/listings/${id}`);
 }
 
 /** The one-click version of the payment gate, from the dashboard or the row. */
@@ -289,6 +314,7 @@ export async function toggleLockAction(form: FormData): Promise<void> {
   if (!Number.isInteger(id)) return;
 
   await setListingLock(id, form.get('locked') === 'true');
+  revalidateSelectedWork();
   revalidatePath('/admin');
   revalidatePath(`/admin/listings/${id}`);
 }
@@ -301,6 +327,7 @@ export async function setCoverAction(form: FormData): Promise<void> {
   if (!Number.isInteger(id) || !key) return;
 
   await setListingCover(id, key);
+  revalidateSelectedWork();
   revalidatePath('/admin');
   revalidatePath(`/admin/listings/${id}`);
 }
@@ -531,6 +558,7 @@ export async function setInvoicePaidAction(
     // leaving the lock moved and no invoice to show for it.
     await getOrCreateInvoice(detail.listing, detail.booking);
     await setInvoicePaid(detail.listing.id, paid, String(form.get('method') ?? '').trim() || null);
+    revalidateSelectedWork();
   } catch (error) {
     console.error('admin: could not set the invoice paid', { listingId: id, error });
     return { error: NEEDS_MIGRATION };
@@ -631,6 +659,7 @@ export async function deleteListingAction(form: FormData): Promise<void> {
   await deleteListingRow(id);
   await deleteObjects(keys);
 
+  revalidateSelectedWork();
   revalidatePath('/admin');
   redirect('/admin');
 }

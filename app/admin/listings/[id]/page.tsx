@@ -5,7 +5,7 @@ import { getAdminListing, getClientOptions } from '@/lib/admin-queries';
 import DeleteListing from '../../DeleteListing';
 import ListingForm from '../../ListingForm';
 import MediaGrid from '../../MediaGrid';
-import { updateListingAction } from '../../actions';
+import { toggleFeaturedAction, updateListingAction } from '../../actions';
 import { isLocalKey, isRemoteStorage, previewUrl, withPreviewUrls } from '@/lib/storage';
 import MakePreviews from '../../MakePreviews';
 import SendDelivery, { type ZipStatus } from '../../SendDelivery';
@@ -109,6 +109,13 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
     ? media.filter((m) => m.kind === 'photo' && !m.gridKey && !isLocalKey(m.r2Key)).map((m) => m.id)
     : [];
 
+  // Selected Work on the public site: lib/featured.ts decides with the same two tests.
+  const featured = listing.featuredAt !== null;
+  const featuredLive =
+    featured &&
+    !listing.downloadLocked &&
+    media.some((m) => m.kind === 'photo' && (isLocalKey(m.r2Key) || (m.gridKey && m.largeKey)));
+
   return (
     <>
       <div className="admin-title">
@@ -204,6 +211,26 @@ export default async function EditListing({ params }: { params: Promise<{ id: st
             media={withPreviewUrls(media)}
           />
         )}
+      </section>
+
+      <section className="admin-section">
+        <h2>Selected Work</h2>
+        <p className="admin-empty">
+          {featured
+            ? featuredLive
+              ? 'This property is in Selected Work on the home page and on /work. The card shows the cover photo, the address and the city, and opens the property website.'
+              : listing.downloadLocked
+                ? 'Switched on, but not showing yet: a locked listing has no property website for the card to open. It appears once the listing is unlocked.'
+                : 'Switched on, but not showing yet: it needs at least one photo with its previews made.'
+            : 'Show this property in Selected Work on the home page and on /work. The card uses the cover photo you choose above, with the address and the city. No price and no agent name.'}
+        </p>
+        <form action={toggleFeaturedAction} className="admin-feature">
+          <input type="hidden" name="id" value={listing.id} />
+          <input type="hidden" name="featured" value={featured ? 'false' : 'true'} />
+          <button className={featured ? 'admin-unlock' : 'admin-lock'} type="submit">
+            {featured ? 'Featured: take it off the site' : 'Feature on the site'}
+          </button>
+        </form>
       </section>
 
       <Floorplans

@@ -33,6 +33,7 @@ export const DEMO_LISTING: Listing = {
   sqft: null,
   schoolDistrict: null,
   description: null,
+  featuredAt: null,
   createdAt: new Date('2026-08-14'),
 };
 
