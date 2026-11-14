@@ -81,8 +81,10 @@ serving salanera.com.
   - Card photos point at `/work/cover/<slug>`, which redirects to a freshly
     signed URL. A signed URL written into a prerendered page would expire.
   - Layout checked with sample photos at 1 and 3 cards, desktop and phone.
-    **Not yet seen with a real listing**: that needs Nick to press
-    "Feature on the site" on Brookside.
+    **Proven live Nov 14:** Nick featured Brookside and said it looks good;
+    the card is on `/` and `/work`, opens `/p/n-brookside-drive`, and its
+    photo loads through the redirect (the large copy, 1.4 MB; switch cards
+    to the grid copy if several are featured and the page feels heavy).
   - The property website stays noindex, and it does show the price and the
     agent. Nick knows the card hides them and the click-through doesn't.
 - **Still open, in order:** the Rockwall dollar test (Nick), the pre-shoot
